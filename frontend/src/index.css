@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+
+  /* Emerald green primary - "premium, modern, minimal, trustworthy" (spec section 31) */
+  --color-primary-50: #ecfdf5;
+  --color-primary-100: #d1fae5;
+  --color-primary-200: #a7f3d0;
+  --color-primary-300: #6ee7b7;
+  --color-primary-400: #34d399;
+  --color-primary-500: #10b981;
+  --color-primary-600: #059669;
+  --color-primary-700: #047857;
+  --color-primary-800: #065f46;
+  --color-primary-900: #064e3b;
+
+  /* Supporting colors - used sparingly, only to communicate meaning */
+  --color-info-500: #3b82f6;
+  --color-warning-500: #f59e0b;
+  --color-danger-500: #ef4444;
+  --color-danger-600: #dc2626;
+}
+
+:root {
+  --color-surface: #ffffff;
+  --color-surface-muted: #f8fafc;
+  --color-border: #e2e8f0;
+  --color-text: #0f172a;
+  --color-text-muted: #64748b;
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --color-surface: #12151a;
+  --color-surface-muted: #1a1d24;
+  --color-border: #2a2e37;
+  --color-text: #f1f5f9;
+  --color-text-muted: #94a3b8;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-surface: #12151a;
+    --color-surface-muted: #1a1d24;
+    --color-border: #2a2e37;
+    --color-text: #f1f5f9;
+    --color-text-muted: #94a3b8;
+    color-scheme: dark;
+  }
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+}

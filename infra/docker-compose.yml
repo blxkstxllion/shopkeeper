@@ -1,0 +1,23 @@
+name: shopkeeper
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: shopkeeper-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: shopkeeper
+      POSTGRES_PASSWORD: shopkeeper_dev_password
+      POSTGRES_DB: shopkeeper
+    ports:
+      - "5432:5432"
+    volumes:
+      - shopkeeper-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shopkeeper -d shopkeeper"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  shopkeeper-postgres-data:

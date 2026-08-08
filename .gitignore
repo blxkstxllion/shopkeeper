@@ -1,0 +1,32 @@
+# --- Node / Frontend ---
+node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/.vite/
+*.local
+.env
+.env.*
+!.env.example
+!frontend/.env.development
+
+# --- .NET / Backend ---
+backend/**/bin/
+backend/**/obj/
+backend/**/*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# --- Logs ---
+*.log
+npm-debug.log*
+
+# --- OS / Editor ---
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# --- Uploaded / local storage ---
+backend/**/App_Data/uploads/

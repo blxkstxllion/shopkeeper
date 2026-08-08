@@ -1,0 +1,25 @@
+namespace ShopKeeper.Application.Common.Interfaces;
+
+using Microsoft.EntityFrameworkCore;
+using ShopKeeper.Domain.Entities;
+
+/// <summary>
+/// Application-layer view of the EF Core context. Infrastructure's AppDbContext
+/// implements this so Application never takes a hard dependency on EF Core's
+/// concrete DbContext type.
+/// </summary>
+public interface IAppDbContext
+{
+    DbSet<User> Users { get; }
+    DbSet<Business> Businesses { get; }
+    DbSet<BusinessUser> BusinessUsers { get; }
+    DbSet<Role> Roles { get; }
+    DbSet<Permission> Permissions { get; }
+    DbSet<RolePermission> RolePermissions { get; }
+    DbSet<Branch> Branches { get; }
+    DbSet<RefreshToken> RefreshTokens { get; }
+    DbSet<AuditLog> AuditLogs { get; }
+    DbSet<BusinessSetting> BusinessSettings { get; }
+
+    Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+}
