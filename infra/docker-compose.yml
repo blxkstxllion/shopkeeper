@@ -10,7 +10,9 @@ services:
       POSTGRES_PASSWORD: shopkeeper_dev_password
       POSTGRES_DB: shopkeeper
     ports:
-      - "5432:5432"
+      # Host port 5433, not 5432: this machine already has a native PostgreSQL
+      # service bound to 5432, and the two would otherwise silently collide.
+      - "5433:5432"
     volumes:
       - shopkeeper-postgres-data:/var/lib/postgresql/data
     healthcheck:

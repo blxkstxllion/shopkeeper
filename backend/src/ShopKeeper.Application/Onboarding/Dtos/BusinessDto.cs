@@ -1,5 +1,7 @@
 namespace ShopKeeper.Application.Onboarding.Dtos;
 
+using ShopKeeper.Application.Auth.Dtos;
+
 public record BusinessDto(
     Guid Id,
     string Name,
@@ -11,4 +13,5 @@ public record BusinessDto(
     Guid FirstBranchId,
     string AccessToken,
     string RefreshToken,
-    DateTimeOffset AccessTokenExpiresAt);
+    DateTimeOffset AccessTokenExpiresAt,
+    UserDto User);

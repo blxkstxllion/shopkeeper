@@ -144,6 +144,7 @@ public class CompleteOnboardingCommandHandler(IAppDbContext db, TokenIssuer toke
             branch.Id,
             tokens.AccessToken,
             tokens.RefreshToken,
-            tokens.AccessTokenExpiresAt);
+            tokens.AccessTokenExpiresAt,
+            tokens.User);
     }
 }

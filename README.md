@@ -49,7 +49,7 @@ infra/
      --startup-project src/ShopKeeper.Api/ShopKeeper.Api.csproj
    ```
 
-3. Run the backend (Swagger at `https://localhost:<port>/swagger`):
+3. Run the backend (Swagger at `http://localhost:5064/swagger`):
    ```bash
    cd backend
    dotnet run --project src/ShopKeeper.Api
@@ -63,6 +63,10 @@ infra/
    ```
 
 The frontend dev server (`http://localhost:5173`) and API CORS policy are pre-wired to talk to each other in `appsettings.Development.json`.
+
+## Note on the local database port
+
+`infra/docker-compose.yml` maps PostgreSQL to host port **5433**, not the default 5432. If your machine has any other PostgreSQL install (native service, another project's container, etc.) already bound to 5432, Docker's forwarding and that instance silently collide and the app ends up talking to the wrong database with the wrong credentials (`password authentication failed` is the symptom). `Port=5433` is set to match in `appsettings.Development.json` — if you're certain nothing else on your machine uses 5432, you can change both back, but there's no need to.
 
 ## Configuration
 

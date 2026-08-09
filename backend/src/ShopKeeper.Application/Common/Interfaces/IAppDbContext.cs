@@ -21,5 +21,15 @@ public interface IAppDbContext
     DbSet<AuditLog> AuditLogs { get; }
     DbSet<BusinessSetting> BusinessSettings { get; }
 
+    DbSet<ProductCategory> ProductCategories { get; }
+    DbSet<Product> Products { get; }
+    DbSet<ProductStock> ProductStocks { get; }
+    DbSet<InventoryTransaction> InventoryTransactions { get; }
+    DbSet<Sale> Sales { get; }
+    DbSet<SaleItem> SaleItems { get; }
+    DbSet<Payment> Payments { get; }
+    DbSet<Refund> Refunds { get; }
+    DbSet<RefundItem> RefundItems { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

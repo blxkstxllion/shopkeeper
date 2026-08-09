@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import * as authApi from '@/api/auth'
+import { dedupedRefresh } from '@/lib/api-client'
 import { setAccessToken, onAccessTokenChange } from '@/lib/token-store'
 import type { User, UserBusiness } from '@/types/auth'
 import type { Business } from '@/types/business'
@@ -13,7 +14,7 @@ interface AuthContextValue {
   register: (email: string, password: string, firstName: string, lastName: string) => Promise<User>
   logout: () => Promise<void>
   selectBusiness: (businessId: string) => Promise<void>
-  completeOnboarding: (business: Business, user: User) => void
+  completeOnboarding: (business: Business & { accessToken: string }, user: User) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -31,16 +32,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false
 
-    authApi
-      .refresh()
+    // dedupedRefresh (not authApi.refresh directly) because React.StrictMode double-invokes
+    // this effect in development: two independent refresh calls would race to redeem the
+    // same (rotating) refresh token, and the loser looks identical to token theft to the
+    // API, which revokes the whole session - see the comment on dedupedRefresh itself.
+    dedupedRefresh()
       .then((result) => {
-        if (cancelled) return
-        setAccessToken(result.accessToken)
+        if (cancelled || !result) return
         setUser(result.user)
         setActiveBusinessId(resolveActiveBusiness(result.user)?.businessId ?? null)
-      })
-      .catch(() => {
-        // No valid session (first visit, expired/revoked token) - user must log in.
       })
       .finally(() => {
         if (!cancelled) setIsInitializing(false)
@@ -92,7 +92,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setActiveBusinessId(businessId)
   }, [])
 
-  const completeOnboarding = useCallback((business: Business, updatedUser: User) => {
+  const completeOnboarding = useCallback((business: Business & { accessToken: string }, updatedUser: User) => {
+    // Onboarding issues a new access token scoped to the just-created business (with its
+    // real permissions) - without applying it, every request after this keeps using the
+    // pre-onboarding token, which has no business context, so tenant-scoped queries
+    // (branches, products, ...) silently return empty until the next full refresh.
+    setAccessToken(business.accessToken)
     setUser(updatedUser)
     setActiveBusinessId(business.id)
   }, [])

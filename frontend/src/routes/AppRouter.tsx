@@ -8,20 +8,12 @@ import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage'
 import { SelectBusinessPage } from '@/features/auth/SelectBusinessPage'
 import { OnboardingPage } from '@/features/onboarding/OnboardingPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
+import { PosPage } from '@/features/pos/PosPage'
+import { InventoryPage } from '@/features/inventory/InventoryPage'
+import { SalesHistoryPage } from '@/features/sales/SalesHistoryPage'
 import { ComingSoon } from '@/components/ComingSoon'
 import { RequireActiveBusiness, RequireAuth, RedirectIfAuthed } from './guards'
-import {
-  ShoppingCart,
-  Package,
-  Building2,
-  Users,
-  Truck,
-  UserCircle,
-  Receipt,
-  BarChart3,
-  Settings,
-  Sparkles,
-} from 'lucide-react'
+import { Building2, Users, Truck, UserCircle, Receipt, BarChart3, Settings, Sparkles } from 'lucide-react'
 
 export function AppRouter() {
   return (
@@ -40,8 +32,9 @@ export function AppRouter() {
 
       <Route element={<RequireActiveBusiness><AppLayout /></RequireActiveBusiness>}>
         <Route path="/app" element={<DashboardPage />} />
-        <Route path="/app/sell" element={<ComingSoon title="Point of Sale" icon={ShoppingCart} phase="Phase 2" />} />
-        <Route path="/app/inventory" element={<ComingSoon title="Inventory" icon={Package} phase="Phase 2" />} />
+        <Route path="/app/sell" element={<PosPage />} />
+        <Route path="/app/sales" element={<SalesHistoryPage />} />
+        <Route path="/app/inventory" element={<InventoryPage />} />
         <Route path="/app/ai" element={<ComingSoon title="The Shop Keeper Advisor" icon={Sparkles} phase="Phase 6" />} />
         <Route path="/app/branches" element={<ComingSoon title="Branch management" icon={Building2} phase="Phase 4" />} />
         <Route path="/app/employees" element={<ComingSoon title="Employees" icon={Users} phase="Phase 4" />} />
