@@ -5,12 +5,17 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, FormField } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
-import { createProduct, getProductCategories, updateProduct } from '@/api/products'
+import { createProduct, getProductCategories, updateProduct, uploadProductImage } from '@/api/products'
+import { resolveUploadUrl } from '@/lib/format'
 import type { ApiErrorPayload } from '@/types/auth'
 import type { Product } from '@/types/product'
 import { AxiosError } from 'axios'
-import { useState } from 'react'
+import { Package, Upload, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { productDefaults, productSchema, type ProductFormValues } from './product.schema'
+
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 
 export function ProductFormModal({
   isOpen,
@@ -25,6 +30,9 @@ export function ProductFormModal({
 }) {
   const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const isEditing = Boolean(product)
 
   const { data: categories } = useQuery({ queryKey: ['product-categories'], queryFn: getProductCategories })
@@ -52,6 +60,16 @@ export function ProductFormModal({
       : productDefaults,
   })
 
+  // Resets the image preview whenever a different product is opened for editing (or the
+  // modal reopens for a fresh "Add product") - without this, the previous product's image
+  // would keep showing after switching.
+  useEffect(() => {
+    if (isOpen) {
+      setImageUrl(product?.imageUrl ?? null)
+      setServerError(null)
+    }
+  }, [isOpen, product])
+
   const mutation = useMutation({
     mutationFn: async (values: ProductFormValues) => {
       const payload = {
@@ -59,6 +77,7 @@ export function ProductFormModal({
         sku: values.sku,
         barcode: values.barcode || null,
         categoryId: values.categoryId || null,
+        imageUrl,
         sellingPrice: values.sellingPrice,
         costPrice: values.costPrice,
         minStock: values.minStock,
@@ -76,6 +95,7 @@ export function ProductFormModal({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
       reset(productDefaults)
+      setImageUrl(null)
       onClose()
     },
     onError: (err) => {
@@ -84,10 +104,75 @@ export function ProductFormModal({
     },
   })
 
+  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-selecting the same file later
+    if (!file) return
+
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      setServerError('Please choose a JPEG, PNG, WEBP, or GIF image.')
+      return
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setServerError('Images must be 5MB or smaller.')
+      return
+    }
+
+    setServerError(null)
+    setIsUploadingImage(true)
+    try {
+      const { url } = await uploadProductImage(file)
+      setImageUrl(url)
+    } catch (err) {
+      const apiErr = (err as AxiosError<ApiErrorPayload>).response?.data
+      setServerError(apiErr?.title ?? 'Unable to upload that image. Please try again.')
+    } finally {
+      setIsUploadingImage(false)
+    }
+  }
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEditing ? 'Edit product' : 'Add product'} size="lg">
       <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="flex flex-col gap-4">
         {serverError && <Alert tone="error">{serverError}</Alert>}
+
+        <div className="flex items-center gap-4">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
+            {imageUrl ? (
+              <img src={resolveUploadUrl(imageUrl)} alt="Product" className="h-full w-full object-cover" />
+            ) : (
+              <Package className="h-8 w-8 text-slate-300 dark:text-slate-600" />
+            )}
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={ALLOWED_IMAGE_TYPES.join(',')}
+              className="hidden"
+              onChange={handleFileSelected}
+            />
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                isLoading={isUploadingImage}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="h-3.5 w-3.5" />
+                {imageUrl ? 'Change photo' : 'Upload photo'}
+              </Button>
+              {imageUrl && (
+                <Button type="button" variant="ghost" size="sm" onClick={() => setImageUrl(null)}>
+                  <X className="h-3.5 w-3.5" />
+                  Remove
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-slate-400">JPEG, PNG, WEBP, or GIF. Up to 5MB.</p>
+          </div>
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Name" htmlFor="name" error={errors.name?.message}>
@@ -151,7 +236,7 @@ export function ProductFormModal({
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" isLoading={isSubmitting || mutation.isPending}>
+          <Button type="submit" isLoading={isSubmitting || mutation.isPending} disabled={isUploadingImage}>
             {isEditing ? 'Save changes' : 'Add product'}
           </Button>
         </div>

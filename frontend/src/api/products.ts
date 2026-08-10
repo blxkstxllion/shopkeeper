@@ -43,3 +43,12 @@ export async function createProductCategory(payload: { name: string; description
   const { data } = await apiClient.post<ProductCategory>('/products/categories', payload)
   return data
 }
+
+export async function uploadProductImage(file: File): Promise<{ url: string }> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const { data } = await apiClient.post<{ url: string }>('/uploads/product-image', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return data
+}

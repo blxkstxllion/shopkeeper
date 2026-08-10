@@ -1,5 +1,5 @@
 import { Package } from 'lucide-react'
-import { formatMoney } from '@/lib/format'
+import { formatMoney, resolveUploadUrl } from '@/lib/format'
 import type { SellableProduct } from '@/types/sale'
 
 export function ProductGrid({ products, onSelect }: { products: SellableProduct[]; onSelect: (product: SellableProduct) => void }) {
@@ -21,7 +21,7 @@ export function ProductGrid({ products, onSelect }: { products: SellableProduct[
           >
             <div className="flex h-16 w-full items-center justify-center rounded-lg bg-slate-100 text-slate-300 dark:bg-slate-800">
               {p.imageUrl ? (
-                <img src={p.imageUrl} alt={p.name} className="h-full w-full rounded-lg object-cover" />
+                <img src={resolveUploadUrl(p.imageUrl)} alt={p.name} className="h-full w-full rounded-lg object-cover" />
               ) : (
                 <Package className="h-6 w-6" />
               )}

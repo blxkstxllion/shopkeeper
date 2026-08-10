@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { formatMoney } from '@/lib/format'
+import { formatMoney, resolveUploadUrl } from '@/lib/format'
 import type { Product } from '@/types/product'
 import { ProductFormModal } from './ProductFormModal'
 import { StockAdjustModal } from './StockAdjustModal'
@@ -98,8 +98,19 @@ export function InventoryPage() {
                 {products.map((p) => (
                   <tr key={p.id}>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-slate-900 dark:text-slate-100">{p.name}</p>
-                      {p.categoryName && <p className="text-xs text-slate-400">{p.categoryName}</p>}
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
+                          {p.imageUrl ? (
+                            <img src={resolveUploadUrl(p.imageUrl)} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <Package className="h-4 w-4 text-slate-300 dark:text-slate-600" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium text-slate-900 dark:text-slate-100">{p.name}</p>
+                          {p.categoryName && <p className="text-xs text-slate-400">{p.categoryName}</p>}
+                        </div>
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{p.sku}</td>
                     <td className="px-4 py-3 text-right text-slate-900 dark:text-slate-100">{formatMoney(p.sellingPrice)}</td>

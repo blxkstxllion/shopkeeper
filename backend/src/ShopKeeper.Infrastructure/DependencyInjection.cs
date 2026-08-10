@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Infrastructure.Identity;
 using ShopKeeper.Infrastructure.Persistence;
+using ShopKeeper.Infrastructure.Storage;
 
 public static class DependencyInjection
 {
@@ -25,6 +26,7 @@ public static class DependencyInjection
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
         services.AddSingleton<ITotpService, TotpService>();
         services.AddScoped<IEmailSender, LoggingEmailSender>();
+        services.AddSingleton<IFileStorageService, LocalFileStorageService>();
 
         return services;
     }
