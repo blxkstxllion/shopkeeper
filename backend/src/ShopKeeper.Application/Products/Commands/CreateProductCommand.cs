@@ -49,6 +49,10 @@ public class CreateProductCommandHandler(IAppDbContext db, ICurrentUserService c
     public async Task<ProductDto> Handle(CreateProductCommand request, CancellationToken cancellationToken)
     {
         currentUser.RequirePermission(PermissionKeys.ProductsManage);
+        if (request.BranchId.HasValue)
+        {
+            currentUser.RequireBranchAccess(request.BranchId.Value);
+        }
         var businessId = currentUser.RequireBusinessId();
 
         var skuTaken = await db.Products.AnyAsync(p => p.Sku == request.Sku, cancellationToken);

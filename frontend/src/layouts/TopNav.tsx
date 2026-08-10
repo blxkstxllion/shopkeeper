@@ -1,25 +1,22 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import { Search, Bell, Sparkles, ChevronDown, LogOut, Building2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { getBranches } from '@/api/branches'
+import { useBranchContext } from '@/contexts/BranchContext'
 
 export function TopNav() {
   const { user, activeBusiness, logout } = useAuth()
+  const { branches, activeBranch, setActiveBranchId, canSwitchBranches } = useBranchContext()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [branchMenuOpen, setBranchMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-
-  const { data: branches } = useQuery({
-    queryKey: ['branches'],
-    queryFn: getBranches,
-    enabled: !!activeBusiness,
-  })
+  const branchMenuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
+      if (branchMenuRef.current && !branchMenuRef.current.contains(e.target as Node)) setBranchMenuOpen(false)
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
@@ -37,12 +34,43 @@ export function TopNav() {
         <span className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
           {activeBusiness?.businessName ?? '—'}
         </span>
-        {branches && branches.length > 0 && (
+        {activeBranch && (
           <>
             <span className="text-slate-300 dark:text-slate-600">/</span>
-            <span className="truncate text-sm text-slate-500 dark:text-slate-400">
-              {branches.find((b) => b.isMainBranch)?.name ?? branches[0]?.name}
-            </span>
+            {canSwitchBranches ? (
+              <div className="relative" ref={branchMenuRef}>
+                <button
+                  onClick={() => setBranchMenuOpen((o) => !o)}
+                  className="flex items-center gap-1 truncate rounded-md px-1.5 py-0.5 text-sm text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                >
+                  {activeBranch.name}
+                  <ChevronDown className="h-3 w-3 shrink-0" />
+                </button>
+                {branchMenuOpen && (
+                  <div className="absolute left-0 top-full z-10 mt-1 w-52 rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                    {branches.map((b) => (
+                      <button
+                        key={b.id}
+                        onClick={() => {
+                          setActiveBranchId(b.id)
+                          setBranchMenuOpen(false)
+                        }}
+                        className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-800 ${
+                          b.id === activeBranch.id
+                            ? 'font-medium text-primary-700 dark:text-primary-400'
+                            : 'text-slate-700 dark:text-slate-300'
+                        }`}
+                      >
+                        {b.name}
+                        {b.isMainBranch && <span className="text-xs text-slate-400">Main</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <span className="truncate text-sm text-slate-500 dark:text-slate-400">{activeBranch.name}</span>
+            )}
           </>
         )}
       </div>

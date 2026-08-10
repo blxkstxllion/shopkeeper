@@ -16,6 +16,7 @@ public class GetSellableProductsQueryHandler(IAppDbContext db, ICurrentUserServi
     public async Task<IReadOnlyList<SellableProductDto>> Handle(GetSellableProductsQuery request, CancellationToken cancellationToken)
     {
         currentUser.RequirePermission(PermissionKeys.SalesCreate);
+        currentUser.RequireBranchAccess(request.BranchId);
 
         var query = db.Products.Where(p => p.IsActive);
 

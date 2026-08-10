@@ -22,6 +22,11 @@ public class GetSalesQueryHandler(IAppDbContext db, ICurrentUserService currentU
     public async Task<PagedResult<SaleListItemDto>> Handle(GetSalesQuery request, CancellationToken cancellationToken)
     {
         currentUser.RequirePermission(PermissionKeys.SalesView);
+        if (request.BranchId.HasValue)
+        {
+            currentUser.RequireBranchAccess(request.BranchId.Value);
+        }
+        var effectiveBranchId = request.BranchId ?? currentUser.BranchId;
 
         var query =
             from sale in db.Sales
@@ -29,9 +34,9 @@ public class GetSalesQueryHandler(IAppDbContext db, ICurrentUserService currentU
             join cashier in db.Users on sale.CashierUserId equals cashier.Id
             select new { sale, branch.Name, cashier.FirstName, cashier.LastName, ItemCount = sale.Items.Count };
 
-        if (request.BranchId.HasValue)
+        if (effectiveBranchId.HasValue)
         {
-            query = query.Where(x => x.sale.BranchId == request.BranchId);
+            query = query.Where(x => x.sale.BranchId == effectiveBranchId);
         }
 
         if (request.From.HasValue)

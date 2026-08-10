@@ -25,7 +25,8 @@ public record CompleteOnboardingCommand(
     string FirstBranchName,
     string? FirstBranchAddress,
     string? FirstBranchCity,
-    string? IpAddress) : IRequest<BusinessDto>;
+    string? IpAddress,
+    string? UserAgent = null) : IRequest<BusinessDto>;
 
 public class CompleteOnboardingCommandValidator : AbstractValidator<CompleteOnboardingCommand>
 {
@@ -131,7 +132,7 @@ public class CompleteOnboardingCommandHandler(IAppDbContext db, TokenIssuer toke
 
         await db.SaveChangesAsync(cancellationToken);
 
-        var tokens = await tokenIssuer.IssueAsync(owner, business.Id, request.IpAddress, cancellationToken);
+        var tokens = await tokenIssuer.IssueAsync(owner, business.Id, request.IpAddress, request.UserAgent, cancellationToken);
 
         return new BusinessDto(
             business.Id,

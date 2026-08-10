@@ -36,6 +36,8 @@ public class RefundSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
         var sale = await db.Sales.Include(s => s.Items).FirstOrDefaultAsync(s => s.Id == request.SaleId, cancellationToken)
             ?? throw new NotFoundException(nameof(Sale), request.SaleId);
 
+        currentUser.RequireBranchAccess(sale.BranchId);
+
         if (sale.Status is not (SaleStatus.Completed or SaleStatus.PartiallyRefunded))
         {
             throw new ConflictException($"Sale {sale.SaleNumber} cannot be refunded from its current status ({sale.Status}).");

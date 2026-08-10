@@ -23,6 +23,10 @@ public class GetProductsQueryHandler(IAppDbContext db, ICurrentUserService curre
     public async Task<PagedResult<ProductDto>> Handle(GetProductsQuery request, CancellationToken cancellationToken)
     {
         currentUser.RequirePermission(PermissionKeys.InventoryView);
+        if (request.BranchId.HasValue)
+        {
+            currentUser.RequireBranchAccess(request.BranchId.Value);
+        }
 
         var branchId = request.BranchId ?? currentUser.BranchId;
 

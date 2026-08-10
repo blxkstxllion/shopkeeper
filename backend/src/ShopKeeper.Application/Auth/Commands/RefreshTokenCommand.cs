@@ -8,7 +8,7 @@ using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Application.Common.Services;
 
-public record RefreshTokenCommand(string RefreshToken, string? IpAddress) : IRequest<AuthResultDto>;
+public record RefreshTokenCommand(string RefreshToken, string? IpAddress, string? UserAgent = null) : IRequest<AuthResultDto>;
 
 public class RefreshTokenCommandValidator : AbstractValidator<RefreshTokenCommand>
 {
@@ -42,7 +42,7 @@ public class RefreshTokenCommandHandler(IAppDbContext db, IJwtTokenService jwt, 
             throw new AuthenticationException("Refresh token has expired. Please log in again.");
         }
 
-        var result = await tokenIssuer.IssueAsync(existing.User, existing.ActiveBusinessId, request.IpAddress, cancellationToken);
+        var result = await tokenIssuer.IssueAsync(existing.User, existing.ActiveBusinessId, request.IpAddress, request.UserAgent, cancellationToken);
 
         existing.RevokedAt = DateTimeOffset.UtcNow;
         existing.RevokedByIp = request.IpAddress;

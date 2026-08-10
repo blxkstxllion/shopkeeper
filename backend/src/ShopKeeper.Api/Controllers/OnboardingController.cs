@@ -45,7 +45,8 @@ public class OnboardingController(ISender mediator, ICurrentUserService currentU
             request.FirstBranchName,
             request.FirstBranchAddress,
             request.FirstBranchCity,
-            HttpContext.Connection.RemoteIpAddress?.ToString()), ct);
+            HttpContext.Connection.RemoteIpAddress?.ToString(),
+            Request.Headers.UserAgent.ToString()), ct);
 
         Response.SetRefreshTokenCookie(result.RefreshToken, env);
         return Ok(result with { RefreshToken = string.Empty });

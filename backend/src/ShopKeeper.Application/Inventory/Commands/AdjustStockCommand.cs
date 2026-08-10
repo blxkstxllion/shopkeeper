@@ -32,6 +32,7 @@ public class AdjustStockCommandHandler(IAppDbContext db, ICurrentUserService cur
     public async Task<int> Handle(AdjustStockCommand request, CancellationToken cancellationToken)
     {
         currentUser.RequirePermission(PermissionKeys.InventoryModify);
+        currentUser.RequireBranchAccess(request.BranchId);
         var businessId = currentUser.RequireBusinessId();
 
         var product = await db.Products.FirstOrDefaultAsync(p => p.Id == request.ProductId, cancellationToken)

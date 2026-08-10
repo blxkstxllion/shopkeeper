@@ -44,6 +44,7 @@ public class CreateSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
     public async Task<SaleDto> Handle(CreateSaleCommand request, CancellationToken cancellationToken)
     {
         currentUser.RequirePermission(PermissionKeys.SalesCreate);
+        currentUser.RequireBranchAccess(request.BranchId);
         var businessId = currentUser.RequireBusinessId();
         var userId = currentUser.RequireUserId();
 

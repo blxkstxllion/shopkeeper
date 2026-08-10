@@ -11,9 +11,10 @@ import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { PosPage } from '@/features/pos/PosPage'
 import { InventoryPage } from '@/features/inventory/InventoryPage'
 import { SalesHistoryPage } from '@/features/sales/SalesHistoryPage'
+import { SettingsPage } from '@/features/settings/SettingsPage'
 import { ComingSoon } from '@/components/ComingSoon'
 import { RequireActiveBusiness, RequireAuth, RedirectIfAuthed } from './guards'
-import { Building2, Users, Truck, UserCircle, Receipt, BarChart3, Settings, Sparkles } from 'lucide-react'
+import { Building2, Users, Truck, UserCircle, Receipt, BarChart3, Sparkles } from 'lucide-react'
 
 export function AppRouter() {
   return (
@@ -42,7 +43,7 @@ export function AppRouter() {
         <Route path="/app/customers" element={<ComingSoon title="Customers" icon={UserCircle} phase="Phase 4" />} />
         <Route path="/app/expenses" element={<ComingSoon title="Expenses" icon={Receipt} phase="Phase 3" />} />
         <Route path="/app/reports" element={<ComingSoon title="Reports" icon={BarChart3} phase="Phase 3" />} />
-        <Route path="/app/settings" element={<ComingSoon title="Settings" icon={Settings} phase="a later phase" />} />
+        <Route path="/app/settings" element={<SettingsPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -14,7 +14,8 @@ public record RegisterCommand(
     string Password,
     string FirstName,
     string LastName,
-    string? IpAddress) : IRequest<AuthResultDto>;
+    string? IpAddress,
+    string? UserAgent = null) : IRequest<AuthResultDto>;
 
 public class RegisterCommandValidator : AbstractValidator<RegisterCommand>
 {
@@ -59,6 +60,6 @@ public class RegisterCommandHandler(IAppDbContext db, IPasswordHasher hasher, To
 
         // TODO: dispatch email-verification message once IEmailSender has a real provider (Phase 5+).
 
-        return await tokenIssuer.IssueAsync(user, activeBusinessId: null, request.IpAddress, cancellationToken);
+        return await tokenIssuer.IssueAsync(user, activeBusinessId: null, request.IpAddress, request.UserAgent, cancellationToken);
     }
 }

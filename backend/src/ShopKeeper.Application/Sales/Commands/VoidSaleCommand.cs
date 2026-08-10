@@ -31,6 +31,8 @@ public class VoidSaleCommandHandler(IAppDbContext db, ICurrentUserService curren
         var sale = await db.Sales.Include(s => s.Items).FirstOrDefaultAsync(s => s.Id == request.SaleId, cancellationToken)
             ?? throw new NotFoundException(nameof(Sale), request.SaleId);
 
+        currentUser.RequireBranchAccess(sale.BranchId);
+
         if (sale.Status != SaleStatus.Completed)
         {
             throw new ConflictException($"Sale {sale.SaleNumber} cannot be voided from its current status ({sale.Status}).");

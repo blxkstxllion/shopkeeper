@@ -2,15 +2,19 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import * as authApi from '@/api/auth'
 import { dedupedRefresh } from '@/lib/api-client'
 import { setAccessToken, onAccessTokenChange } from '@/lib/token-store'
-import type { User, UserBusiness } from '@/types/auth'
+import type { AuthResult, User, UserBusiness } from '@/types/auth'
 import type { Business } from '@/types/business'
+
+/** Either a completed login, or a signal that the caller must now collect a 2FA code. */
+type LoginOutcome = { requiresTwoFactor: true; challengeToken: string } | { requiresTwoFactor: false; user: User }
 
 interface AuthContextValue {
   user: User | null
   /** The business the current access token is scoped to, or null if the user hasn't picked one yet (e.g. multi-business login). */
   activeBusiness: UserBusiness | null
   isInitializing: boolean
-  login: (email: string, password: string, businessId?: string) => Promise<User>
+  login: (email: string, password: string, businessId?: string) => Promise<LoginOutcome>
+  completeTwoFactorLogin: (challengeToken: string, code: string) => Promise<User>
   register: (email: string, password: string, firstName: string, lastName: string) => Promise<User>
   logout: () => Promise<void>
   selectBusiness: (businessId: string) => Promise<void>
@@ -62,13 +66,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   )
 
-  const login = useCallback(async (email: string, password: string, businessId?: string) => {
-    const result = await authApi.login({ email, password, businessId })
+  const applyAuthResult = useCallback((result: AuthResult, businessId?: string) => {
     setAccessToken(result.accessToken)
     setUser(result.user)
     setActiveBusinessId(businessId ?? resolveActiveBusiness(result.user)?.businessId ?? null)
-    return result.user
   }, [])
+
+  const login = useCallback(
+    async (email: string, password: string, businessId?: string): Promise<LoginOutcome> => {
+      const result = await authApi.login({ email, password, businessId })
+
+      if (result.requiresTwoFactor) {
+        return { requiresTwoFactor: true, challengeToken: result.challengeToken }
+      }
+
+      applyAuthResult(result.auth, businessId)
+      return { requiresTwoFactor: false, user: result.auth.user }
+    },
+    [applyAuthResult],
+  )
+
+  const completeTwoFactorLogin = useCallback(
+    async (challengeToken: string, code: string) => {
+      const result = await authApi.verifyTwoFactor(challengeToken, code)
+      applyAuthResult(result)
+      return result.user
+    },
+    [applyAuthResult],
+  )
 
   const register = useCallback(async (email: string, password: string, firstName: string, lastName: string) => {
     const result = await authApi.register({ email, password, firstName, lastName })
@@ -108,8 +133,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, activeBusiness, isInitializing, login, register, logout, selectBusiness, completeOnboarding }),
-    [user, activeBusiness, isInitializing, login, register, logout, selectBusiness, completeOnboarding],
+    () => ({
+      user,
+      activeBusiness,
+      isInitializing,
+      login,
+      completeTwoFactorLogin,
+      register,
+      logout,
+      selectBusiness,
+      completeOnboarding,
+    }),
+    [user, activeBusiness, isInitializing, login, completeTwoFactorLogin, register, logout, selectBusiness, completeOnboarding],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

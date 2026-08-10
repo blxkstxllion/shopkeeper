@@ -17,6 +17,14 @@ public class GetInventoryTransactionsQueryHandler(IAppDbContext db, ICurrentUser
     public async Task<PagedResult<InventoryTransactionDto>> Handle(GetInventoryTransactionsQuery request, CancellationToken cancellationToken)
     {
         currentUser.RequirePermission(PermissionKeys.InventoryView);
+        if (request.BranchId.HasValue)
+        {
+            currentUser.RequireBranchAccess(request.BranchId.Value);
+        }
+
+        // A branch-restricted user (Cashier, Branch Manager) with no explicit filter should only
+        // ever see their own branch's ledger, not every branch in the business.
+        var effectiveBranchId = request.BranchId ?? currentUser.BranchId;
 
         var query =
             from t in db.InventoryTransactions
@@ -30,9 +38,9 @@ public class GetInventoryTransactionsQueryHandler(IAppDbContext db, ICurrentUser
             query = query.Where(x => x.t.ProductId == request.ProductId);
         }
 
-        if (request.BranchId.HasValue)
+        if (effectiveBranchId.HasValue)
         {
-            query = query.Where(x => x.t.BranchId == request.BranchId);
+            query = query.Where(x => x.t.BranchId == effectiveBranchId);
         }
 
         query = query.OrderByDescending(x => x.t.CreatedAt);
