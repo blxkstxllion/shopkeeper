@@ -30,3 +30,6 @@ Thumbs.db
 
 # --- Uploaded / local storage ---
 backend/**/App_Data/uploads/
+
+# --- Playwright MCP (screenshots/snapshots dropped in the repo root during manual QA) ---
+.playwright-mcp/

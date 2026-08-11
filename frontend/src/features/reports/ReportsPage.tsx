@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { TrendingUp, Receipt, Package } from 'lucide-react'
 import { useBranchContext } from '@/contexts/BranchContext'
 import { ProfitabilityTab } from './ProfitabilityTab'
@@ -28,9 +29,12 @@ const CHART_VARS =
 
 export function ReportsPage() {
   const { branches, activeBranchId, canSwitchBranches } = useBranchContext()
+  const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState<TabId>('profitability')
   const [range, setRange] = useState<DateRange>(defaultRange)
-  const [branchFilter, setBranchFilter] = useState('')
+  // Pre-seeded from a `?branchId=` deep link (e.g. the Branches page's "Reports" action) - once
+  // set, the effect below's `if (branchFilter) return` guard leaves it alone.
+  const [branchFilter, setBranchFilter] = useState(() => searchParams.get('branchId') ?? '')
 
   useEffect(() => {
     if (branchFilter) return
