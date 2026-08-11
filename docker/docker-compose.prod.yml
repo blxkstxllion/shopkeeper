@@ -1,0 +1,34 @@
+# Production overlay: runs the exact, already-tested images promoted from
+# staging - never rebuilds application code on the server.
+#
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.prod.yml up -d
+#
+# Requires IMAGE_OWNER (your GHCR namespace, i.e. the GitHub org/user - see
+# .env.example) and API_IMAGE_TAG / FRONTEND_IMAGE_TAG (an immutable version or
+# commit SHA, never "latest") to be set. The `build:` keys are intentionally
+# left inherited from the base file so `docker compose build` still works for
+# local prod-image testing, but normal `up`/`pull` here uses `image:` and never
+# rebuilds from source.
+
+services:
+  postgres:
+    restart: unless-stopped
+    # No host port published: only other containers on shopkeeper-network can reach it.
+
+  redis:
+    restart: unless-stopped
+    # No host port published, same reasoning as postgres.
+
+  api:
+    image: ghcr.io/${IMAGE_OWNER:?IMAGE_OWNER must be set}/shopkeeper-api:${API_IMAGE_TAG:?API_IMAGE_TAG must be an immutable version or commit SHA}
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+    # Not published to the host directly - the frontend container's Nginx is the
+    # only public entry point and reverse-proxies /api/* to this service.
+
+  frontend:
+    image: ghcr.io/${IMAGE_OWNER:?IMAGE_OWNER must be set}/shopkeeper-frontend:${FRONTEND_IMAGE_TAG:?FRONTEND_IMAGE_TAG must be an immutable version or commit SHA}
+    restart: unless-stopped
+    ports:
+      - "80:8080"
