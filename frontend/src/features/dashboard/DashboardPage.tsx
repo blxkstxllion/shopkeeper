@@ -10,37 +10,16 @@ import {
   Receipt,
   LayoutGrid,
 } from 'lucide-react'
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-} from 'recharts'
+import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend } from 'recharts'
 import { useAuth } from '@/contexts/AuthContext'
 import { useActiveBranch } from '@/hooks/useActiveBranch'
 import { getDashboardSummary } from '@/api/dashboard'
 import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { StatTile } from '@/components/ui/StatTile'
+import { CategoryBreakdown } from '@/components/ui/CategoryBreakdown'
 import { formatMoney, formatDateTime } from '@/lib/format'
-import type { DashboardMetric, CategorySales, TopProduct, RecentTransaction } from '@/types/dashboard'
-
-// Fixed categorical hue order from the design system's validated 8-slot palette -
-// slots are assigned by position, never generated or cycled past 8.
-const CATEGORY_SLOT_VARS = [
-  '--cat-0',
-  '--cat-1',
-  '--cat-2',
-  '--cat-3',
-  '--cat-4',
-  '--cat-5',
-  '--cat-6',
-  '--cat-7',
-]
+import type { DashboardMetric, TopProduct, RecentTransaction } from '@/types/dashboard'
 
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
   Completed: {
@@ -71,13 +50,9 @@ export function DashboardPage() {
   })
 
   return (
-    <div
-      className="mx-auto max-w-6xl [--cat-0:#2a78d6] [--cat-1:#1baf7a] [--cat-2:#eda100] [--cat-3:#008300] [--cat-4:#4a3aa7] [--cat-5:#e34948] [--cat-6:#e87ba4] [--cat-7:#eb6834] dark:[--cat-0:#3987e5] dark:[--cat-1:#199e70] dark:[--cat-2:#c98500] dark:[--cat-4:#9085e9] dark:[--cat-5:#e66767] dark:[--cat-6:#d55181] dark:[--cat-7:#d95926] [--chart-revenue:#2a78d6] dark:[--chart-revenue:#3987e5] [--chart-profit:#1baf7a] dark:[--chart-profit:#199e70] [--chart-grid:#e1e0d9] dark:[--chart-grid:#2c2c2a] [--chart-axis:#898781]"
-    >
+    <div className="mx-auto max-w-6xl [--cat-0:#2a78d6] [--cat-1:#1baf7a] [--cat-2:#eda100] [--cat-3:#008300] [--cat-4:#4a3aa7] [--cat-5:#e34948] [--cat-6:#e87ba4] [--cat-7:#eb6834] dark:[--cat-0:#3987e5] dark:[--cat-1:#199e70] dark:[--cat-2:#c98500] dark:[--cat-4:#9085e9] dark:[--cat-5:#e66767] dark:[--cat-6:#d55181] dark:[--cat-7:#d95926] [--chart-revenue:#2a78d6] dark:[--chart-revenue:#3987e5] [--chart-profit:#1baf7a] dark:[--chart-profit:#199e70] [--chart-grid:#e1e0d9] dark:[--chart-grid:#2c2c2a] [--chart-axis:#898781]">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
-          Welcome back, {user?.firstName}
-        </h1>
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Welcome back, {user?.firstName}</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">
           Here&apos;s what&apos;s happening at {activeBusiness?.businessName}
           {branch ? ` · ${branch.name}` : ''}.
@@ -127,7 +102,16 @@ export function DashboardPage() {
               <h2 className="mb-4 text-sm font-semibold text-slate-900 dark:text-slate-100">
                 Sales by category, today
               </h2>
-              <CategoryBreakdown categories={data.salesByCategory} />
+              <CategoryBreakdown
+                items={data.salesByCategory.map((c) => ({
+                  name: c.categoryName,
+                  value: c.revenue,
+                  percentOfTotal: c.percentOfTotal,
+                }))}
+                emptyIcon={LayoutGrid}
+                emptyTitle="No sales yet today"
+                emptyDescription="Category breakdown appears once today's first sale is rung up."
+              />
             </Card>
           </div>
 
@@ -237,55 +221,6 @@ function RevenueProfitTrendChart({ trend }: { trend: { date: string; revenue: nu
   )
 }
 
-function CategoryBreakdown({ categories }: { categories: CategorySales[] }) {
-  if (categories.length === 0) {
-    return (
-      <EmptyState
-        icon={LayoutGrid}
-        title="No sales yet today"
-        description="Category breakdown appears once today's first sale is rung up."
-      />
-    )
-  }
-
-  const shown = categories.slice(0, 8)
-
-  return (
-    <div>
-      <div className="flex h-6 w-full overflow-hidden rounded" role="img" aria-label="Sales share by category">
-        {shown.map((c, i) => (
-          <div
-            key={c.categoryName}
-            className="h-full first:rounded-l last:rounded-r"
-            style={{
-              width: `${c.percentOfTotal}%`,
-              backgroundColor: `var(${CATEGORY_SLOT_VARS[i % CATEGORY_SLOT_VARS.length]})`,
-              marginRight: i < shown.length - 1 ? 2 : 0,
-            }}
-            title={`${c.categoryName}: ${c.percentOfTotal}%`}
-          />
-        ))}
-      </div>
-      <ul className="mt-4 space-y-2.5">
-        {shown.map((c, i) => (
-          <li key={c.categoryName} className="flex items-center justify-between text-sm">
-            <span className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-              <span
-                className="h-2.5 w-2.5 shrink-0 rounded-full"
-                style={{ backgroundColor: `var(${CATEGORY_SLOT_VARS[i % CATEGORY_SLOT_VARS.length]})` }}
-              />
-              {c.categoryName}
-            </span>
-            <span className="text-slate-900 dark:text-slate-100">
-              {formatMoney(c.revenue)} <span className="text-slate-400">· {c.percentOfTotal}%</span>
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
-}
-
 function TopProductsList({ products }: { products: TopProduct[] }) {
   if (products.length === 0) {
     return (
@@ -297,7 +232,7 @@ function TopProductsList({ products }: { products: TopProduct[] }) {
     )
   }
 
-  const maxRevenue = Math.max(...products.map((p) => p.revenue));
+  const maxRevenue = Math.max(...products.map((p) => p.revenue))
 
   return (
     <ul className="space-y-3">
@@ -324,7 +259,11 @@ function TopProductsList({ products }: { products: TopProduct[] }) {
 function RecentTransactionsList({ transactions }: { transactions: RecentTransaction[] }) {
   if (transactions.length === 0) {
     return (
-      <EmptyState icon={Receipt} title="No transactions yet" description="Sales made at the register will show up here." />
+      <EmptyState
+        icon={Receipt}
+        title="No transactions yet"
+        description="Sales made at the register will show up here."
+      />
     )
   }
 
