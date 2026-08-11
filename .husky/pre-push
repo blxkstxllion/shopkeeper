@@ -1,0 +1,11 @@
+# Deliberately lighter than CI: fast structural checks only (typecheck + build), not the
+# full test suites or Docker builds - those stay in CI so pushing never takes minutes.
+# See .github/workflows/ci.yml for the comprehensive checks that run on every push/PR.
+
+set -e
+
+echo "[pre-push] Frontend: TypeScript check"
+(cd frontend && npm run typecheck)
+
+echo "[pre-push] Backend: build"
+(cd backend && dotnet build --nologo -v quiet)
