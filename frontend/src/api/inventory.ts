@@ -22,3 +22,15 @@ export async function getInventoryTransactions(params: {
   const { data } = await apiClient.get<PagedResult<InventoryTransaction>>('/inventory/transactions', { params })
   return data
 }
+
+export interface InventoryStats {
+  totalProducts: number
+  lowStockCount: number
+  outOfStockCount: number
+  inventoryValue: number
+}
+
+export async function getInventoryStats(branchId?: string): Promise<InventoryStats> {
+  const { data } = await apiClient.get<InventoryStats>('/inventory/stats', { params: { branchId } })
+  return data
+}

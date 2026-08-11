@@ -21,8 +21,9 @@ export function AppRouter() {
     <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />
 
+      <Route path="/login" element={<RedirectIfAuthed><LoginPage /></RedirectIfAuthed>} />
+
       <Route element={<RedirectIfAuthed><AuthLayout /></RedirectIfAuthed>}>
-        <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />

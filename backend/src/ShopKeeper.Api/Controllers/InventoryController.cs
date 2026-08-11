@@ -28,4 +28,8 @@ public class InventoryController(ISender mediator) : ControllerBase
         [FromQuery] int pageSize = 50,
         CancellationToken ct = default) =>
         Ok(await mediator.Send(new GetInventoryTransactionsQuery(productId, branchId, page, pageSize), ct));
+
+    [HttpGet("stats")]
+    public async Task<ActionResult<InventoryStatsDto>> GetStats([FromQuery] Guid? branchId, CancellationToken ct) =>
+        Ok(await mediator.Send(new GetInventoryStatsQuery(branchId), ct));
 }

@@ -74,4 +74,13 @@ The frontend dev server (`http://localhost:5173`) and API CORS policy are pre-wi
 
 ## Status
 
-Currently in **Phase 1** of the build (see the master spec): authentication, business onboarding, roles/permissions, and navigation shell. See later phases for POS, inventory, profitability engine, multi-branch, AI consultant, etc.
+**Phases 1–2 complete.** Phase 3 partially built (real Dashboard; Expenses and Reports still pending). Phases 4–8 not started. See the master build prompt for the full phase breakdown:
+
+1. Project setup, design system, auth, onboarding, database, roles, navigation
+2. Products, inventory, POS, sales, payments, receipts
+3. Expenses, profitability engine, dashboard, reports, analytics
+4. Branches, employees, suppliers, customers
+5. Offline POS, synchronization, audit logs, notifications
+6. AI Business Consultant
+7. Subscriptions, enterprise permissions, advanced reporting, integrations
+8. Cross-platform distribution: PWA, iOS/Android app stores, macOS/Windows desktop installers

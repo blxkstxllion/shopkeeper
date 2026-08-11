@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Bell, Sparkles, ChevronDown, LogOut, Building2 } from 'lucide-react'
+import { Search, Bell, Sparkles, ChevronDown, LogOut, Building2, Sun, Moon } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useBranchContext } from '@/contexts/BranchContext'
+import { useTheme } from '@/contexts/ThemeContext'
 
 export function TopNav() {
   const { user, activeBusiness, logout } = useAuth()
   const { branches, activeBranch, setActiveBranchId, canSwitchBranches } = useBranchContext()
+  const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const [branchMenuOpen, setBranchMenuOpen] = useState(false)
@@ -85,6 +87,13 @@ export function TopNav() {
       </div>
 
       <div className="ml-auto flex items-center gap-1">
+        <button
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          onClick={toggleTheme}
+        >
+          {theme === 'dark' ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
+        </button>
         <button
           className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
           aria-label="AI Advisor"

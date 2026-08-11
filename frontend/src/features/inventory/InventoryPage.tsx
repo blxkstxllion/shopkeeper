@@ -1,31 +1,51 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Package, Plus, Search, SlidersHorizontal, AlertTriangle } from 'lucide-react'
+import { Package, Plus, Search, SlidersHorizontal, AlertTriangle, PackageX, Wallet, ChevronLeft, ChevronRight } from 'lucide-react'
 import { getProducts } from '@/api/products'
+import { getInventoryStats } from '@/api/inventory'
 import { useActiveBranch } from '@/hooks/useActiveBranch'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { StatTile } from '@/components/ui/StatTile'
 import { formatMoney, resolveUploadUrl } from '@/lib/format'
 import type { Product } from '@/types/product'
 import { ProductFormModal } from './ProductFormModal'
 import { StockAdjustModal } from './StockAdjustModal'
 
+const PAGE_SIZE = 20
+
 export function InventoryPage() {
   const { branch } = useActiveBranch()
   const [search, setSearch] = useState('')
   const [lowStockOnly, setLowStockOnly] = useState(false)
+  const [page, setPage] = useState(1)
   const [formModal, setFormModal] = useState<{ open: boolean; product?: Product | null }>({ open: false })
   const [adjustModal, setAdjustModal] = useState<Product | null>(null)
 
+  useEffect(() => {
+    setPage(1)
+  }, [search, lowStockOnly, branch?.id])
+
   const { data, isLoading } = useQuery({
-    queryKey: ['products', { search, lowStockOnly, branchId: branch?.id }],
-    queryFn: () => getProducts({ search: search || undefined, lowStockOnly, branchId: branch?.id, activeOnly: true, pageSize: 100 }),
+    queryKey: ['products', { search, lowStockOnly, branchId: branch?.id, page }],
+    queryFn: () =>
+      getProducts({ search: search || undefined, lowStockOnly, branchId: branch?.id, activeOnly: true, page, pageSize: PAGE_SIZE }),
+    enabled: Boolean(branch),
+  })
+
+  const { data: stats } = useQuery({
+    queryKey: ['inventory-stats', branch?.id],
+    queryFn: () => getInventoryStats(branch?.id),
     enabled: Boolean(branch),
   })
 
   const products = data?.items ?? []
+  const totalPages = data?.totalPages ?? 1
+  const totalCount = data?.totalCount ?? 0
+  const rangeStart = totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
+  const rangeEnd = Math.min(page * PAGE_SIZE, totalCount)
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -40,6 +60,23 @@ export function InventoryPage() {
           <Plus className="h-4 w-4" />
           Add product
         </Button>
+      </div>
+
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatTile label="Total products" icon={Package} value={stats ? String(stats.totalProducts) : '—'} />
+        <StatTile
+          label="Low stock"
+          icon={AlertTriangle}
+          value={stats ? String(stats.lowStockCount) : '—'}
+          tone={stats && stats.lowStockCount > 0 ? 'warning' : undefined}
+        />
+        <StatTile
+          label="Out of stock"
+          icon={PackageX}
+          value={stats ? String(stats.outOfStockCount) : '—'}
+          tone={stats && stats.outOfStockCount > 0 ? 'critical' : undefined}
+        />
+        <StatTile label="Inventory value" icon={Wallet} value={stats ? formatMoney(stats.inventoryValue) : '—'} />
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -148,6 +185,27 @@ export function InventoryPage() {
           </div>
         )}
       </Card>
+
+      {totalCount > 0 && (
+        <div className="mt-3 flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
+          <span>
+            Showing {rangeStart}–{rangeEnd} of {totalCount}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setPage((p) => p - 1)} disabled={page <= 1}>
+              <ChevronLeft className="h-3.5 w-3.5" />
+              Previous
+            </Button>
+            <span className="px-1">
+              Page {page} of {totalPages}
+            </span>
+            <Button variant="secondary" size="sm" onClick={() => setPage((p) => p + 1)} disabled={page >= totalPages}>
+              Next
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       <ProductFormModal
         isOpen={formModal.open}

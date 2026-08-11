@@ -8,6 +8,7 @@ import * as authApi from '@/api/auth'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { DigitCodeInput } from '@/components/ui/DigitCodeInput'
 import { Alert } from '@/components/ui/Alert'
 import { Modal } from '@/components/ui/Modal'
 import type { ApiErrorPayload } from '@/types/auth'
@@ -140,13 +141,7 @@ export function TwoFactorSection() {
                 </button>
               </div>
             )}
-            <Input
-              placeholder="123456"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              autoFocus
-              autoComplete="one-time-code"
-            />
+            <DigitCodeInput length={6} value={code} onChange={setCode} autoFocus />
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={closeSetup}>
                 Cancel
