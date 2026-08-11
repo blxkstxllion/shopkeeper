@@ -5,6 +5,17 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>The Shop Keeper</title>
+    <script>
+      // Stamped before paint so the first frame renders in the right theme -
+      // doing this in React would flash the wrong theme for a frame on load.
+      (function () {
+        var stored = localStorage.getItem('shopkeeper-theme')
+        var theme = stored === 'light' || stored === 'dark'
+          ? stored
+          : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        document.documentElement.setAttribute('data-theme', theme)
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Ties every `dark:` utility to the explicit data-theme attribute the toggle sets
+   (see ThemeContext), rather than Tailwind's default prefers-color-scheme media
+   query - so a manual toggle actually overrides the OS setting everywhere. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @theme {
   --font-sans: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
 
@@ -38,17 +43,6 @@
   --color-text: #f1f5f9;
   --color-text-muted: #94a3b8;
   color-scheme: dark;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --color-surface: #12151a;
-    --color-surface-muted: #1a1d24;
-    --color-border: #2a2e37;
-    --color-text: #f1f5f9;
-    --color-text-muted: #94a3b8;
-    color-scheme: dark;
-  }
 }
 
 html, body, #root {

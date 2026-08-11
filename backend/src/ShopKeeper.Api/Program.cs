@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -103,6 +104,17 @@ if (app.Environment.IsDevelopment())
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseHttpsRedirection();
+
+// Uploaded files (product images, ...) are served back out as plain static files - viewing
+// one needs no Authorization header, matching how a public object-storage URL would behave.
+// The upload endpoint itself (UploadsController) is what's actually authorized.
+var uploadsPath = Path.Combine(app.Environment.ContentRootPath, "App_Data", "uploads");
+Directory.CreateDirectory(uploadsPath);
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsPath),
+    RequestPath = "/uploads",
+});
 
 app.UseCors(FrontendCorsPolicy);
 
