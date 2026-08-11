@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Infrastructure.Identity;
 using ShopKeeper.Infrastructure.Persistence;
+using ShopKeeper.Infrastructure.Storage;
 using StackExchange.Redis;
 
 public static class DependencyInjection
@@ -24,7 +25,9 @@ public static class DependencyInjection
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
+        services.AddSingleton<ITotpService, TotpService>();
         services.AddScoped<IEmailSender, LoggingEmailSender>();
+        services.AddSingleton<IFileStorageService, LocalFileStorageService>();
 
         // Redis is provisioned in every environment (see docker/docker-compose.yml) but nothing
         // reads from it yet - no feature currently needs caching, sessions, or a queue. Registered

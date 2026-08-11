@@ -69,10 +69,11 @@ public class AuthCommandTests : IDisposable
         await new RegisterCommandHandler(context, _hasher, tokenIssuer).Handle(
             new RegisterCommand("login@shop.test", "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
 
-        var loginHandler = new LoginCommandHandler(context, _hasher, tokenIssuer);
+        var loginHandler = new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt);
         var result = await loginHandler.Handle(new LoginCommand("login@shop.test", "Passw0rd!", null, null), CancellationToken.None);
 
-        Assert.Equal("login@shop.test", result.User.Email);
+        Assert.False(result.RequiresTwoFactor);
+        Assert.Equal("login@shop.test", result.Auth!.User.Email);
     }
 
     [Fact]
@@ -84,7 +85,7 @@ public class AuthCommandTests : IDisposable
         await new RegisterCommandHandler(context, _hasher, tokenIssuer).Handle(
             new RegisterCommand("wrongpw@shop.test", "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
 
-        var loginHandler = new LoginCommandHandler(context, _hasher, tokenIssuer);
+        var loginHandler = new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt);
 
         await Assert.ThrowsAsync<AuthenticationException>(() =>
             loginHandler.Handle(new LoginCommand("wrongpw@shop.test", "TotallyWrong1!", null, null), CancellationToken.None));
@@ -95,7 +96,7 @@ public class AuthCommandTests : IDisposable
     {
         var currentUser = new TestCurrentUserService();
         var context = _db.CreateContext(currentUser);
-        var loginHandler = new LoginCommandHandler(context, _hasher, new TokenIssuer(context, _jwt));
+        var loginHandler = new LoginCommandHandler(context, _hasher, new TokenIssuer(context, _jwt), _jwt);
 
         await Assert.ThrowsAsync<AuthenticationException>(() =>
             loginHandler.Handle(new LoginCommand("nobody@shop.test", "Passw0rd!", null, null), CancellationToken.None));

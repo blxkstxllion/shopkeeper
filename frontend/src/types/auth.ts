@@ -21,6 +21,28 @@ export interface AuthResult {
   user: User
 }
 
+export type LoginResponse =
+  | { requiresTwoFactor: true; challengeToken: string }
+  | { requiresTwoFactor: false; auth: AuthResult }
+
+export interface Session {
+  id: string
+  createdAt: string
+  expiresAt: string
+  createdByIp: string | null
+  userAgent: string | null
+  isCurrent: boolean
+}
+
+export interface TwoFactorStatus {
+  enabled: boolean
+}
+
+export interface TwoFactorSetup {
+  secret: string
+  provisioningUri: string
+}
+
 export interface ApiErrorPayload {
   title: string
   status: number

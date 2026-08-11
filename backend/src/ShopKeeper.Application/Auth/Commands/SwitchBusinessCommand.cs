@@ -8,7 +8,8 @@ using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Application.Common.Services;
 
 /// <summary>Re-issues tokens scoped to a different business the user belongs to (business switcher in the top nav).</summary>
-public record SwitchBusinessCommand(Guid UserId, Guid BusinessId, string? IpAddress) : IRequest<AuthResultDto>;
+public record SwitchBusinessCommand(Guid UserId, Guid BusinessId, string? IpAddress, string? UserAgent = null)
+    : IRequest<AuthResultDto>;
 
 public class SwitchBusinessCommandHandler(IAppDbContext db, TokenIssuer tokenIssuer) : IRequestHandler<SwitchBusinessCommand, AuthResultDto>
 {
@@ -26,6 +27,6 @@ public class SwitchBusinessCommandHandler(IAppDbContext db, TokenIssuer tokenIss
             throw new ForbiddenAccessException("You do not have access to this business.");
         }
 
-        return await tokenIssuer.IssueAsync(user, request.BusinessId, request.IpAddress, cancellationToken);
+        return await tokenIssuer.IssueAsync(user, request.BusinessId, request.IpAddress, request.UserAgent, cancellationToken);
     }
 }
