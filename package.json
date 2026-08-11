@@ -1,0 +1,25 @@
+{
+  "name": "shopkeeper-repo-tooling",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Repo-wide dev tooling (git hooks, lint-staged). The actual apps are frontend/ and backend/.",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.10"
+  },
+  "lint-staged": {
+    "frontend/**/*.{ts,tsx}": [
+      "bash -c 'cd frontend && npx oxlint --fix -- \"$@\"' --",
+      "bash -c 'cd frontend && npx prettier --write -- \"$@\"' --"
+    ],
+    "frontend/**/*.{json,css,md,html,yml,yaml}": [
+      "bash -c 'cd frontend && npx prettier --write -- \"$@\"' --"
+    ],
+    "backend/**/*.cs": [
+      "bash -c 'cd backend && dotnet format ShopKeeper.sln --include \"$@\"' --"
+    ]
+  }
+}

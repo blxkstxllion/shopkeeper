@@ -4,10 +4,12 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using ShopKeeper.Api.Middleware;
 using ShopKeeper.Application;
 using ShopKeeper.Infrastructure;
 using ShopKeeper.Infrastructure.Identity;
+using ShopKeeper.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,6 +46,12 @@ builder.Services.AddSwaggerGen(options =>
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// /health/live: process is up, no dependency checks - what the Docker HEALTHCHECK and a
+// load balancer's liveness probe should hit. /health/ready: additionally confirms the
+// database is actually reachable - what a readiness probe (safe to route traffic) should hit.
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>("database", tags: ["ready"]);
 
 builder.Services.AddCors(options =>
 {
@@ -114,6 +122,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
+app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
 
 app.Run();
 
