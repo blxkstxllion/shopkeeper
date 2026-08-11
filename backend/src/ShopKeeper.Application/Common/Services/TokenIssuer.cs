@@ -15,7 +15,8 @@ public class TokenIssuer(IAppDbContext db, IJwtTokenService jwt)
     private const int AccessTokenLifetimeMinutes = 15;
     private const int RefreshTokenLifetimeDays = 30;
 
-    public async Task<AuthResultDto> IssueAsync(User user, Guid? activeBusinessId, string? ipAddress, CancellationToken ct)
+    public async Task<AuthResultDto> IssueAsync(
+        User user, Guid? activeBusinessId, string? ipAddress, string? userAgent, CancellationToken ct)
     {
         var memberships = await db.BusinessUsers
             .IgnoreQueryFilters()
@@ -48,6 +49,7 @@ public class TokenIssuer(IAppDbContext db, IJwtTokenService jwt)
             TokenHash = jwt.Hash(refreshTokenValue),
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(RefreshTokenLifetimeDays),
             CreatedByIp = ipAddress,
+            UserAgent = userAgent,
         });
         await db.SaveChangesAsync(ct);
 

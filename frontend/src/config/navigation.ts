@@ -24,6 +24,7 @@ export interface NavItem {
 export const navItems: NavItem[] = [
   { label: 'Dashboard', to: '/app', icon: LayoutDashboard, mobilePriority: true },
   { label: 'Sell', to: '/app/sell', icon: ShoppingCart, mobilePriority: true },
+  { label: 'Sales', to: '/app/sales', icon: Receipt },
   { label: 'Inventory', to: '/app/inventory', icon: Package, mobilePriority: true },
   { label: 'AI Advisor', to: '/app/ai', icon: Sparkles, mobilePriority: true },
   { label: 'Branches', to: '/app/branches', icon: Building2 },
