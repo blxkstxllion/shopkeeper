@@ -57,9 +57,20 @@ public class GetProductsQueryHandler(IAppDbContext db, ICurrentUserService curre
             .OrderBy(p => p.Name)
             .Select(p => new
             {
-                p.Id, p.Name, p.Sku, p.Barcode, p.Description, p.ImageUrl, p.CategoryId,
+                p.Id,
+                p.Name,
+                p.Sku,
+                p.Barcode,
+                p.Description,
+                p.ImageUrl,
+                p.CategoryId,
                 CategoryName = p.Category != null ? p.Category.Name : null,
-                p.SellingPrice, p.CostPrice, p.MinStock, p.ReorderLevel, p.TrackInventory, p.IsActive,
+                p.SellingPrice,
+                p.CostPrice,
+                p.MinStock,
+                p.ReorderLevel,
+                p.TrackInventory,
+                p.IsActive,
                 QuantityOnHand = branchId == null
                     ? (int?)null
                     : p.StockByBranch.Where(s => s.BranchId == branchId).Select(s => (int?)s.QuantityOnHand).FirstOrDefault(),

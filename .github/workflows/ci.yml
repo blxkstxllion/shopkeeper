@@ -13,6 +13,13 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Least-privilege default; secret-scan below adds the one extra read scope gitleaks-action
+# needs to list a PR's commits - without it, the GitHub API call it makes internally 403s
+# with "Resource not accessible by integration" and the whole job fails before it ever scans
+# anything (this is exactly what happened on PRs #7 and #8).
+permissions:
+  contents: read
+
 env:
   DOTNET_VERSION: '8.0.x'
   NODE_VERSION: '20'
@@ -96,6 +103,9 @@ jobs:
   secret-scan:
     name: Secret scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
         with:

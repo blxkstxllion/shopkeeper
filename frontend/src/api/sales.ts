@@ -2,8 +2,14 @@ import { apiClient } from '@/lib/api-client'
 import type { PagedResult } from '@/types/product'
 import type { CreateSalePayload, Refund, Sale, SaleListItem, SellableProduct } from '@/types/sale'
 
-export async function getSellableProducts(branchId: string, search?: string, categoryId?: string): Promise<SellableProduct[]> {
-  const { data } = await apiClient.get<SellableProduct[]>('/sales/sellable-products', { params: { branchId, search, categoryId } })
+export async function getSellableProducts(
+  branchId: string,
+  search?: string,
+  categoryId?: string,
+): Promise<SellableProduct[]> {
+  const { data } = await apiClient.get<SellableProduct[]>('/sales/sellable-products', {
+    params: { branchId, search, categoryId },
+  })
   return data
 }
 

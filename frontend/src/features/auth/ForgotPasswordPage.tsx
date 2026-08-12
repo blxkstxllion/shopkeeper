@@ -36,7 +36,10 @@ export function ForgotPasswordPage() {
         <Alert tone="success">
           If an account with that email exists, we&apos;ve sent a link to reset your password.
         </Alert>
-        <Link to="/login" className="mt-6 block text-center text-sm font-medium text-primary-600 hover:text-primary-700">
+        <Link
+          to="/login"
+          className="mt-6 block text-center text-sm font-medium text-primary-600 hover:text-primary-700"
+        >
           Back to sign in
         </Link>
       </Card>

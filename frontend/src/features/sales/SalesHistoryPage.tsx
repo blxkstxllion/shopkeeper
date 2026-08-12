@@ -32,7 +32,9 @@ export function SalesHistoryPage() {
     <div className="mx-auto max-w-5xl">
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Sales history</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Every transaction, with void and refund available where applicable.</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Every transaction, with void and refund available where applicable.
+        </p>
       </div>
 
       <div className="mb-4 flex flex-wrap gap-1.5">
@@ -56,7 +58,11 @@ export function SalesHistoryPage() {
         {isLoading ? (
           <div className="p-6 text-sm text-slate-400">Loading…</div>
         ) : sales.length === 0 ? (
-          <EmptyState icon={Receipt} title="No sales yet" description="Sales you record at the POS will show up here." />
+          <EmptyState
+            icon={Receipt}
+            title="No sales yet"
+            description="Sales you record at the POS will show up here."
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -81,10 +87,16 @@ export function SalesHistoryPage() {
                     <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{sale.saleNumber}</td>
                     <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{sale.branchName}</td>
                     <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{sale.cashierName}</td>
-                    <td className="px-4 py-3 text-right text-slate-900 dark:text-slate-100">{formatMoney(sale.total)}</td>
-                    <td className="px-4 py-3 text-right text-slate-500 dark:text-slate-400">{formatMoney(sale.grossProfit)}</td>
+                    <td className="px-4 py-3 text-right text-slate-900 dark:text-slate-100">
+                      {formatMoney(sale.total)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-slate-500 dark:text-slate-400">
+                      {formatMoney(sale.grossProfit)}
+                    </td>
                     <td className="px-4 py-3">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusTone[sale.status]}`}>{sale.status}</span>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusTone[sale.status]}`}>
+                        {sale.status}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-400">{formatDateTime(sale.createdAt)}</td>
                   </tr>

@@ -37,7 +37,10 @@ export function ResetPasswordPage() {
     return (
       <Card className="p-6">
         <Alert tone="error">This password reset link is missing its token. Please request a new one.</Alert>
-        <Link to="/forgot-password" className="mt-6 block text-center text-sm font-medium text-primary-600 hover:text-primary-700">
+        <Link
+          to="/forgot-password"
+          className="mt-6 block text-center text-sm font-medium text-primary-600 hover:text-primary-700"
+        >
           Request a new link
         </Link>
       </Card>
