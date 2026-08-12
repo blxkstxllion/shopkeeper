@@ -64,9 +64,14 @@ public class GetExpensesQueryHandler(IAppDbContext db, ICurrentUserService curre
             .Take(pageSize)
             .Select(e => new
             {
-                e.Id, e.BranchId, BranchName = e.Branch != null ? e.Branch.Name : null,
-                e.ExpenseCategoryId, CategoryName = e.ExpenseCategory.Name,
-                e.Amount, e.ExpenseDate, e.Description,
+                e.Id,
+                e.BranchId,
+                BranchName = e.Branch != null ? e.Branch.Name : null,
+                e.ExpenseCategoryId,
+                CategoryName = e.ExpenseCategory.Name,
+                e.Amount,
+                e.ExpenseDate,
+                e.Description,
                 CreatedByName = e.CreatedByUser.FirstName + " " + e.CreatedByUser.LastName,
                 e.CreatedAt,
             })

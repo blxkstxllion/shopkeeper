@@ -194,7 +194,11 @@ export function LoginPage() {
                   />
                 </FormField>
 
-                <FormField label="Password" htmlFor="password" error={credentialsForm.formState.errors.password?.message}>
+                <FormField
+                  label="Password"
+                  htmlFor="password"
+                  error={credentialsForm.formState.errors.password?.message}
+                >
                   <Input
                     id="password"
                     type="password"

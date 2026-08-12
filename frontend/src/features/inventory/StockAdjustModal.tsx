@@ -13,7 +13,10 @@ import type { ApiErrorPayload } from '@/types/auth'
 import type { Product } from '@/types/product'
 
 const schema = z.object({
-  quantityChange: z.number().int().refine((v) => v !== 0, 'Enter a non-zero amount'),
+  quantityChange: z
+    .number()
+    .int()
+    .refine((v) => v !== 0, 'Enter a non-zero amount'),
   reason: z.string().min(1, 'A reason is required'),
 })
 
@@ -43,7 +46,12 @@ export function StockAdjustModal({
   const mutation = useMutation({
     mutationFn: (values: FormValues) => {
       if (!product || !branchId) throw new Error('Missing product or branch')
-      return adjustStock({ productId: product.id, branchId, quantityChange: values.quantityChange, reason: values.reason })
+      return adjustStock({
+        productId: product.id,
+        branchId,
+        quantityChange: values.quantityChange,
+        reason: values.reason,
+      })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
@@ -64,7 +72,9 @@ export function StockAdjustModal({
         {serverError && <Alert tone="error">{serverError}</Alert>}
 
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Currently <span className="font-medium text-slate-900 dark:text-slate-100">{product.quantityOnHand ?? 0}</span> units on hand.
+          Currently{' '}
+          <span className="font-medium text-slate-900 dark:text-slate-100">{product.quantityOnHand ?? 0}</span> units on
+          hand.
         </p>
 
         <FormField
@@ -73,11 +83,21 @@ export function StockAdjustModal({
           error={errors.quantityChange?.message}
           hint="Positive to add stock, negative to remove (e.g. -5 for damaged goods)."
         >
-          <Input id="quantityChange" type="number" {...register('quantityChange', { valueAsNumber: true })} error={errors.quantityChange?.message} />
+          <Input
+            id="quantityChange"
+            type="number"
+            {...register('quantityChange', { valueAsNumber: true })}
+            error={errors.quantityChange?.message}
+          />
         </FormField>
 
         <FormField label="Reason" htmlFor="reason" error={errors.reason?.message}>
-          <Input id="reason" placeholder="e.g. Stock count correction, damaged goods" {...register('reason')} error={errors.reason?.message} />
+          <Input
+            id="reason"
+            placeholder="e.g. Stock count correction, damaged goods"
+            {...register('reason')}
+            error={errors.reason?.message}
+          />
         </FormField>
 
         <div className="mt-1 flex justify-end gap-2">
