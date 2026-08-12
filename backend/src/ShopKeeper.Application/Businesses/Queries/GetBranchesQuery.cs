@@ -13,6 +13,6 @@ public class GetBranchesQueryHandler(IAppDbContext db) : IRequestHandler<GetBran
     public async Task<IReadOnlyList<BranchDto>> Handle(GetBranchesQuery request, CancellationToken cancellationToken) =>
         await db.Branches
             .OrderByDescending(b => b.IsMainBranch).ThenBy(b => b.Name)
-            .Select(b => new BranchDto(b.Id, b.Name, b.Code, b.City, b.IsMainBranch, b.IsActive))
+            .Select(b => new BranchDto(b.Id, b.Name, b.Code, b.Address, b.City, b.Country, b.Phone, b.Email, b.IsMainBranch, b.IsActive))
             .ToListAsync(cancellationToken);
 }
