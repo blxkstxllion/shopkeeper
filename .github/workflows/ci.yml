@@ -22,7 +22,12 @@ permissions:
 
 env:
   DOTNET_VERSION: '8.0.x'
-  NODE_VERSION: '20'
+  # jsdom 30 / undici 8 (frontend/package.json) require Node >=22.22.2 - Node 20 installs fine
+  # (npm only warns on the engines mismatch) but crashes at test-run time importing jsdom's
+  # undici-based Cache/fetch shim ("webidl.util.markAsUncloneable is not a function"), before a
+  # single test executes. Doesn't reproduce locally on a newer Node - only shows up in CI's
+  # pinned version.
+  NODE_VERSION: '22'
 
 jobs:
   frontend:
