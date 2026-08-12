@@ -1,6 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Package, Plus, Search, SlidersHorizontal, AlertTriangle, PackageX, Wallet, ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  Package,
+  Plus,
+  Search,
+  SlidersHorizontal,
+  AlertTriangle,
+  PackageX,
+  Wallet,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react'
 import { getProducts } from '@/api/products'
 import { getInventoryStats } from '@/api/inventory'
 import { useActiveBranch } from '@/hooks/useActiveBranch'
@@ -31,7 +41,14 @@ export function InventoryPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['products', { search, lowStockOnly, branchId: branch?.id, page }],
     queryFn: () =>
-      getProducts({ search: search || undefined, lowStockOnly, branchId: branch?.id, activeOnly: true, page, pageSize: PAGE_SIZE }),
+      getProducts({
+        search: search || undefined,
+        lowStockOnly,
+        branchId: branch?.id,
+        activeOnly: true,
+        page,
+        pageSize: PAGE_SIZE,
+      }),
     enabled: Boolean(branch),
   })
 
@@ -150,8 +167,12 @@ export function InventoryPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{p.sku}</td>
-                    <td className="px-4 py-3 text-right text-slate-900 dark:text-slate-100">{formatMoney(p.sellingPrice)}</td>
-                    <td className="px-4 py-3 text-right text-slate-500 dark:text-slate-400">{formatMoney(p.costPrice)}</td>
+                    <td className="px-4 py-3 text-right text-slate-900 dark:text-slate-100">
+                      {formatMoney(p.sellingPrice)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-slate-500 dark:text-slate-400">
+                      {formatMoney(p.costPrice)}
+                    </td>
                     <td className="px-4 py-3 text-right">
                       {p.trackInventory ? (
                         <span
