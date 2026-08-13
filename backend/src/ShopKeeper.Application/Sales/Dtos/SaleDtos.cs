@@ -21,6 +21,8 @@ public record SaleDto(
     string SaleNumber,
     Guid BranchId,
     string BranchName,
+    Guid? CustomerId,
+    string? CustomerName,
     Guid CashierUserId,
     string CashierName,
     decimal Subtotal,

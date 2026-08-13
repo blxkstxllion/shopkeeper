@@ -4,8 +4,8 @@ using ShopKeeper.Domain.Entities;
 
 public static class SaleMapper
 {
-    public static SaleDto ToDto(Sale sale, string branchName, string cashierName) => new(
-        sale.Id, sale.SaleNumber, sale.BranchId, branchName, sale.CashierUserId, cashierName,
+    public static SaleDto ToDto(Sale sale, string branchName, string cashierName, string? customerName = null) => new(
+        sale.Id, sale.SaleNumber, sale.BranchId, branchName, sale.CustomerId, customerName, sale.CashierUserId, cashierName,
         sale.Subtotal, sale.DiscountAmount, sale.TaxAmount, sale.Total, sale.TotalCost, sale.GrossProfit,
         sale.Status.ToString(), sale.VoidedAt, sale.VoidReason, sale.CreatedAt,
         sale.Items.Select(ToItemDto).ToList(),
