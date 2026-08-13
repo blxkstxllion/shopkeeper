@@ -38,7 +38,8 @@ export function SaleDetailModal({ saleId, onClose }: { saleId: string | null; on
       queryClient.invalidateQueries({ queryKey: ['sale', saleId] })
       handleClose()
     },
-    onError: (err) => setError((err as AxiosError<ApiErrorPayload>).response?.data?.title ?? 'Unable to void this sale.'),
+    onError: (err) =>
+      setError((err as AxiosError<ApiErrorPayload>).response?.data?.title ?? 'Unable to void this sale.'),
   })
 
   const refundMutation = useMutation({
@@ -54,7 +55,8 @@ export function SaleDetailModal({ saleId, onClose }: { saleId: string | null; on
       queryClient.invalidateQueries({ queryKey: ['sale', saleId] })
       handleClose()
     },
-    onError: (err) => setError((err as AxiosError<ApiErrorPayload>).response?.data?.title ?? 'Unable to process this refund.'),
+    onError: (err) =>
+      setError((err as AxiosError<ApiErrorPayload>).response?.data?.title ?? 'Unable to process this refund.'),
   })
 
   function handleClose() {
@@ -76,7 +78,9 @@ export function SaleDetailModal({ saleId, onClose }: { saleId: string | null; on
         {error && <Alert tone="error">{error}</Alert>}
 
         <div className="flex items-center justify-between">
-          <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusTone[sale.status]}`}>{sale.status}</span>
+          <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusTone[sale.status]}`}>
+            {sale.status}
+          </span>
           <span className="text-xs text-slate-400">{formatDateTime(sale.createdAt)}</span>
         </div>
 

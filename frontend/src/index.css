@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* Ties every `dark:` utility to the explicit data-theme attribute the toggle sets
    (see ThemeContext), rather than Tailwind's default prefers-color-scheme media
@@ -6,7 +6,7 @@
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme {
-  --font-sans: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
 
   /* Emerald green primary - "premium, modern, minimal, trustworthy" (spec section 31) */
   --color-primary-50: #ecfdf5;
@@ -36,7 +36,7 @@
   color-scheme: light;
 }
 
-:root[data-theme="dark"] {
+:root[data-theme='dark'] {
   --color-surface: #12151a;
   --color-surface-muted: #1a1d24;
   --color-border: #2a2e37;
@@ -45,7 +45,9 @@
   color-scheme: dark;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
 }
 

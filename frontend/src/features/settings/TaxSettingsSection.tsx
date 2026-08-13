@@ -47,7 +47,8 @@ export function TaxSettingsSection() {
       queryClient.invalidateQueries({ queryKey: ['business-settings'] })
       setTimeout(() => setSuccessMessage(null), 3000)
     },
-    onError: (err) => setServerError(err instanceof ApiError ? err.message : 'Unable to save changes. Please try again.'),
+    onError: (err) =>
+      setServerError(err instanceof ApiError ? err.message : 'Unable to save changes. Please try again.'),
   })
 
   if (isLoading) {
@@ -90,7 +91,12 @@ export function TaxSettingsSection() {
 
         {taxEnabled && (
           <>
-            <FormField label="Tax ID number" htmlFor="taxIdNumber" error={formState.errors.taxIdNumber?.message} hint="Optional">
+            <FormField
+              label="Tax ID number"
+              htmlFor="taxIdNumber"
+              error={formState.errors.taxIdNumber?.message}
+              hint="Optional"
+            >
               <Input id="taxIdNumber" {...register('taxIdNumber')} error={formState.errors.taxIdNumber?.message} />
             </FormField>
 

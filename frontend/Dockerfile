@@ -26,6 +26,11 @@ RUN npm run build
 # ---- final: static files served by Nginx, non-root -------------------------
 FROM nginx:1.27-alpine AS final
 
+# The nginx:1.27-alpine tag is a frozen manifest - it doesn't pick up Alpine security
+# patches released after that tag was last built. `apk upgrade` pulls current patched
+# packages (e.g. openssl/libcrypto3/libssl3) from Alpine's repos at build time instead.
+RUN apk update && apk upgrade --no-cache
+
 RUN addgroup -g 1000 shopkeeper \
     && adduser -D -u 1000 -G shopkeeper shopkeeper \
     && rm -rf /usr/share/nginx/html/* \

@@ -40,7 +40,8 @@ export function BusinessProfileSection() {
       queryClient.invalidateQueries({ queryKey: ['business-settings'] })
       setTimeout(() => setSuccessMessage(null), 3000)
     },
-    onError: (err) => setServerError(err instanceof ApiError ? err.message : 'Unable to save changes. Please try again.'),
+    onError: (err) =>
+      setServerError(err instanceof ApiError ? err.message : 'Unable to save changes. Please try again.'),
   })
 
   if (isLoading) {

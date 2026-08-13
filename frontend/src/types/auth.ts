@@ -22,8 +22,7 @@ export interface AuthResult {
 }
 
 export type LoginResponse =
-  | { requiresTwoFactor: true; challengeToken: string }
-  | { requiresTwoFactor: false; auth: AuthResult }
+  { requiresTwoFactor: true; challengeToken: string } | { requiresTwoFactor: false; auth: AuthResult }
 
 export interface Session {
   id: string

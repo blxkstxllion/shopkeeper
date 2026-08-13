@@ -105,7 +105,8 @@ export function OnboardingPage() {
                 className={clsx(
                   'flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold',
                   i < step && 'bg-primary-600 text-white',
-                  i === step && 'bg-primary-100 text-primary-700 ring-2 ring-primary-600 dark:bg-primary-900/40 dark:text-primary-300',
+                  i === step &&
+                    'bg-primary-100 text-primary-700 ring-2 ring-primary-600 dark:bg-primary-900/40 dark:text-primary-300',
                   i > step && 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-500',
                 )}
               >
@@ -142,8 +143,18 @@ export function OnboardingPage() {
                   <FormField label="Country" htmlFor="country" error={errors.country?.message}>
                     <Input id="country" {...register('country')} error={errors.country?.message} />
                   </FormField>
-                  <FormField label="Currency code" htmlFor="currencyCode" error={errors.currencyCode?.message} hint="e.g. GHS, USD">
-                    <Input id="currencyCode" maxLength={3} {...register('currencyCode')} error={errors.currencyCode?.message} />
+                  <FormField
+                    label="Currency code"
+                    htmlFor="currencyCode"
+                    error={errors.currencyCode?.message}
+                    hint="e.g. GHS, USD"
+                  >
+                    <Input
+                      id="currencyCode"
+                      maxLength={3}
+                      {...register('currencyCode')}
+                      error={errors.currencyCode?.message}
+                    />
                   </FormField>
                 </div>
               </>
@@ -151,8 +162,17 @@ export function OnboardingPage() {
 
             {step === 1 && (
               <>
-                <FormField label="Branch name" htmlFor="firstBranchName" error={errors.firstBranchName?.message} hint="e.g. Main Store, Accra Branch">
-                  <Input id="firstBranchName" {...register('firstBranchName')} error={errors.firstBranchName?.message} />
+                <FormField
+                  label="Branch name"
+                  htmlFor="firstBranchName"
+                  error={errors.firstBranchName?.message}
+                  hint="e.g. Main Store, Accra Branch"
+                >
+                  <Input
+                    id="firstBranchName"
+                    {...register('firstBranchName')}
+                    error={errors.firstBranchName?.message}
+                  />
                 </FormField>
                 <FormField label="Address (optional)" htmlFor="firstBranchAddress">
                   <Input id="firstBranchAddress" {...register('firstBranchAddress')} />
@@ -166,7 +186,11 @@ export function OnboardingPage() {
             {step === 2 && (
               <>
                 <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                  <input type="checkbox" {...register('taxEnabled')} className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" />
+                  <input
+                    type="checkbox"
+                    {...register('taxEnabled')}
+                    className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                  />
                   Charge tax on sales
                 </label>
 
@@ -215,7 +239,9 @@ export function OnboardingPage() {
                         <div
                           className={clsx(
                             'flex h-4 w-4 shrink-0 items-center justify-center rounded border',
-                            checked ? 'border-primary-600 bg-primary-600 text-white' : 'border-slate-300 dark:border-slate-600',
+                            checked
+                              ? 'border-primary-600 bg-primary-600 text-white'
+                              : 'border-slate-300 dark:border-slate-600',
                           )}
                         >
                           {checked && <Check className="h-3 w-3" />}

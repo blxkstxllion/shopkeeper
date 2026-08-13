@@ -144,7 +144,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       selectBusiness,
       completeOnboarding,
     }),
-    [user, activeBusiness, isInitializing, login, completeTwoFactorLogin, register, logout, selectBusiness, completeOnboarding],
+    [
+      user,
+      activeBusiness,
+      isInitializing,
+      login,
+      completeTwoFactorLogin,
+      register,
+      logout,
+      selectBusiness,
+      completeOnboarding,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

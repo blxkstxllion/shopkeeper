@@ -80,7 +80,9 @@ export function DigitCodeInput({ length = 6, value, onChange, error, autoFocus }
             'h-12 w-10 rounded-lg border bg-white text-center text-lg font-semibold text-slate-900',
             'focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:border-primary-500',
             'dark:bg-slate-900 dark:text-slate-100',
-            error ? 'border-red-400 focus:ring-red-500/30 focus:border-red-500' : 'border-slate-300 dark:border-slate-600',
+            error
+              ? 'border-red-400 focus:ring-red-500/30 focus:border-red-500'
+              : 'border-slate-300 dark:border-slate-600',
           )}
         />
       ))}
