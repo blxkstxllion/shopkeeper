@@ -21,8 +21,9 @@ public class SalesController(ISender mediator) : ControllerBase
         [FromQuery] string? status,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50,
+        [FromQuery] Guid? customerId = null,
         CancellationToken ct = default) =>
-        Ok(await mediator.Send(new GetSalesQuery(branchId, from, to, status, page, pageSize), ct));
+        Ok(await mediator.Send(new GetSalesQuery(branchId, from, to, status, page, pageSize, customerId), ct));
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<SaleDto>> GetById(Guid id, CancellationToken ct) =>
