@@ -14,10 +14,11 @@ import { SalesHistoryPage } from '@/features/sales/SalesHistoryPage'
 import { ExpensesPage } from '@/features/expenses/ExpensesPage'
 import { ReportsPage } from '@/features/reports/ReportsPage'
 import { BranchesPage } from '@/features/branches/BranchesPage'
+import { SuppliersPage } from '@/features/suppliers/SuppliersPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { ComingSoon } from '@/components/ComingSoon'
 import { RequireActiveBusiness, RequireAuth, RedirectIfAuthed } from './guards'
-import { Users, Truck, UserCircle, Sparkles } from 'lucide-react'
+import { Users, UserCircle, Sparkles } from 'lucide-react'
 
 export function AppRouter() {
   return (
@@ -79,7 +80,7 @@ export function AppRouter() {
         />
         <Route path="/app/branches" element={<BranchesPage />} />
         <Route path="/app/employees" element={<ComingSoon title="Employees" icon={Users} phase="Phase 4" />} />
-        <Route path="/app/suppliers" element={<ComingSoon title="Suppliers" icon={Truck} phase="Phase 4" />} />
+        <Route path="/app/suppliers" element={<SuppliersPage />} />
         <Route path="/app/customers" element={<ComingSoon title="Customers" icon={UserCircle} phase="Phase 4" />} />
         <Route path="/app/expenses" element={<ExpensesPage />} />
         <Route path="/app/reports" element={<ReportsPage />} />

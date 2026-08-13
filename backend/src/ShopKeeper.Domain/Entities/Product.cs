@@ -15,6 +15,9 @@ public class Product : BaseEntity, ITenantEntity
     public Guid? CategoryId { get; set; }
     public ProductCategory? Category { get; set; }
 
+    public Guid? SupplierId { get; set; }
+    public Supplier? Supplier { get; set; }
+
     public string Name { get; set; } = default!;
     public string Sku { get; set; } = default!;
     public string? Barcode { get; set; }
