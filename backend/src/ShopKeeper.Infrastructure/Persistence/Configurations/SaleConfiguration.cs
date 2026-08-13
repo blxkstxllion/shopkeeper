@@ -23,6 +23,7 @@ public class SaleConfiguration : IEntityTypeConfiguration<Sale>
 
         builder.HasOne(s => s.Branch).WithMany().HasForeignKey(s => s.BranchId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(s => s.CashierUser).WithMany().HasForeignKey(s => s.CashierUserId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(s => s.Customer).WithMany(c => c.Sales).HasForeignKey(s => s.CustomerId).OnDelete(DeleteBehavior.SetNull);
 
         builder.HasMany(s => s.Items).WithOne(i => i.Sale).HasForeignKey(i => i.SaleId).OnDelete(DeleteBehavior.Cascade);
         builder.HasMany(s => s.Payments).WithOne(p => p.Sale).HasForeignKey(p => p.SaleId).OnDelete(DeleteBehavior.Cascade);
