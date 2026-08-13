@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -35,6 +35,8 @@ const BRAND_HIGHLIGHTS = [
 export function LoginPage() {
   const { login, completeTwoFactorLogin } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const redirectTo = searchParams.get('redirect')
   const [serverError, setServerError] = useState<string | null>(null)
   const [challengeToken, setChallengeToken] = useState<string | null>(null)
   const [useRecoveryCode, setUseRecoveryCode] = useState(false)
@@ -44,7 +46,9 @@ export function LoginPage() {
   const codeValue = codeForm.watch('code') ?? ''
 
   const goToNextScreen = (user: User) => {
-    if (user.businesses.length === 0) {
+    if (redirectTo) {
+      navigate(redirectTo, { replace: true })
+    } else if (user.businesses.length === 0) {
       navigate('/onboarding', { replace: true })
     } else if (user.businesses.length === 1) {
       navigate('/app', { replace: true })
