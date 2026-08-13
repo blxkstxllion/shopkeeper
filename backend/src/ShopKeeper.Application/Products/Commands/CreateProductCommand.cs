@@ -24,7 +24,8 @@ public record CreateProductCommand(
     int ReorderLevel,
     bool TrackInventory,
     int InitialQuantity,
-    Guid? BranchId) : IRequest<ProductDto>;
+    Guid? BranchId,
+    Guid? SupplierId = null) : IRequest<ProductDto>;
 
 public class CreateProductCommandValidator : AbstractValidator<CreateProductCommand>
 {
@@ -70,6 +71,7 @@ public class CreateProductCommandHandler(IAppDbContext db, ICurrentUserService c
             Description = request.Description,
             ImageUrl = request.ImageUrl,
             CategoryId = request.CategoryId,
+            SupplierId = request.SupplierId,
             SellingPrice = request.SellingPrice,
             CostPrice = request.CostPrice,
             MinStock = request.MinStock,
@@ -112,10 +114,14 @@ public class CreateProductCommandHandler(IAppDbContext db, ICurrentUserService c
         var categoryName = request.CategoryId.HasValue
             ? await db.ProductCategories.Where(c => c.Id == request.CategoryId).Select(c => c.Name).FirstOrDefaultAsync(cancellationToken)
             : null;
+        var supplierName = request.SupplierId.HasValue
+            ? await db.Suppliers.Where(s => s.Id == request.SupplierId).Select(s => s.Name).FirstOrDefaultAsync(cancellationToken)
+            : null;
 
         return new ProductDto(
             product.Id, product.Name, product.Sku, product.Barcode, product.Description, product.ImageUrl,
-            product.CategoryId, categoryName, product.SellingPrice, product.CostPrice, product.MinStock,
+            product.CategoryId, categoryName, product.SupplierId, supplierName,
+            product.SellingPrice, product.CostPrice, product.MinStock,
             product.ReorderLevel, product.TrackInventory, product.IsActive, quantityOnHand,
             quantityOnHand.HasValue && quantityOnHand.Value <= product.ReorderLevel);
     }

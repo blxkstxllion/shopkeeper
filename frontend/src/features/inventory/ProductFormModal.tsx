@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Input, FormField } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
 import { createProduct, getProductCategories, updateProduct, uploadProductImage } from '@/api/products'
+import { getSuppliers } from '@/api/suppliers'
 import { resolveUploadUrl } from '@/lib/format'
 import type { ApiErrorPayload } from '@/types/auth'
 import type { Product } from '@/types/product'
@@ -36,6 +37,7 @@ export function ProductFormModal({
   const isEditing = Boolean(product)
 
   const { data: categories } = useQuery({ queryKey: ['product-categories'], queryFn: getProductCategories })
+  const { data: suppliers } = useQuery({ queryKey: ['suppliers'], queryFn: getSuppliers })
 
   const {
     register,
@@ -50,6 +52,7 @@ export function ProductFormModal({
           sku: product.sku,
           barcode: product.barcode ?? '',
           categoryId: product.categoryId ?? '',
+          supplierId: product.supplierId ?? '',
           sellingPrice: product.sellingPrice,
           costPrice: product.costPrice,
           minStock: product.minStock,
@@ -77,6 +80,7 @@ export function ProductFormModal({
         sku: values.sku,
         barcode: values.barcode || null,
         categoryId: values.categoryId || null,
+        supplierId: values.supplierId || null,
         imageUrl,
         sellingPrice: values.sellingPrice,
         costPrice: values.costPrice,
@@ -202,6 +206,21 @@ export function ProductFormModal({
             </select>
           </FormField>
         </div>
+
+        <FormField label="Supplier (optional)" htmlFor="supplierId">
+          <select
+            id="supplierId"
+            {...register('supplierId')}
+            className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+          >
+            <option value="">No supplier</option>
+            {suppliers?.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </FormField>
 
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Selling price" htmlFor="sellingPrice" error={errors.sellingPrice?.message}>

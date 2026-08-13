@@ -15,7 +15,13 @@ using ShopKeeper.Domain.Enums;
 /// InventoryTransaction - see section 12/40 of the product spec: "Never silently change
 /// stock quantities."
 /// </summary>
-public record AdjustStockCommand(Guid ProductId, Guid BranchId, int QuantityChange, string Reason) : IRequest<int>;
+public record AdjustStockCommand(
+    Guid ProductId,
+    Guid BranchId,
+    int QuantityChange,
+    string Reason,
+    string? ReferenceType = null,
+    Guid? ReferenceId = null) : IRequest<int>;
 
 public class AdjustStockCommandValidator : AbstractValidator<AdjustStockCommand>
 {
@@ -70,6 +76,8 @@ public class AdjustStockCommandHandler(IAppDbContext db, ICurrentUserService cur
             QuantityChange = request.QuantityChange,
             QuantityAfter = newQuantity,
             Reason = request.Reason,
+            ReferenceType = request.ReferenceType,
+            ReferenceId = request.ReferenceId,
             CreatedByUserId = currentUser.RequireUserId(),
         });
 
