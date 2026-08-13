@@ -33,6 +33,21 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
             .WithMany(c => c.Products)
             .HasForeignKey(p => p.CategoryId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(p => p.Supplier)
+            .WithMany(s => s.Products)
+            .HasForeignKey(p => p.SupplierId)
+            .OnDelete(DeleteBehavior.SetNull);
+    }
+}
+
+public class SupplierConfiguration : IEntityTypeConfiguration<Supplier>
+{
+    public void Configure(EntityTypeBuilder<Supplier> builder)
+    {
+        builder.ToTable("Suppliers");
+        builder.HasIndex(s => new { s.BusinessId, s.Name });
+        builder.Property(s => s.Name).HasMaxLength(200).IsRequired();
     }
 }
 
