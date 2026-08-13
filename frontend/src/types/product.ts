@@ -14,6 +14,8 @@ export interface Product {
   imageUrl: string | null
   categoryId: string | null
   categoryName: string | null
+  supplierId: string | null
+  supplierName: string | null
   sellingPrice: number
   costPrice: number
   minStock: number
@@ -39,6 +41,7 @@ export interface CreateProductPayload {
   description?: string | null
   imageUrl?: string | null
   categoryId?: string | null
+  supplierId?: string | null
   sellingPrice: number
   costPrice: number
   minStock: number

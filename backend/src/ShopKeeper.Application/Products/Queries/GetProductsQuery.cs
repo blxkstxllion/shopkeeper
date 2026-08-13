@@ -65,6 +65,8 @@ public class GetProductsQueryHandler(IAppDbContext db, ICurrentUserService curre
                 p.ImageUrl,
                 p.CategoryId,
                 CategoryName = p.Category != null ? p.Category.Name : null,
+                p.SupplierId,
+                SupplierName = p.Supplier != null ? p.Supplier.Name : null,
                 p.SellingPrice,
                 p.CostPrice,
                 p.MinStock,
@@ -93,6 +95,7 @@ public class GetProductsQueryHandler(IAppDbContext db, ICurrentUserService curre
 
         var dtos = items.Select(p => new ProductDto(
             p.Id, p.Name, p.Sku, p.Barcode, p.Description, p.ImageUrl, p.CategoryId, p.CategoryName,
+            p.SupplierId, p.SupplierName,
             p.SellingPrice, p.CostPrice, p.MinStock, p.ReorderLevel, p.TrackInventory, p.IsActive,
             p.QuantityOnHand, p.QuantityOnHand.HasValue && p.QuantityOnHand.Value <= p.ReorderLevel)).ToList();
 
