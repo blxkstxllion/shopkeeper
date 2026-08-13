@@ -130,11 +130,15 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
+      # load: true is required - without it, build-push-action leaves the image only in the
+      # buildx cache, never in the local Docker daemon, so `trivy image shopkeeper-api:ci`
+      # below can never find it ("No such image") regardless of anything else in this job.
       - name: Build backend image
         uses: docker/build-push-action@v6
         with:
           context: backend
           push: false
+          load: true
           tags: shopkeeper-api:ci
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
@@ -144,6 +148,7 @@ jobs:
         with:
           context: frontend
           push: false
+          load: true
           tags: shopkeeper-frontend:ci
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
