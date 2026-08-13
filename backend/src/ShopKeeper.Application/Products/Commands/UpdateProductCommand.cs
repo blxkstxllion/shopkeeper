@@ -22,7 +22,8 @@ public record UpdateProductCommand(
     int MinStock,
     int ReorderLevel,
     bool TrackInventory,
-    bool IsActive) : IRequest;
+    bool IsActive,
+    Guid? SupplierId = null) : IRequest;
 
 public class UpdateProductCommandValidator : AbstractValidator<UpdateProductCommand>
 {
@@ -59,6 +60,7 @@ public class UpdateProductCommandHandler(IAppDbContext db, ICurrentUserService c
         product.Description = request.Description;
         product.ImageUrl = request.ImageUrl;
         product.CategoryId = request.CategoryId;
+        product.SupplierId = request.SupplierId;
         product.SellingPrice = request.SellingPrice;
         product.CostPrice = request.CostPrice;
         product.MinStock = request.MinStock;
