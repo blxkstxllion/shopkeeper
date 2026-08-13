@@ -34,6 +34,7 @@ public interface IAppDbContext
     DbSet<RefundItem> RefundItems { get; }
     DbSet<ExpenseCategory> ExpenseCategories { get; }
     DbSet<Expense> Expenses { get; }
+    DbSet<PendingInvitation> PendingInvitations { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

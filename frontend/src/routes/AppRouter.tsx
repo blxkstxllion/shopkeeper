@@ -16,10 +16,12 @@ import { ReportsPage } from '@/features/reports/ReportsPage'
 import { BranchesPage } from '@/features/branches/BranchesPage'
 import { SuppliersPage } from '@/features/suppliers/SuppliersPage'
 import { CustomersPage } from '@/features/customers/CustomersPage'
+import { EmployeesPage } from '@/features/employees/EmployeesPage'
+import { AcceptInvitePage } from '@/features/auth/AcceptInvitePage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { ComingSoon } from '@/components/ComingSoon'
 import { RequireActiveBusiness, RequireAuth, RedirectIfAuthed } from './guards'
-import { Users, Sparkles } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 
 export function AppRouter() {
   return (
@@ -34,6 +36,8 @@ export function AppRouter() {
           </RedirectIfAuthed>
         }
       />
+
+      <Route path="/accept-invite" element={<AcceptInvitePage />} />
 
       <Route
         element={
@@ -80,7 +84,7 @@ export function AppRouter() {
           element={<ComingSoon title="The Shop Keeper Advisor" icon={Sparkles} phase="Phase 6" />}
         />
         <Route path="/app/branches" element={<BranchesPage />} />
-        <Route path="/app/employees" element={<ComingSoon title="Employees" icon={Users} phase="Phase 4" />} />
+        <Route path="/app/employees" element={<EmployeesPage />} />
         <Route path="/app/suppliers" element={<SuppliersPage />} />
         <Route path="/app/customers" element={<CustomersPage />} />
         <Route path="/app/expenses" element={<ExpensesPage />} />
