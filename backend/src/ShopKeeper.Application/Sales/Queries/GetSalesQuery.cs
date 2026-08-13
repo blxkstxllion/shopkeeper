@@ -14,7 +14,8 @@ public record GetSalesQuery(
     DateTimeOffset? To,
     string? Status,
     int Page,
-    int PageSize) : IRequest<PagedResult<SaleListItemDto>>;
+    int PageSize,
+    Guid? CustomerId = null) : IRequest<PagedResult<SaleListItemDto>>;
 
 public class GetSalesQueryHandler(IAppDbContext db, ICurrentUserService currentUser)
     : IRequestHandler<GetSalesQuery, PagedResult<SaleListItemDto>>
@@ -52,6 +53,11 @@ public class GetSalesQueryHandler(IAppDbContext db, ICurrentUserService currentU
         if (!string.IsNullOrWhiteSpace(request.Status) && Enum.TryParse<Domain.Enums.SaleStatus>(request.Status, out var status))
         {
             query = query.Where(x => x.sale.Status == status);
+        }
+
+        if (request.CustomerId.HasValue)
+        {
+            query = query.Where(x => x.sale.CustomerId == request.CustomerId);
         }
 
         query = query.OrderByDescending(x => x.sale.CreatedAt);

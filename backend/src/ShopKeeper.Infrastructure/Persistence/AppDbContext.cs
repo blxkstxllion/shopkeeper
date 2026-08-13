@@ -29,6 +29,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUserSe
 
     public DbSet<ProductCategory> ProductCategories => Set<ProductCategory>();
     public DbSet<Supplier> Suppliers => Set<Supplier>();
+    public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<ProductStock> ProductStocks => Set<ProductStock>();
     public DbSet<InventoryTransaction> InventoryTransactions => Set<InventoryTransaction>();
