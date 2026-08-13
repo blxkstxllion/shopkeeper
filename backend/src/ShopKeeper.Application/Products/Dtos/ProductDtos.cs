@@ -11,6 +11,8 @@ public record ProductDto(
     string? ImageUrl,
     Guid? CategoryId,
     string? CategoryName,
+    Guid? SupplierId,
+    string? SupplierName,
     decimal SellingPrice,
     decimal CostPrice,
     int MinStock,

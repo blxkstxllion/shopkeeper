@@ -19,7 +19,7 @@ public class GetProductByIdQueryHandler(IAppDbContext db, ICurrentUserService cu
         currentUser.RequirePermission(PermissionKeys.InventoryView);
         var branchId = request.BranchId ?? currentUser.BranchId;
 
-        var product = await db.Products.Include(p => p.Category).FirstOrDefaultAsync(p => p.Id == request.Id, cancellationToken)
+        var product = await db.Products.Include(p => p.Category).Include(p => p.Supplier).FirstOrDefaultAsync(p => p.Id == request.Id, cancellationToken)
             ?? throw new NotFoundException(nameof(Product), request.Id);
 
         int? quantityOnHand = branchId.HasValue
@@ -28,7 +28,8 @@ public class GetProductByIdQueryHandler(IAppDbContext db, ICurrentUserService cu
 
         return new ProductDto(
             product.Id, product.Name, product.Sku, product.Barcode, product.Description, product.ImageUrl,
-            product.CategoryId, product.Category?.Name, product.SellingPrice, product.CostPrice, product.MinStock,
+            product.CategoryId, product.Category?.Name, product.SupplierId, product.Supplier?.Name,
+            product.SellingPrice, product.CostPrice, product.MinStock,
             product.ReorderLevel, product.TrackInventory, product.IsActive, quantityOnHand,
             quantityOnHand.HasValue && quantityOnHand.Value <= product.ReorderLevel);
     }

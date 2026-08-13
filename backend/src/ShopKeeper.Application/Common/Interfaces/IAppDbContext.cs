@@ -22,6 +22,7 @@ public interface IAppDbContext
     DbSet<BusinessSetting> BusinessSettings { get; }
 
     DbSet<ProductCategory> ProductCategories { get; }
+    DbSet<Supplier> Suppliers { get; }
     DbSet<Product> Products { get; }
     DbSet<ProductStock> ProductStocks { get; }
     DbSet<InventoryTransaction> InventoryTransactions { get; }
