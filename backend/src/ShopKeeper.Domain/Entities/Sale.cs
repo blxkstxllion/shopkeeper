@@ -11,6 +11,9 @@ public class Sale : BaseEntity, ITenantEntity
     public Guid BranchId { get; set; }
     public Branch Branch { get; set; } = default!;
 
+    public Guid? CustomerId { get; set; }
+    public Customer? Customer { get; set; }
+
     public string SaleNumber { get; set; } = default!;
 
     public Guid CashierUserId { get; set; }

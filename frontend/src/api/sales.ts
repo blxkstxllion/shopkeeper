@@ -30,6 +30,7 @@ export async function getSales(params: {
   status?: string
   page?: number
   pageSize?: number
+  customerId?: string
 }): Promise<PagedResult<SaleListItem>> {
   const { data } = await apiClient.get<PagedResult<SaleListItem>>('/sales', { params })
   return data
