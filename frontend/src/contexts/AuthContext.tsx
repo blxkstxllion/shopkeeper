@@ -19,6 +19,10 @@ interface AuthContextValue {
   logout: () => Promise<void>
   selectBusiness: (businessId: string) => Promise<void>
   completeOnboarding: (business: Business & { accessToken: string }, user: User) => void
+  /** Applies an already-issued AuthResult (e.g. from accepting a team invitation) - same
+   * session-setting logic as login/selectBusiness, exposed for flows that get their tokens
+   * from a different endpoint but should land in the app exactly the same way. */
+  applyAuthResult: (result: AuthResult, businessId?: string) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -143,6 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       selectBusiness,
       completeOnboarding,
+      applyAuthResult,
     }),
     [
       user,
@@ -154,6 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       selectBusiness,
       completeOnboarding,
+      applyAuthResult,
     ],
   )
 
