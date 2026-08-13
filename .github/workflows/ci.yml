@@ -13,9 +13,21 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Least-privilege default; secret-scan below adds the one extra read scope gitleaks-action
+# needs to list a PR's commits - without it, the GitHub API call it makes internally 403s
+# with "Resource not accessible by integration" and the whole job fails before it ever scans
+# anything (this is exactly what happened on PRs #7 and #8).
+permissions:
+  contents: read
+
 env:
   DOTNET_VERSION: '8.0.x'
-  NODE_VERSION: '20'
+  # jsdom 30 / undici 8 (frontend/package.json) require Node >=22.22.2 - Node 20 installs fine
+  # (npm only warns on the engines mismatch) but crashes at test-run time importing jsdom's
+  # undici-based Cache/fetch shim ("webidl.util.markAsUncloneable is not a function"), before a
+  # single test executes. Doesn't reproduce locally on a newer Node - only shows up in CI's
+  # pinned version.
+  NODE_VERSION: '22'
 
 jobs:
   frontend:
@@ -96,6 +108,9 @@ jobs:
   secret-scan:
     name: Secret scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
         with:
@@ -115,11 +130,15 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
+      # load: true is required - without it, build-push-action leaves the image only in the
+      # buildx cache, never in the local Docker daemon, so `trivy image shopkeeper-api:ci`
+      # below can never find it ("No such image") regardless of anything else in this job.
       - name: Build backend image
         uses: docker/build-push-action@v6
         with:
           context: backend
           push: false
+          load: true
           tags: shopkeeper-api:ci
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
@@ -129,12 +148,13 @@ jobs:
         with:
           context: frontend
           push: false
+          load: true
           tags: shopkeeper-frontend:ci
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
 
       - name: Scan backend image (Trivy)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: shopkeeper-api:ci
           severity: CRITICAL
@@ -142,7 +162,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Scan frontend image (Trivy)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: shopkeeper-frontend:ci
           severity: CRITICAL

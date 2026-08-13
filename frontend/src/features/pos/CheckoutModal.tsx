@@ -53,9 +53,17 @@ export function CheckoutModal({
     mutationFn: () =>
       createSale({
         branchId,
-        items: lines.map((l) => ({ productId: l.product.productId, quantity: l.quantity, discountAmount: l.discountAmount })),
+        items: lines.map((l) => ({
+          productId: l.product.productId,
+          quantity: l.quantity,
+          discountAmount: l.discountAmount,
+        })),
         discountAmount,
-        payments: payments.map((p) => ({ method: p.method, amount: p.amount, referenceNumber: p.referenceNumber || null })),
+        payments: payments.map((p) => ({
+          method: p.method,
+          amount: p.amount,
+          referenceNumber: p.referenceNumber || null,
+        })),
       }),
     onSuccess: (sale) => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
@@ -122,7 +130,10 @@ export function CheckoutModal({
         {payments.length > 0 && (
           <ul className="flex flex-col gap-2">
             {payments.map((p, i) => (
-              <li key={i} className="flex items-center gap-2 rounded-lg border border-slate-200 p-2 dark:border-slate-700">
+              <li
+                key={i}
+                className="flex items-center gap-2 rounded-lg border border-slate-200 p-2 dark:border-slate-700"
+              >
                 <span className="w-28 text-sm text-slate-600 dark:text-slate-300">{methodConfig[p.method].label}</span>
                 <Input
                   type="number"
@@ -147,7 +158,9 @@ export function CheckoutModal({
           </ul>
         )}
 
-        <div className={`flex items-center justify-between text-sm font-medium ${remaining === 0 ? 'text-primary-700 dark:text-primary-400' : 'text-slate-500'}`}>
+        <div
+          className={`flex items-center justify-between text-sm font-medium ${remaining === 0 ? 'text-primary-700 dark:text-primary-400' : 'text-slate-500'}`}
+        >
           <span>Remaining</span>
           <span>{formatMoney(Math.max(remaining, 0))}</span>
         </div>

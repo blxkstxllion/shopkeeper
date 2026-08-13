@@ -39,7 +39,10 @@ export async function getProductCategories(): Promise<ProductCategory[]> {
   return data
 }
 
-export async function createProductCategory(payload: { name: string; description?: string | null }): Promise<ProductCategory> {
+export async function createProductCategory(payload: {
+  name: string
+  description?: string | null
+}): Promise<ProductCategory> {
   const { data } = await apiClient.post<ProductCategory>('/products/categories', payload)
   return data
 }
