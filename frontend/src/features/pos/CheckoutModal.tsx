@@ -1,13 +1,14 @@
-import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
-import { Banknote, CreditCard, Smartphone, Trash2 } from 'lucide-react'
+import { Banknote, CreditCard, Plus, Smartphone, Trash2 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
+import { Input, FormField } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
 import { formatMoney } from '@/lib/format'
 import { createSale } from '@/api/sales'
+import { createCustomer, getCustomers } from '@/api/customers'
 import type { ApiErrorPayload } from '@/types/auth'
 import type { PaymentMethod, Sale } from '@/types/sale'
 import { cartLineDiscountTotal, cartSubtotal, type CartLine } from './cart'
@@ -42,6 +43,37 @@ export function CheckoutModal({
   const queryClient = useQueryClient()
   const [payments, setPayments] = useState<PaymentRow[]>([])
   const [serverError, setServerError] = useState<string | null>(null)
+  const [customerId, setCustomerId] = useState('')
+  const [isAddingCustomer, setIsAddingCustomer] = useState(false)
+  const [newCustomerName, setNewCustomerName] = useState('')
+
+  const { data: customers } = useQuery({
+    queryKey: ['customers', { activeOnly: true, pageSize: 200 }],
+    queryFn: () => getCustomers({ activeOnly: true, pageSize: 200 }),
+    enabled: isOpen,
+  })
+
+  useEffect(() => {
+    if (isOpen) {
+      setCustomerId('')
+      setIsAddingCustomer(false)
+      setNewCustomerName('')
+    }
+  }, [isOpen])
+
+  const customerMutation = useMutation({
+    mutationFn: () => createCustomer({ name: newCustomerName }),
+    onSuccess: async (customer) => {
+      await queryClient.invalidateQueries({ queryKey: ['customers'] })
+      setCustomerId(customer.id)
+      setIsAddingCustomer(false)
+      setNewCustomerName('')
+    },
+    onError: (err) => {
+      const apiErr = (err as AxiosError<ApiErrorPayload>).response?.data
+      setServerError(apiErr?.title ?? 'Unable to add that customer. Please try again.')
+    },
+  })
 
   const subtotal = cartSubtotal(lines)
   const lineDiscounts = cartLineDiscountTotal(lines)
@@ -64,6 +96,7 @@ export function CheckoutModal({
           amount: p.amount,
           referenceNumber: p.referenceNumber || null,
         })),
+        customerId: customerId || null,
       }),
     onSuccess: (sale) => {
       queryClient.invalidateQueries({ queryKey: ['products'] })
@@ -108,6 +141,51 @@ export function CheckoutModal({
           <p className="text-xs uppercase tracking-wide text-slate-400">Total due</p>
           <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{formatMoney(total)}</p>
         </div>
+
+        <FormField label="Customer (optional)" htmlFor="customerId">
+          {isAddingCustomer ? (
+            <div className="flex gap-2">
+              <Input
+                autoFocus
+                placeholder="Customer name"
+                value={newCustomerName}
+                onChange={(e) => setNewCustomerName(e.target.value)}
+              />
+              <Button
+                type="button"
+                size="sm"
+                isLoading={customerMutation.isPending}
+                disabled={!newCustomerName.trim()}
+                onClick={() => customerMutation.mutate()}
+              >
+                Add
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setIsAddingCustomer(false)}>
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <select
+                id="customerId"
+                value={customerId}
+                onChange={(e) => setCustomerId(e.target.value)}
+                className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+              >
+                <option value="">Walk-in (no customer)</option>
+                {customers?.items.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <Button type="button" variant="secondary" size="sm" onClick={() => setIsAddingCustomer(true)}>
+                <Plus className="h-3.5 w-3.5" />
+                New
+              </Button>
+            </div>
+          )}
+        </FormField>
 
         <div className="grid grid-cols-3 gap-2">
           {(Object.keys(methodConfig) as PaymentMethod[]).map((method) => {

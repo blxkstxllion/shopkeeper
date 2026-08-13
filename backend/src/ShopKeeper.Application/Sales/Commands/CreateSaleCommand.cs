@@ -19,7 +19,8 @@ public record CreateSaleCommand(
     Guid BranchId,
     IReadOnlyList<SaleLineInput> Items,
     decimal DiscountAmount,
-    IReadOnlyList<SalePaymentInput> Payments) : IRequest<SaleDto>;
+    IReadOnlyList<SalePaymentInput> Payments,
+    Guid? CustomerId = null) : IRequest<SaleDto>;
 
 public class CreateSaleCommandValidator : AbstractValidator<CreateSaleCommand>
 {
@@ -90,6 +91,7 @@ public class CreateSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
             BusinessId = businessId,
             BranchId = request.BranchId,
             Branch = branch,
+            CustomerId = request.CustomerId,
             CashierUserId = userId,
             SaleNumber = await GenerateSaleNumberAsync(businessId, cancellationToken),
         };
@@ -195,8 +197,11 @@ public class CreateSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
         await db.SaveChangesAsync(cancellationToken);
 
         var cashier = await db.Users.Where(u => u.Id == userId).Select(u => new { u.FirstName, u.LastName }).FirstAsync(cancellationToken);
+        var customerName = request.CustomerId.HasValue
+            ? await db.Customers.Where(c => c.Id == request.CustomerId).Select(c => c.Name).FirstOrDefaultAsync(cancellationToken)
+            : null;
 
-        return SaleMapper.ToDto(sale, branch.Name, $"{cashier.FirstName} {cashier.LastName}");
+        return SaleMapper.ToDto(sale, branch.Name, $"{cashier.FirstName} {cashier.LastName}", customerName);
     }
 
     private async Task<string> GenerateSaleNumberAsync(Guid businessId, CancellationToken ct)

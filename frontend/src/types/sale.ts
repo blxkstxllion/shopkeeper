@@ -41,6 +41,8 @@ export interface Sale {
   saleNumber: string
   branchId: string
   branchName: string
+  customerId: string | null
+  customerName: string | null
   cashierUserId: string
   cashierName: string
   subtotal: number
@@ -86,6 +88,7 @@ export interface CreateSalePayload {
   items: SaleLineInput[]
   discountAmount: number
   payments: SalePaymentInput[]
+  customerId?: string | null
 }
 
 export interface Refund {

@@ -27,7 +27,10 @@ public class GetSaleByIdQueryHandler(IAppDbContext db, ICurrentUserService curre
         var branchName = await db.Branches.Where(b => b.Id == sale.BranchId).Select(b => b.Name).FirstAsync(cancellationToken);
         var cashier = await db.Users.Where(u => u.Id == sale.CashierUserId)
             .Select(u => new { u.FirstName, u.LastName }).FirstAsync(cancellationToken);
+        var customerName = sale.CustomerId.HasValue
+            ? await db.Customers.Where(c => c.Id == sale.CustomerId).Select(c => c.Name).FirstOrDefaultAsync(cancellationToken)
+            : null;
 
-        return SaleMapper.ToDto(sale, branchName, $"{cashier.FirstName} {cashier.LastName}");
+        return SaleMapper.ToDto(sale, branchName, $"{cashier.FirstName} {cashier.LastName}", customerName);
     }
 }
