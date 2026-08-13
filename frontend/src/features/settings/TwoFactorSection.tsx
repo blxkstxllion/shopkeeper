@@ -123,7 +123,11 @@ export function TwoFactorSection() {
               6-digit code it shows.
             </p>
             {qrDataUrl && (
-              <img src={qrDataUrl} alt="Two-factor setup QR code" className="mx-auto h-48 w-48 rounded-lg border border-slate-200 dark:border-slate-700" />
+              <img
+                src={qrDataUrl}
+                alt="Two-factor setup QR code"
+                className="mx-auto h-48 w-48 rounded-lg border border-slate-200 dark:border-slate-700"
+              />
             )}
             {setupMutation.data && (
               <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs dark:bg-slate-800">
@@ -146,7 +150,11 @@ export function TwoFactorSection() {
               <Button variant="ghost" onClick={closeSetup}>
                 Cancel
               </Button>
-              <Button isLoading={enableMutation.isPending} disabled={code.length < 6} onClick={() => enableMutation.mutate()}>
+              <Button
+                isLoading={enableMutation.isPending}
+                disabled={code.length < 6}
+                onClick={() => enableMutation.mutate()}
+              >
                 Confirm
               </Button>
             </div>
@@ -170,7 +178,12 @@ export function TwoFactorSection() {
         )}
       </Modal>
 
-      <Modal isOpen={isDisableOpen} onClose={() => setIsDisableOpen(false)} title="Disable two-factor authentication" size="sm">
+      <Modal
+        isOpen={isDisableOpen}
+        onClose={() => setIsDisableOpen(false)}
+        title="Disable two-factor authentication"
+        size="sm"
+      >
         <div className="flex flex-col gap-4">
           {error && <Alert tone="error">{error}</Alert>}
           <p className="text-sm text-slate-600 dark:text-slate-300">Enter your password to confirm.</p>

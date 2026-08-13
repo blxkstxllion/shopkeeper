@@ -1,15 +1,5 @@
 import { useState } from 'react'
-import {
-  Store,
-  Percent,
-  ShieldCheck,
-  Users,
-  Bell,
-  Plug,
-  CreditCard,
-  Webhook,
-  type LucideIcon,
-} from 'lucide-react'
+import { Store, Percent, ShieldCheck, Users, Bell, Plug, CreditCard, Webhook, type LucideIcon } from 'lucide-react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { BusinessProfileSection } from './BusinessProfileSection'
 import { TaxSettingsSection } from './TaxSettingsSection'
@@ -44,7 +34,9 @@ export function SettingsPage() {
     <div className="mx-auto max-w-5xl">
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Settings</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Manage your business, security, and account preferences.</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Manage your business, security, and account preferences.
+        </p>
       </div>
 
       <div className="flex flex-col gap-6 md:flex-row">
