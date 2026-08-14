@@ -41,6 +41,11 @@ public class InviteEmployeeCommandHandler(IAppDbContext db, ICurrentUserService 
         var role = await db.Roles.FirstOrDefaultAsync(r => r.Id == request.RoleId, cancellationToken)
             ?? throw new NotFoundException(nameof(Role), request.RoleId);
 
+        if (role.Name == DefaultRoles.Owner && !currentUser.IsOwner)
+        {
+            throw new ForbiddenAccessException("Only an owner can invite someone as an owner.");
+        }
+
         var existingUser = await db.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken);
         if (existingUser is not null)
         {
