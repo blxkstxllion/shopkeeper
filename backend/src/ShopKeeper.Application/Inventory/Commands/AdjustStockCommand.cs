@@ -66,6 +66,7 @@ public class AdjustStockCommandHandler(IAppDbContext db, ICurrentUserService cur
         }
 
         stock.QuantityOnHand = newQuantity;
+        stock.RowVersion++;
 
         db.InventoryTransactions.Add(new InventoryTransaction
         {
@@ -81,7 +82,18 @@ public class AdjustStockCommandHandler(IAppDbContext db, ICurrentUserService cur
             CreatedByUserId = currentUser.RequireUserId(),
         });
 
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Someone else adjusted/sold against this same stock row between our read and
+            // write - the whole point of ProductStock.RowVersion. Surface a clean conflict
+            // instead of the raw EF exception; the caller can just retry.
+            throw new ConflictException($"'{product.Name}' was just updated by someone else. Please try again.");
+        }
+
         return newQuantity;
     }
 }
