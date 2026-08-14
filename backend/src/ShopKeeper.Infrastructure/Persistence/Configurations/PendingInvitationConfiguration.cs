@@ -9,7 +9,7 @@ public class PendingInvitationConfiguration : IEntityTypeConfiguration<PendingIn
     public void Configure(EntityTypeBuilder<PendingInvitation> builder)
     {
         builder.ToTable("PendingInvitations");
-        builder.HasIndex(i => i.Token).IsUnique();
+        builder.HasIndex(i => i.TokenHash).IsUnique();
 
         // Partial unique index: at most one still-pending (not yet accepted) invitation per
         // business+email. This is the actual DB-level guard behind InviteEmployeeCommand's
@@ -20,7 +20,7 @@ public class PendingInvitationConfiguration : IEntityTypeConfiguration<PendingIn
             .HasFilter("\"AcceptedAt\" IS NULL");
 
         builder.Property(i => i.Email).HasMaxLength(256).IsRequired();
-        builder.Property(i => i.Token).HasMaxLength(64).IsRequired();
+        builder.Property(i => i.TokenHash).HasMaxLength(64).IsRequired();
 
         builder.HasOne(i => i.Role).WithMany().HasForeignKey(i => i.RoleId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(i => i.Branch).WithMany().HasForeignKey(i => i.BranchId).OnDelete(DeleteBehavior.SetNull);

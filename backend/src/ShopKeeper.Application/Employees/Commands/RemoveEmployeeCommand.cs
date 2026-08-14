@@ -25,6 +25,11 @@ public class RemoveEmployeeCommandHandler(IAppDbContext db, ICurrentUserService 
 
         if (member.IsOwner)
         {
+            if (!currentUser.IsOwner)
+            {
+                throw new ForbiddenAccessException("Only an owner can remove an owner.");
+            }
+
             var otherActiveOwners = await db.BusinessUsers.AnyAsync(
                 bu => bu.Id != member.Id && bu.IsOwner && bu.Status == BusinessUserStatus.Active, cancellationToken);
             if (!otherActiveOwners)
