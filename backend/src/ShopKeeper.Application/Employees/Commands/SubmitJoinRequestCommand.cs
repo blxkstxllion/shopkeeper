@@ -70,6 +70,22 @@ public class SubmitJoinRequestCommandHandler(IAppDbContext db, IPasswordHasher h
             User = user,
         });
 
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // The precheck above is the fast path; this is the race-window safety net, backed by
+            // Users.Email's existing unique index. Only convert when the specific condition it
+            // protects is confirmed true after the fact - anything else rethrows unchanged.
+            var stillExists = await db.Users.AnyAsync(u => u.Email == normalizedEmail, cancellationToken);
+            if (!stillExists)
+            {
+                throw;
+            }
+
+            throw new ConflictException("An account with this email already exists. Please log in to request to join.");
+        }
     }
 }
