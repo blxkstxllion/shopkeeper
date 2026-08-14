@@ -164,6 +164,121 @@ public class SuppliersTests : IDisposable
     }
 
     [Fact]
+    public async Task RestockFromSupplier_InactiveSupplier_ThrowsConflict()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var context = _db.CreateContext(owner);
+        var mediator = new TestSender(context, owner);
+
+        var supplier = await new CreateSupplierCommandHandler(context, owner).Handle(
+            new CreateSupplierCommand("Accra Distributors", null, null, null, null), CancellationToken.None);
+        var product = await new CreateProductCommandHandler(context, owner).Handle(
+            new CreateProductCommand(
+                "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 10, 20, true, 50, seeded.BranchId, supplier.Id),
+            CancellationToken.None);
+
+        await new DeleteSupplierCommandHandler(context, owner).Handle(new DeleteSupplierCommand(supplier.Id), CancellationToken.None);
+
+        await Assert.ThrowsAsync<ConflictException>(() => new RestockFromSupplierCommandHandler(context, owner, mediator).Handle(
+            new RestockFromSupplierCommand(supplier.Id, product.Id, seeded.BranchId, 25, null), CancellationToken.None));
+
+        var stock = await context.ProductStocks.SingleAsync(s => s.ProductId == product.Id);
+        Assert.Equal(50, stock.QuantityOnHand); // unchanged - the blocked restock never applied
+    }
+
+    [Fact]
+    public async Task CreateProduct_WithInactiveSupplier_ThrowsConflict()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var context = _db.CreateContext(owner);
+
+        var supplier = await new CreateSupplierCommandHandler(context, owner).Handle(
+            new CreateSupplierCommand("Accra Distributors", null, null, null, null), CancellationToken.None);
+        await new DeleteSupplierCommandHandler(context, owner).Handle(new DeleteSupplierCommand(supplier.Id), CancellationToken.None);
+
+        await Assert.ThrowsAsync<ConflictException>(() => new CreateProductCommandHandler(context, owner).Handle(
+            new CreateProductCommand(
+                "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 10, 20, true, 50, seeded.BranchId, supplier.Id),
+            CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task UpdateProduct_ChangingToInactiveSupplier_ThrowsConflict()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var context = _db.CreateContext(owner);
+
+        var product = await new CreateProductCommandHandler(context, owner).Handle(
+            new CreateProductCommand(
+                "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 10, 20, true, 50, seeded.BranchId, null),
+            CancellationToken.None);
+        var supplier = await new CreateSupplierCommandHandler(context, owner).Handle(
+            new CreateSupplierCommand("Accra Distributors", null, null, null, null), CancellationToken.None);
+        await new DeleteSupplierCommandHandler(context, owner).Handle(new DeleteSupplierCommand(supplier.Id), CancellationToken.None);
+
+        await Assert.ThrowsAsync<ConflictException>(() => new UpdateProductCommandHandler(context, owner).Handle(
+            new UpdateProductCommand(
+                product.Id, "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 10, 20, true, true, supplier.Id),
+            CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task UpdateProduct_KeepingExistingInactiveSupplierUnchanged_StillSucceeds()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var context = _db.CreateContext(owner);
+
+        var supplier = await new CreateSupplierCommandHandler(context, owner).Handle(
+            new CreateSupplierCommand("Accra Distributors", null, null, null, null), CancellationToken.None);
+        var product = await new CreateProductCommandHandler(context, owner).Handle(
+            new CreateProductCommand(
+                "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 10, 20, true, 50, seeded.BranchId, supplier.Id),
+            CancellationToken.None);
+        await new DeleteSupplierCommandHandler(context, owner).Handle(new DeleteSupplierCommand(supplier.Id), CancellationToken.None);
+
+        // Editing an unrelated field (price) on a product that already points at a
+        // since-deactivated supplier must not be blocked - only a *change* of supplier is gated.
+        await new UpdateProductCommandHandler(context, owner).Handle(
+            new UpdateProductCommand(
+                product.Id, "Coca-Cola 500ml", "SKU-001", null, null, null, null, 6.00m, 3.00m, 10, 20, true, true, supplier.Id),
+            CancellationToken.None);
+
+        var updated = await context.Products.SingleAsync(p => p.Id == product.Id);
+        Assert.Equal(6.00m, updated.SellingPrice);
+        Assert.Equal(supplier.Id, updated.SupplierId);
+    }
+
+    [Fact]
+    public async Task GetSupplierRestockHistory_ForNowInactiveSupplier_StillReturnsHistory()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var context = _db.CreateContext(owner);
+        var mediator = new TestSender(context, owner);
+
+        var supplier = await new CreateSupplierCommandHandler(context, owner).Handle(
+            new CreateSupplierCommand("Accra Distributors", null, null, null, null), CancellationToken.None);
+        var product = await new CreateProductCommandHandler(context, owner).Handle(
+            new CreateProductCommand(
+                "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 10, 20, true, 50, seeded.BranchId, supplier.Id),
+            CancellationToken.None);
+        await new RestockFromSupplierCommandHandler(context, owner, mediator).Handle(
+            new RestockFromSupplierCommand(supplier.Id, product.Id, seeded.BranchId, 10, null), CancellationToken.None);
+
+        await new DeleteSupplierCommandHandler(context, owner).Handle(new DeleteSupplierCommand(supplier.Id), CancellationToken.None);
+
+        var history = await new GetSupplierRestockHistoryQueryHandler(context).Handle(
+            new GetSupplierRestockHistoryQuery(supplier.Id), CancellationToken.None);
+
+        Assert.Single(history); // past restock history stays intact and queryable
+        Assert.Equal(10, history[0].Quantity);
+    }
+
+    [Fact]
     public async Task Cashier_CannotManageSuppliers()
     {
         var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);

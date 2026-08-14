@@ -54,6 +54,14 @@ public class TokenIssuer(IAppDbContext db, IJwtTokenService jwt)
     private async Task<(string AccessToken, UserDto UserDto, Guid? ResolvedBusinessId)> BuildAccessTokenAsync(
         User user, Guid? activeBusinessId, CancellationToken ct)
     {
+        // Status != Removed here is what actually enforces "a removed employee can't get back
+        // in": a fresh call to IssueAsync/IssueAccessTokenOnlyAsync (login, refresh, switch-
+        // business) can never mint a token scoped to a business the user was removed from. It
+        // does NOT revoke a token already issued before removal - that access token stays valid
+        // for the remainder of its ~15-minute lifetime (AccessTokenLifetimeMinutes below).
+        // Accepted, documented tradeoff rather than building real-time token revocation: the
+        // removed user cannot obtain a *new* token for that business, which is the property that
+        // actually matters.
         var memberships = await db.BusinessUsers
             .IgnoreQueryFilters()
             .Where(bu => bu.UserId == user.Id && bu.Status != Domain.Enums.BusinessUserStatus.Removed)
