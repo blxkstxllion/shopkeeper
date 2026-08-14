@@ -20,8 +20,9 @@ import { EmployeesPage } from '@/features/employees/EmployeesPage'
 import { AcceptInvitePage } from '@/features/auth/AcceptInvitePage'
 import { JoinPage } from '@/features/auth/JoinPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
+import { AuditLogsPage } from '@/features/audit-logs/AuditLogsPage'
 import { ComingSoon } from '@/components/ComingSoon'
-import { RequireActiveBusiness, RequireAuth, RedirectIfAuthed } from './guards'
+import { RequireActiveBusiness, RequireAuth, RedirectIfAuthed, RequirePermission } from './guards'
 import { Sparkles } from 'lucide-react'
 
 export function AppRouter() {
@@ -91,6 +92,14 @@ export function AppRouter() {
         <Route path="/app/customers" element={<CustomersPage />} />
         <Route path="/app/expenses" element={<ExpensesPage />} />
         <Route path="/app/reports" element={<ReportsPage />} />
+        <Route
+          path="/app/audit-logs"
+          element={
+            <RequirePermission permission="audit_logs:view">
+              <AuditLogsPage />
+            </RequirePermission>
+          }
+        />
         <Route path="/app/settings" element={<SettingsPage />} />
       </Route>
 
