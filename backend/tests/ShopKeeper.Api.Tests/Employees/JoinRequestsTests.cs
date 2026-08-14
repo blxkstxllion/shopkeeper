@@ -236,6 +236,131 @@ public class JoinRequestsTests : IDisposable
     }
 
     [Fact]
+    public async Task ApproveJoinRequest_AsNonOwner_ApprovingToOwnerRole_ThrowsForbidden()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var context = _db.CreateContext(owner);
+        var code = await new RegenerateJoinCodeCommandHandler(context, owner).Handle(new RegenerateJoinCodeCommand(), CancellationToken.None);
+
+        await new SubmitJoinRequestCommandHandler(context, _hasher).Handle(
+            new SubmitJoinRequestCommand(code, "Kofi", "Mensah", "kofi6@shop.test", "0244000005", "Passw0rd!"),
+            CancellationToken.None);
+
+        var user = await context.Users.SingleAsync(u => u.Email == "kofi6@shop.test");
+        var joinRequest = await context.JoinRequests.SingleAsync(r => r.UserId == user.Id);
+        var ownerRole = await context.Roles.SingleAsync(r => r.Name == DefaultRoles.Owner);
+
+        var administrator = new TestCurrentUserService
+        {
+            UserId = Guid.NewGuid(),
+            BusinessId = seeded.BusinessId,
+            IsOwner = false,
+            PermissionsList = DefaultRoles.RolePermissionKeys[DefaultRoles.Administrator].ToList(),
+        };
+
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() => new ApproveJoinRequestCommandHandler(context, administrator).Handle(
+            new ApproveJoinRequestCommand(joinRequest.Id, ownerRole.Id, null), CancellationToken.None));
+
+        var stillPending = await context.JoinRequests.SingleAsync(r => r.Id == joinRequest.Id);
+        Assert.Equal(JoinRequestStatus.Pending, stillPending.Status);
+    }
+
+    [Fact]
+    public async Task ApproveJoinRequest_AsOwner_ToOwnerRole_SetsIsOwnerTrue()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var context = _db.CreateContext(owner);
+        var code = await new RegenerateJoinCodeCommandHandler(context, owner).Handle(new RegenerateJoinCodeCommand(), CancellationToken.None);
+
+        await new SubmitJoinRequestCommandHandler(context, _hasher).Handle(
+            new SubmitJoinRequestCommand(code, "Kofi", "Mensah", "kofi7@shop.test", "0244000006", "Passw0rd!"),
+            CancellationToken.None);
+
+        var user = await context.Users.SingleAsync(u => u.Email == "kofi7@shop.test");
+        var joinRequest = await context.JoinRequests.SingleAsync(r => r.UserId == user.Id);
+        var ownerRole = await context.Roles.SingleAsync(r => r.Name == DefaultRoles.Owner);
+
+        await new ApproveJoinRequestCommandHandler(context, owner).Handle(
+            new ApproveJoinRequestCommand(joinRequest.Id, ownerRole.Id, null), CancellationToken.None);
+
+        var membership = await context.BusinessUsers.SingleAsync(bu => bu.UserId == user.Id);
+        Assert.True(membership.IsOwner);
+    }
+
+    [Fact]
+    public async Task SubmitJoinRequest_ConcurrentDuplicateEmail_ExactlyOneSucceeds()
+    {
+        using var db = new ConcurrentSqliteTestDatabase();
+        var seeded = await PosTestFixture.SeedAsync(db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var setupContext = db.CreateContext(owner);
+        var code = await new RegenerateJoinCodeCommandHandler(setupContext, owner).Handle(new RegenerateJoinCodeCommand(), CancellationToken.None);
+
+        async Task<bool> TrySubmit()
+        {
+            var context = db.CreateContext(new TestCurrentUserService());
+            try
+            {
+                await new SubmitJoinRequestCommandHandler(context, _hasher).Handle(
+                    new SubmitJoinRequestCommand(code, "Kofi", "Mensah", "racejoiner@shop.test", "0244000007", "Passw0rd!"),
+                    CancellationToken.None);
+                return true;
+            }
+            catch (ConflictException)
+            {
+                return false;
+            }
+        }
+
+        var results = await Task.WhenAll(TrySubmit(), TrySubmit());
+
+        Assert.Single(results, r => r);
+        Assert.Single(results, r => !r);
+
+        var count = await setupContext.Users.AsNoTracking().CountAsync(u => u.Email == "racejoiner@shop.test");
+        Assert.Equal(1, count); // the unique index is what actually stopped the duplicate
+    }
+
+    [Fact]
+    public async Task SubmitJoinRequestForExistingUser_ConcurrentDuplicatePending_ExactlyOneSucceeds()
+    {
+        using var db = new ConcurrentSqliteTestDatabase();
+        var seeded = await PosTestFixture.SeedAsync(db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var setupContext = db.CreateContext(owner);
+        var code = await new RegenerateJoinCodeCommandHandler(setupContext, owner).Handle(new RegenerateJoinCodeCommand(), CancellationToken.None);
+
+        var applicant = await PosTestFixture.SeedAsync(db, _hasher, _jwt, "racejoiner-existing@shop.test");
+        var applicantUser = applicant.AsOwner();
+
+        async Task<bool> TrySubmit()
+        {
+            var context = db.CreateContext(applicantUser);
+            try
+            {
+                await new SubmitJoinRequestForExistingUserCommandHandler(context, applicantUser).Handle(
+                    new SubmitJoinRequestForExistingUserCommand(code), CancellationToken.None);
+                return true;
+            }
+            catch (ConflictException)
+            {
+                return false;
+            }
+        }
+
+        var results = await Task.WhenAll(TrySubmit(), TrySubmit());
+
+        Assert.Single(results, r => r);
+        Assert.Single(results, r => !r);
+
+        var count = await setupContext.JoinRequests.AsNoTracking()
+            .CountAsync(r => r.UserId == applicant.OwnerId && r.Status == JoinRequestStatus.Pending);
+        Assert.Equal(1, count); // the partial unique index is what actually stopped the duplicate
+    }
+
+    [Fact]
     public async Task GetBusinessUsers_IncludesPendingJoinRequests()
     {
         var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
