@@ -8,8 +8,8 @@ using ShopKeeper.Application.Employees.Dtos;
 using ShopKeeper.Domain.Constants;
 using ShopKeeper.Domain.Enums;
 
-/// <summary>Shows current members alongside outstanding invitations so the Employees page
-/// renders one coherent list, not two separate screens.</summary>
+/// <summary>Shows current members alongside outstanding invitations and pending join requests
+/// so the Employees page renders one coherent list, not three separate screens.</summary>
 public record GetBusinessUsersQuery : IRequest<BusinessUsersDto>;
 
 public class GetBusinessUsersQueryHandler(IAppDbContext db, ICurrentUserService currentUser)
@@ -40,6 +40,17 @@ public class GetBusinessUsersQueryHandler(IAppDbContext db, ICurrentUserService 
                 i.Id, i.Email, i.Role.Name, i.Branch != null ? i.Branch.Name : null, i.CreatedAt, i.ExpiresAt))
             .ToListAsync(cancellationToken);
 
-        return new BusinessUsersDto(members, pending);
+        // Sorted in memory after the fetch, not via ORDER BY - the SQLite provider (test suite
+        // only) can't translate DateTimeOffset in ORDER BY, the same constraint documented on
+        // GetDashboardSummaryQuery and GetSupplierRestockHistoryQuery.
+        var joinRequests = await db.JoinRequests
+            .Where(r => r.Status == JoinRequestStatus.Pending)
+            .Include(r => r.User)
+            .Select(r => new JoinRequestItemDto(
+                r.Id, r.User.FirstName, r.User.LastName, r.User.Email, r.User.PhoneNumber, r.CreatedAt))
+            .ToListAsync(cancellationToken);
+        joinRequests = joinRequests.OrderBy(r => r.RequestedAt).ToList();
+
+        return new BusinessUsersDto(members, pending, joinRequests);
     }
 }

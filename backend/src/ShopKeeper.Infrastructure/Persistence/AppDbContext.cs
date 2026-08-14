@@ -41,6 +41,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUserSe
     public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<PendingInvitation> PendingInvitations => Set<PendingInvitation>();
+    public DbSet<JoinRequest> JoinRequests => Set<JoinRequest>();
 
     /// <summary>
     /// Referenced as `this.TenantBusinessId` (implicitly, from inside an instance method) in the
