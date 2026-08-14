@@ -22,5 +22,6 @@ public class BusinessSettingConfiguration : IEntityTypeConfiguration<BusinessSet
         builder.ToTable("BusinessSettings");
         builder.HasIndex(s => s.BusinessId).IsUnique();
         builder.Property(s => s.TaxRatePercent).HasPrecision(5, 2);
+        builder.Property(s => s.RowVersion).IsConcurrencyToken();
     }
 }
