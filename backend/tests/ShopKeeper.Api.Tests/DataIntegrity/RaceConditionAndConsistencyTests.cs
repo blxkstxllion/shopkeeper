@@ -70,7 +70,7 @@ public class RaceConditionAndConsistencyTests
             var context = db.CreateContext(owner);
             try
             {
-                await new InviteEmployeeCommandHandler(context, owner, new TestEmailSender()).Handle(
+                await new InviteEmployeeCommandHandler(context, owner, new TestEmailSender(), _jwt).Handle(
                     new InviteEmployeeCommand("racehire@shop.test", cashierRoleId, null), CancellationToken.None);
                 return true;
             }
@@ -126,11 +126,12 @@ public class RaceConditionAndConsistencyTests
         var tokenIssuer = new TokenIssuer(context, _jwt);
         var cashierRoleId = await context.Roles.Where(r => r.Name == DefaultRoles.Cashier).Select(r => r.Id).SingleAsync();
 
-        await new InviteEmployeeCommandHandler(context, owner, new TestEmailSender()).Handle(
+        var emailSender = new TestEmailSender();
+        await new InviteEmployeeCommandHandler(context, owner, emailSender, _jwt).Handle(
             new InviteEmployeeCommand("removeme@shop.test", cashierRoleId, null), CancellationToken.None);
-        var invitation = await context.PendingInvitations.SingleAsync();
-        await new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer).Handle(
-            new AcceptInvitationCommand(invitation.Token, "Passw0rd!", "Kofi", "Mensah", null), CancellationToken.None);
+        var token = emailSender.LastInvite!.Value.InviteToken;
+        await new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
+            new AcceptInvitationCommand(token, "Passw0rd!", "Kofi", "Mensah", null), CancellationToken.None);
 
         var membership = await context.BusinessUsers.IgnoreQueryFilters()
             .SingleAsync(bu => bu.BusinessId == seeded.BusinessId && bu.User.Email == "removeme@shop.test");

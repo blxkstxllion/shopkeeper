@@ -100,7 +100,14 @@ public class AuthController(ISender mediator, IWebHostEnvironment env, ICurrentU
         var result = await mediator.Send(new RefreshTokenCommand(
             refreshToken, HttpContext.Connection.RemoteIpAddress?.ToString(), Request.Headers.UserAgent.ToString()), ct);
 
-        Response.SetRefreshTokenCookie(result.RefreshToken, env);
+        // RefreshToken is empty when this request lost a legitimate multi-tab rotation race
+        // (RefreshTokenCommandHandler's grace-period path) - the winning tab's request already
+        // set the cookie to the real successor token, so this response must not overwrite it.
+        if (!string.IsNullOrEmpty(result.RefreshToken))
+        {
+            Response.SetRefreshTokenCookie(result.RefreshToken, env);
+        }
+
         return Ok(result with { RefreshToken = string.Empty });
     }
 
