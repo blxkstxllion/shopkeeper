@@ -39,6 +39,11 @@ public class RestockFromSupplierCommandHandler(IAppDbContext db, ICurrentUserSer
         var supplier = await db.Suppliers.FirstOrDefaultAsync(s => s.Id == request.SupplierId, cancellationToken)
             ?? throw new NotFoundException(nameof(Supplier), request.SupplierId);
 
+        if (!supplier.IsActive)
+        {
+            throw new ConflictException("This supplier is inactive.");
+        }
+
         var product = await db.Products.FirstOrDefaultAsync(p => p.Id == request.ProductId, cancellationToken)
             ?? throw new NotFoundException(nameof(Product), request.ProductId);
 
