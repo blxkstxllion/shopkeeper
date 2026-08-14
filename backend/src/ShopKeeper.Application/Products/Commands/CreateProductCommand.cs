@@ -62,6 +62,16 @@ public class CreateProductCommandHandler(IAppDbContext db, ICurrentUserService c
             throw new ConflictException($"A product with SKU '{request.Sku}' already exists.");
         }
 
+        if (request.SupplierId.HasValue)
+        {
+            var supplier = await db.Suppliers.FirstOrDefaultAsync(s => s.Id == request.SupplierId.Value, cancellationToken)
+                ?? throw new NotFoundException(nameof(Supplier), request.SupplierId.Value);
+            if (!supplier.IsActive)
+            {
+                throw new ConflictException("This supplier is inactive.");
+            }
+        }
+
         var product = new Product
         {
             BusinessId = businessId,

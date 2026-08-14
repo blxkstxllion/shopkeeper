@@ -27,7 +27,7 @@ public class InviteEmployeeCommandValidator : AbstractValidator<InviteEmployeeCo
     }
 }
 
-public class InviteEmployeeCommandHandler(IAppDbContext db, ICurrentUserService currentUser, IEmailSender emailSender)
+public class InviteEmployeeCommandHandler(IAppDbContext db, ICurrentUserService currentUser, IEmailSender emailSender, IJwtTokenService jwt)
     : IRequestHandler<InviteEmployeeCommand, Guid>
 {
     public async Task<Guid> Handle(InviteEmployeeCommand request, CancellationToken cancellationToken)
@@ -40,6 +40,11 @@ public class InviteEmployeeCommandHandler(IAppDbContext db, ICurrentUserService 
 
         var role = await db.Roles.FirstOrDefaultAsync(r => r.Id == request.RoleId, cancellationToken)
             ?? throw new NotFoundException(nameof(Role), request.RoleId);
+
+        if (role.Name == DefaultRoles.Owner && !currentUser.IsOwner)
+        {
+            throw new ForbiddenAccessException("Only an owner can invite someone as an owner.");
+        }
 
         var existingUser = await db.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken);
         if (existingUser is not null)
@@ -64,22 +69,46 @@ public class InviteEmployeeCommandHandler(IAppDbContext db, ICurrentUserService 
         var business = await db.Businesses.Where(b => b.Id == businessId)
             .Select(b => b.Name).FirstAsync(cancellationToken);
 
+        // Raw token lives only in this local - never assigned to the entity, never logged, never
+        // returned to the caller. Only its hash is persisted, so a database read (backup, dump,
+        // compromised replica) can't yield a usable invite link.
+        var rawToken = Guid.NewGuid().ToString("N");
+
         var invitation = new PendingInvitation
         {
             BusinessId = businessId,
             Email = normalizedEmail,
             RoleId = request.RoleId,
             BranchId = request.BranchId,
-            Token = Guid.NewGuid().ToString("N"),
+            TokenHash = jwt.Hash(rawToken),
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(7),
             InvitedByUserId = inviterId,
         };
 
         db.PendingInvitations.Add(invitation);
-        await db.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // The precheck above is the fast path; this is the race-window safety net (backed by
+            // PendingInvitationConfiguration's partial unique index on (BusinessId, Email) WHERE
+            // AcceptedAt IS NULL). Only convert when the specific condition is confirmed true
+            // after the fact - anything else rethrows unchanged.
+            var stillPending = await db.PendingInvitations
+                .AnyAsync(i => i.Email == normalizedEmail && i.AcceptedAt == null, cancellationToken);
+            if (!stillPending)
+            {
+                throw;
+            }
+
+            throw new ConflictException("An invitation is already pending for this email.");
+        }
 
         await emailSender.SendBusinessInviteAsync(
-            normalizedEmail, business, $"{inviter.FirstName} {inviter.LastName}", invitation.Token, cancellationToken);
+            normalizedEmail, business, $"{inviter.FirstName} {inviter.LastName}", rawToken, cancellationToken);
 
         return invitation.Id;
     }

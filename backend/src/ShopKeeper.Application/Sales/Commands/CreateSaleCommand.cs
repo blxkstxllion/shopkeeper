@@ -93,7 +93,7 @@ public class CreateSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
             Branch = branch,
             CustomerId = request.CustomerId,
             CashierUserId = userId,
-            SaleNumber = await GenerateSaleNumberAsync(businessId, cancellationToken),
+            SaleNumber = await ClaimNextSaleNumberAsync(businessId, cancellationToken),
         };
 
         decimal subtotal = 0, totalCost = 0, lineDiscountTotal = 0;
@@ -127,6 +127,7 @@ public class CreateSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
             {
                 var newQuantity = stock.QuantityOnHand - line.Quantity;
                 stock.QuantityOnHand = newQuantity;
+                stock.RowVersion++;
 
                 db.InventoryTransactions.Add(new InventoryTransaction
                 {
@@ -194,7 +195,19 @@ public class CreateSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
         }
 
         db.Sales.Add(sale);
-        await db.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // A concurrent sale or stock adjustment moved one of this sale's ProductStock
+            // rows between our read and this write - ProductStock.RowVersion is what
+            // catches it. Surface a clean conflict rather than the raw EF exception; the
+            // caller (POS UI) can just retry with fresh stock numbers.
+            throw new ConflictException("Stock changed while this sale was being processed. Please try again.");
+        }
 
         var cashier = await db.Users.Where(u => u.Id == userId).Select(u => new { u.FirstName, u.LastName }).FirstAsync(cancellationToken);
         var customerName = request.CustomerId.HasValue
@@ -204,9 +217,42 @@ public class CreateSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
         return SaleMapper.ToDto(sale, branch.Name, $"{cashier.FirstName} {cashier.LastName}", customerName);
     }
 
-    private async Task<string> GenerateSaleNumberAsync(Guid businessId, CancellationToken ct)
+    /// <summary>
+    /// Claims the next sale number via BusinessSetting.NextSaleNumber (optimistic-concurrency
+    /// protected, see BusinessSetting.RowVersion) instead of COUNT(*)+1, which two concurrent
+    /// sales could both read as the same value and both then collide on the
+    /// (BusinessId, SaleNumber) unique index. Retries on DbUpdateConcurrencyException - the
+    /// same mechanism protecting ProductStock, reused here rather than a second technique.
+    /// Deliberately committed as its own SaveChangesAsync, not folded into the rest of the
+    /// sale's save: if the sale fails afterward for an unrelated reason, this number is burned
+    /// (a gap in the sequence), which is normal/accepted for invoice-style numbering.
+    /// </summary>
+    private async Task<string> ClaimNextSaleNumberAsync(Guid businessId, CancellationToken ct)
     {
-        var count = await db.Sales.IgnoreQueryFilters().CountAsync(s => s.BusinessId == businessId, ct);
-        return $"S-{count + 1:D6}";
+        var setting = await db.BusinessSettings.FirstOrDefaultAsync(s => s.BusinessId == businessId, ct)
+            ?? throw new ConflictException("This business has no settings configured.");
+
+        const int maxAttempts = 5;
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            var claimed = setting.NextSaleNumber;
+            setting.NextSaleNumber = claimed + 1;
+            setting.RowVersion++;
+
+            try
+            {
+                await db.SaveChangesAsync(ct);
+                return $"S-{claimed:D6}";
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                // Someone else claimed a number first - reload this tracked entity from its
+                // current DB values so the next attempt retries against fresh data instead
+                // of the same stale in-memory instance.
+                await ex.Entries.Single().ReloadAsync(ct);
+            }
+        }
+
+        throw new ConflictException("Unable to generate a sale number right now. Please try again.");
     }
 }

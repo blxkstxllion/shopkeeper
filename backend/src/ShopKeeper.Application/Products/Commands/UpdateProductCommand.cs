@@ -54,6 +54,19 @@ public class UpdateProductCommandHandler(IAppDbContext db, ICurrentUserService c
             throw new ConflictException($"A product with SKU '{request.Sku}' already exists.");
         }
 
+        // Only gate an actual *change* of supplier - a product that already points at a since-
+        // deactivated supplier must stay editable (name, price, etc.) without being forced to
+        // also change its supplier first.
+        if (request.SupplierId.HasValue && request.SupplierId != product.SupplierId)
+        {
+            var supplier = await db.Suppliers.FirstOrDefaultAsync(s => s.Id == request.SupplierId.Value, cancellationToken)
+                ?? throw new NotFoundException(nameof(Supplier), request.SupplierId.Value);
+            if (!supplier.IsActive)
+            {
+                throw new ConflictException("This supplier is inactive.");
+            }
+        }
+
         product.Name = request.Name.Trim();
         product.Sku = request.Sku.Trim();
         product.Barcode = string.IsNullOrWhiteSpace(request.Barcode) ? null : request.Barcode.Trim();

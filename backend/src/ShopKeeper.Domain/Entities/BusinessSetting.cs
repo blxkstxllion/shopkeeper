@@ -27,4 +27,14 @@ public class BusinessSetting : BaseEntity, ITenantEntity
     /// invite. Null means no active code. Regenerating overwrites this directly - no history
     /// is kept, the old code just stops working immediately.</summary>
     public string? JoinCode { get; set; }
+
+    /// <summary>Next sale number to hand out for this business, claimed via optimistic
+    /// concurrency + retry (see CreateSaleCommand.ClaimNextSaleNumberAsync) instead of
+    /// COUNT(*)+1, which two concurrent sales could both read as the same value.</summary>
+    public int NextSaleNumber { get; set; } = 1;
+
+    /// <summary>Optimistic concurrency token - same mechanism and reasoning as
+    /// ProductStock.RowVersion, reused here to protect NextSaleNumber's claim-and-increment
+    /// under concurrent sales rather than introducing a second technique.</summary>
+    public int RowVersion { get; set; }
 }
