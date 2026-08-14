@@ -51,6 +51,24 @@ public class SubmitJoinRequestForExistingUserCommandHandler(IAppDbContext db, IC
             UserId = userId,
         });
 
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // The precheck above is the fast path; this is the race-window safety net, backed by
+            // JoinRequestConfiguration's partial unique index on (BusinessId, UserId) WHERE
+            // Status = 'Pending'. Only convert when the specific condition is confirmed true
+            // after the fact - anything else rethrows unchanged.
+            var stillPending = await db.JoinRequests.IgnoreQueryFilters()
+                .AnyAsync(r => r.UserId == userId && r.BusinessId == setting.BusinessId && r.Status == JoinRequestStatus.Pending, cancellationToken);
+            if (!stillPending)
+            {
+                throw;
+            }
+
+            throw new ConflictException("You already have a pending request to join this business.");
+        }
     }
 }
