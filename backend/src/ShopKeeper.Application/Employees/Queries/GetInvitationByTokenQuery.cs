@@ -11,10 +11,12 @@ using ShopKeeper.Domain.Entities;
 /// page, so this can't go through the normal tenant-scoped query path.</summary>
 public record GetInvitationByTokenQuery(string Token) : IRequest<InvitationDetailsDto>;
 
-public class GetInvitationByTokenQueryHandler(IAppDbContext db) : IRequestHandler<GetInvitationByTokenQuery, InvitationDetailsDto>
+public class GetInvitationByTokenQueryHandler(IAppDbContext db, IJwtTokenService jwt) : IRequestHandler<GetInvitationByTokenQuery, InvitationDetailsDto>
 {
     public async Task<InvitationDetailsDto> Handle(GetInvitationByTokenQuery request, CancellationToken cancellationToken)
     {
+        var tokenHash = jwt.Hash(request.Token);
+
         // IgnoreQueryFilters: the caller has no active business (they aren't authenticated yet),
         // so the normal tenant filter would match nothing - this is the one deliberately
         // cross-tenant lookup an invitee needs before they've joined any business.
@@ -23,7 +25,7 @@ public class GetInvitationByTokenQueryHandler(IAppDbContext db) : IRequestHandle
             .Include(i => i.Business)
             .Include(i => i.Role)
             .Include(i => i.InvitedByUser)
-            .FirstOrDefaultAsync(i => i.Token == request.Token, cancellationToken)
+            .FirstOrDefaultAsync(i => i.TokenHash == tokenHash, cancellationToken)
             ?? throw new NotFoundException(nameof(PendingInvitation), request.Token);
 
         if (invitation.AcceptedAt is not null)

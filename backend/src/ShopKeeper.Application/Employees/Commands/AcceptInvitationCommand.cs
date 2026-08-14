@@ -7,6 +7,7 @@ using ShopKeeper.Application.Auth.Dtos;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Application.Common.Services;
+using ShopKeeper.Domain.Constants;
 using ShopKeeper.Domain.Entities;
 using ShopKeeper.Domain.Enums;
 
@@ -34,13 +35,14 @@ public class AcceptInvitationCommandValidator : AbstractValidator<AcceptInvitati
     }
 }
 
-public class AcceptInvitationCommandHandler(IAppDbContext db, IPasswordHasher hasher, TokenIssuer tokenIssuer)
+public class AcceptInvitationCommandHandler(IAppDbContext db, IPasswordHasher hasher, TokenIssuer tokenIssuer, IJwtTokenService jwt)
     : IRequestHandler<AcceptInvitationCommand, AuthResultDto>
 {
     public async Task<AuthResultDto> Handle(AcceptInvitationCommand request, CancellationToken cancellationToken)
     {
+        var tokenHash = jwt.Hash(request.Token);
         var invitation = await db.PendingInvitations.IgnoreQueryFilters()
-            .FirstOrDefaultAsync(i => i.Token == request.Token, cancellationToken)
+            .FirstOrDefaultAsync(i => i.TokenHash == tokenHash, cancellationToken)
             ?? throw new NotFoundException(nameof(PendingInvitation), request.Token);
 
         if (invitation.AcceptedAt is not null)
@@ -59,6 +61,13 @@ public class AcceptInvitationCommandHandler(IAppDbContext db, IPasswordHasher ha
             throw new ConflictException("An account with this email already exists. Please log in to accept this invitation.");
         }
 
+        // IgnoreQueryFilters: this request is unauthenticated (no tenant context yet), so the
+        // normal BusinessId == TenantBusinessId filter would exclude every Role, not just other
+        // tenants' - invitation.BusinessId is already a trusted, validated value from the token
+        // lookup above.
+        var roleName = await db.Roles.IgnoreQueryFilters()
+            .Where(r => r.Id == invitation.RoleId).Select(r => r.Name).FirstAsync(cancellationToken);
+
         var user = new User
         {
             Email = invitation.Email,
@@ -76,7 +85,7 @@ public class AcceptInvitationCommandHandler(IAppDbContext db, IPasswordHasher ha
             User = user,
             RoleId = invitation.RoleId,
             BranchId = invitation.BranchId,
-            IsOwner = false,
+            IsOwner = roleName == DefaultRoles.Owner,
             Status = BusinessUserStatus.Active,
             JoinedAt = DateTimeOffset.UtcNow,
         });
