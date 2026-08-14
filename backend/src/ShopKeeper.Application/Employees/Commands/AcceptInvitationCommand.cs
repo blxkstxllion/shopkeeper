@@ -35,13 +35,14 @@ public class AcceptInvitationCommandValidator : AbstractValidator<AcceptInvitati
     }
 }
 
-public class AcceptInvitationCommandHandler(IAppDbContext db, IPasswordHasher hasher, TokenIssuer tokenIssuer)
+public class AcceptInvitationCommandHandler(IAppDbContext db, IPasswordHasher hasher, TokenIssuer tokenIssuer, IJwtTokenService jwt)
     : IRequestHandler<AcceptInvitationCommand, AuthResultDto>
 {
     public async Task<AuthResultDto> Handle(AcceptInvitationCommand request, CancellationToken cancellationToken)
     {
+        var tokenHash = jwt.Hash(request.Token);
         var invitation = await db.PendingInvitations.IgnoreQueryFilters()
-            .FirstOrDefaultAsync(i => i.Token == request.Token, cancellationToken)
+            .FirstOrDefaultAsync(i => i.TokenHash == tokenHash, cancellationToken)
             ?? throw new NotFoundException(nameof(PendingInvitation), request.Token);
 
         if (invitation.AcceptedAt is not null)

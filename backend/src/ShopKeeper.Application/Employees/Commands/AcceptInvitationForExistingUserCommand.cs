@@ -26,15 +26,16 @@ public class AcceptInvitationForExistingUserCommandValidator : AbstractValidator
     public AcceptInvitationForExistingUserCommandValidator() => RuleFor(x => x.Token).NotEmpty();
 }
 
-public class AcceptInvitationForExistingUserCommandHandler(IAppDbContext db, ICurrentUserService currentUser, TokenIssuer tokenIssuer)
+public class AcceptInvitationForExistingUserCommandHandler(IAppDbContext db, ICurrentUserService currentUser, TokenIssuer tokenIssuer, IJwtTokenService jwt)
     : IRequestHandler<AcceptInvitationForExistingUserCommand, AuthResultDto>
 {
     public async Task<AuthResultDto> Handle(AcceptInvitationForExistingUserCommand request, CancellationToken cancellationToken)
     {
         var userId = currentUser.RequireUserId();
+        var tokenHash = jwt.Hash(request.Token);
 
         var invitation = await db.PendingInvitations.IgnoreQueryFilters()
-            .FirstOrDefaultAsync(i => i.Token == request.Token, cancellationToken)
+            .FirstOrDefaultAsync(i => i.TokenHash == tokenHash, cancellationToken)
             ?? throw new NotFoundException(nameof(PendingInvitation), request.Token);
 
         if (invitation.AcceptedAt is not null)

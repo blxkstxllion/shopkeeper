@@ -27,7 +27,7 @@ public class EmployeesTests : IDisposable
         var context = _db.CreateContext(owner);
         var cashierRole = await context.Roles.SingleAsync(r => r.Name == DefaultRoles.Cashier);
 
-        await new InviteEmployeeCommandHandler(context, owner, _emailSender).Handle(
+        await new InviteEmployeeCommandHandler(context, owner, _emailSender, _jwt).Handle(
             new InviteEmployeeCommand("newhire@shop.test", cashierRole.Id, seeded.BranchId), CancellationToken.None);
 
         var invitation = await context.PendingInvitations.SingleAsync();
@@ -37,7 +37,12 @@ public class EmployeesTests : IDisposable
 
         Assert.NotNull(_emailSender.LastInvite);
         Assert.Equal("newhire@shop.test", _emailSender.LastInvite!.Value.ToEmail);
-        Assert.Equal(invitation.Token, _emailSender.LastInvite!.Value.InviteToken);
+
+        // The raw token only ever goes out via email - the persisted row holds a hash, not the
+        // usable value, so a database read can't yield a working invite link.
+        var rawToken = _emailSender.LastInvite!.Value.InviteToken;
+        Assert.NotEqual(rawToken, invitation.TokenHash);
+        Assert.DoesNotContain(rawToken, invitation.TokenHash);
     }
 
     [Fact]
@@ -48,10 +53,10 @@ public class EmployeesTests : IDisposable
         var context = _db.CreateContext(owner);
         var cashierRole = await context.Roles.SingleAsync(r => r.Name == DefaultRoles.Cashier);
 
-        await new InviteEmployeeCommandHandler(context, owner, _emailSender).Handle(
+        await new InviteEmployeeCommandHandler(context, owner, _emailSender, _jwt).Handle(
             new InviteEmployeeCommand("dupe@shop.test", cashierRole.Id, null), CancellationToken.None);
 
-        await Assert.ThrowsAsync<ConflictException>(() => new InviteEmployeeCommandHandler(context, owner, _emailSender).Handle(
+        await Assert.ThrowsAsync<ConflictException>(() => new InviteEmployeeCommandHandler(context, owner, _emailSender, _jwt).Handle(
             new InviteEmployeeCommand("dupe@shop.test", cashierRole.Id, null), CancellationToken.None));
     }
 
@@ -71,7 +76,7 @@ public class EmployeesTests : IDisposable
             PermissionsList = DefaultRoles.RolePermissionKeys[DefaultRoles.Cashier].ToList(),
         };
 
-        await Assert.ThrowsAsync<ForbiddenAccessException>(() => new InviteEmployeeCommandHandler(context, cashier, _emailSender).Handle(
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() => new InviteEmployeeCommandHandler(context, cashier, _emailSender, _jwt).Handle(
             new InviteEmployeeCommand("someone@shop.test", cashierRole.Id, null), CancellationToken.None));
     }
 
@@ -83,12 +88,12 @@ public class EmployeesTests : IDisposable
         var context = _db.CreateContext(owner);
         var cashierRole = await context.Roles.SingleAsync(r => r.Name == DefaultRoles.Cashier);
 
-        await new InviteEmployeeCommandHandler(context, owner, _emailSender).Handle(
+        await new InviteEmployeeCommandHandler(context, owner, _emailSender, _jwt).Handle(
             new InviteEmployeeCommand("newhire@shop.test", cashierRole.Id, seeded.BranchId), CancellationToken.None);
         var token = _emailSender.LastInvite!.Value.InviteToken;
 
         var tokenIssuer = new TokenIssuer(context, _jwt);
-        var result = await new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer).Handle(
+        var result = await new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
             new AcceptInvitationCommand(token, "Passw0rd!", "Kofi", "Mensah", null), CancellationToken.None);
 
         Assert.Equal("newhire@shop.test", result.User.Email);
@@ -113,15 +118,16 @@ public class EmployeesTests : IDisposable
         var context = _db.CreateContext(owner);
         var cashierRole = await context.Roles.SingleAsync(r => r.Name == DefaultRoles.Cashier);
 
-        await new InviteEmployeeCommandHandler(context, owner, _emailSender).Handle(
+        await new InviteEmployeeCommandHandler(context, owner, _emailSender, _jwt).Handle(
             new InviteEmployeeCommand("expired@shop.test", cashierRole.Id, null), CancellationToken.None);
+        var token = _emailSender.LastInvite!.Value.InviteToken;
         var invitation = await context.PendingInvitations.SingleAsync();
         invitation.ExpiresAt = DateTimeOffset.UtcNow.AddDays(-1);
         await context.SaveChangesAsync(CancellationToken.None);
 
         var tokenIssuer = new TokenIssuer(context, _jwt);
-        await Assert.ThrowsAsync<ConflictException>(() => new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer).Handle(
-            new AcceptInvitationCommand(invitation.Token, "Passw0rd!", "Kofi", "Mensah", null), CancellationToken.None));
+        await Assert.ThrowsAsync<ConflictException>(() => new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
+            new AcceptInvitationCommand(token, "Passw0rd!", "Kofi", "Mensah", null), CancellationToken.None));
     }
 
     [Fact]
@@ -137,14 +143,14 @@ public class EmployeesTests : IDisposable
         var registerResult = await new RegisterCommandHandler(context, _hasher, tokenIssuer).Handle(
             new RegisterCommand("existing@shop.test", "Passw0rd!", "Ama", "Boateng", null), CancellationToken.None);
 
-        await new InviteEmployeeCommandHandler(context, owner, _emailSender).Handle(
+        await new InviteEmployeeCommandHandler(context, owner, _emailSender, _jwt).Handle(
             new InviteEmployeeCommand("existing@shop.test", cashierRole.Id, seeded.BranchId), CancellationToken.None);
         var token = _emailSender.LastInvite!.Value.InviteToken;
 
         var invitee = new TestCurrentUserService { UserId = registerResult.User.Id, IsOwner = false };
         var inviteeContext = _db.CreateContext(invitee);
 
-        var result = await new AcceptInvitationForExistingUserCommandHandler(inviteeContext, invitee, tokenIssuer).Handle(
+        var result = await new AcceptInvitationForExistingUserCommandHandler(inviteeContext, invitee, tokenIssuer, _jwt).Handle(
             new AcceptInvitationForExistingUserCommand(token, null), CancellationToken.None);
 
         Assert.Equal(seeded.BusinessId, result.User.Businesses.Single(b => b.BusinessId == seeded.BusinessId).BusinessId);
@@ -175,10 +181,10 @@ public class EmployeesTests : IDisposable
         var tokenIssuer = new TokenIssuer(context, _jwt);
         var cashierRole = await context.Roles.SingleAsync(r => r.Name == DefaultRoles.Cashier);
 
-        await new InviteEmployeeCommandHandler(context, owner, _emailSender).Handle(
+        await new InviteEmployeeCommandHandler(context, owner, _emailSender, _jwt).Handle(
             new InviteEmployeeCommand("newhire@shop.test", cashierRole.Id, null), CancellationToken.None);
         var token = _emailSender.LastInvite!.Value.InviteToken;
-        await new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer).Handle(
+        await new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
             new AcceptInvitationCommand(token, "Passw0rd!", "Kofi", "Mensah", null), CancellationToken.None);
 
         var membership = await context.BusinessUsers.IgnoreQueryFilters()
@@ -188,6 +194,69 @@ public class EmployeesTests : IDisposable
 
         var updated = await context.BusinessUsers.IgnoreQueryFilters().SingleAsync(bu => bu.Id == membership.Id);
         Assert.Equal(BusinessUserStatus.Removed, updated.Status);
+    }
+
+    [Fact]
+    public async Task AcceptInvitation_WrongToken_ThrowsNotFound()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var context = _db.CreateContext(owner);
+        var tokenIssuer = new TokenIssuer(context, _jwt);
+
+        await Assert.ThrowsAsync<NotFoundException>(() => new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
+            new AcceptInvitationCommand("not-a-real-token", "Passw0rd!", "Kofi", "Mensah", null), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task AcceptInvitation_TokenAlreadyAccepted_ThrowsConflict()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var context = _db.CreateContext(owner);
+        var tokenIssuer = new TokenIssuer(context, _jwt);
+        var cashierRole = await context.Roles.SingleAsync(r => r.Name == DefaultRoles.Cashier);
+
+        await new InviteEmployeeCommandHandler(context, owner, _emailSender, _jwt).Handle(
+            new InviteEmployeeCommand("newhire@shop.test", cashierRole.Id, null), CancellationToken.None);
+        var token = _emailSender.LastInvite!.Value.InviteToken;
+
+        await new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
+            new AcceptInvitationCommand(token, "Passw0rd!", "Kofi", "Mensah", null), CancellationToken.None);
+
+        // Reusing the same (still-valid-looking) raw token a second time must not be usable -
+        // proves hashing didn't regress the existing single-use enforcement.
+        await Assert.ThrowsAsync<ConflictException>(() => new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
+            new AcceptInvitationCommand(token, "Passw0rd!", "Kofi", "Mensah", null), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task GetInvitationByToken_ValidToken_ResolvesInvitationDetails()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var context = _db.CreateContext(owner);
+        var cashierRole = await context.Roles.SingleAsync(r => r.Name == DefaultRoles.Cashier);
+
+        await new InviteEmployeeCommandHandler(context, owner, _emailSender, _jwt).Handle(
+            new InviteEmployeeCommand("newhire@shop.test", cashierRole.Id, null), CancellationToken.None);
+        var token = _emailSender.LastInvite!.Value.InviteToken;
+
+        var details = await new GetInvitationByTokenQueryHandler(context, _jwt).Handle(
+            new GetInvitationByTokenQuery(token), CancellationToken.None);
+
+        Assert.Equal("newhire@shop.test", details.Email);
+        Assert.Equal(seeded.BusinessId, details.BusinessId);
+    }
+
+    [Fact]
+    public async Task GetInvitationByToken_WrongToken_ThrowsNotFound()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var context = _db.CreateContext(seeded.AsOwner());
+
+        await Assert.ThrowsAsync<NotFoundException>(() => new GetInvitationByTokenQueryHandler(context, _jwt).Handle(
+            new GetInvitationByTokenQuery("not-a-real-token"), CancellationToken.None));
     }
 
     [Fact]
@@ -205,7 +274,7 @@ public class EmployeesTests : IDisposable
             PermissionsList = DefaultRoles.RolePermissionKeys[DefaultRoles.Administrator].ToList(),
         };
 
-        await Assert.ThrowsAsync<ForbiddenAccessException>(() => new InviteEmployeeCommandHandler(context, administrator, _emailSender).Handle(
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() => new InviteEmployeeCommandHandler(context, administrator, _emailSender, _jwt).Handle(
             new InviteEmployeeCommand("wannabe-owner@shop.test", ownerRole.Id, null), CancellationToken.None));
     }
 
@@ -231,7 +300,7 @@ public class EmployeesTests : IDisposable
         };
 
         // A non-owner managing a non-Owner role is normal, unaffected employee management.
-        await new InviteEmployeeCommandHandler(context, administrator, _emailSender).Handle(
+        await new InviteEmployeeCommandHandler(context, administrator, _emailSender, _jwt).Handle(
             new InviteEmployeeCommand("newhire@shop.test", cashierRole.Id, null), CancellationToken.None);
 
         Assert.NotNull(_emailSender.LastInvite);
@@ -245,7 +314,7 @@ public class EmployeesTests : IDisposable
         var context = _db.CreateContext(owner);
         var ownerRole = await context.Roles.SingleAsync(r => r.Name == DefaultRoles.Owner);
 
-        await new InviteEmployeeCommandHandler(context, owner, _emailSender).Handle(
+        await new InviteEmployeeCommandHandler(context, owner, _emailSender, _jwt).Handle(
             new InviteEmployeeCommand("co-owner@shop.test", ownerRole.Id, null), CancellationToken.None);
 
         Assert.NotNull(_emailSender.LastInvite);
@@ -259,12 +328,12 @@ public class EmployeesTests : IDisposable
         var context = _db.CreateContext(owner);
         var ownerRole = await context.Roles.SingleAsync(r => r.Name == DefaultRoles.Owner);
 
-        await new InviteEmployeeCommandHandler(context, owner, _emailSender).Handle(
+        await new InviteEmployeeCommandHandler(context, owner, _emailSender, _jwt).Handle(
             new InviteEmployeeCommand("co-owner@shop.test", ownerRole.Id, null), CancellationToken.None);
         var token = _emailSender.LastInvite!.Value.InviteToken;
 
         var tokenIssuer = new TokenIssuer(context, _jwt);
-        await new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer).Handle(
+        await new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
             new AcceptInvitationCommand(token, "Passw0rd!", "Kwame", "Asante", null), CancellationToken.None);
 
         var membership = await context.BusinessUsers.IgnoreQueryFilters()
@@ -284,14 +353,14 @@ public class EmployeesTests : IDisposable
         var registerResult = await new RegisterCommandHandler(context, _hasher, tokenIssuer).Handle(
             new RegisterCommand("existing-coowner@shop.test", "Passw0rd!", "Yaw", "Darko", null), CancellationToken.None);
 
-        await new InviteEmployeeCommandHandler(context, owner, _emailSender).Handle(
+        await new InviteEmployeeCommandHandler(context, owner, _emailSender, _jwt).Handle(
             new InviteEmployeeCommand("existing-coowner@shop.test", ownerRole.Id, null), CancellationToken.None);
         var token = _emailSender.LastInvite!.Value.InviteToken;
 
         var invitee = new TestCurrentUserService { UserId = registerResult.User.Id, IsOwner = false };
         var inviteeContext = _db.CreateContext(invitee);
 
-        await new AcceptInvitationForExistingUserCommandHandler(inviteeContext, invitee, tokenIssuer).Handle(
+        await new AcceptInvitationForExistingUserCommandHandler(inviteeContext, invitee, tokenIssuer, _jwt).Handle(
             new AcceptInvitationForExistingUserCommand(token, null), CancellationToken.None);
 
         var membership = await context.BusinessUsers.IgnoreQueryFilters()
@@ -332,10 +401,10 @@ public class EmployeesTests : IDisposable
         var ownerRole = await context.Roles.SingleAsync(r => r.Name == DefaultRoles.Owner);
 
         // Bring in a second co-owner so removing one still leaves an active owner behind.
-        await new InviteEmployeeCommandHandler(context, owner, _emailSender).Handle(
+        await new InviteEmployeeCommandHandler(context, owner, _emailSender, _jwt).Handle(
             new InviteEmployeeCommand("co-owner@shop.test", ownerRole.Id, null), CancellationToken.None);
         var token = _emailSender.LastInvite!.Value.InviteToken;
-        await new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer).Handle(
+        await new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
             new AcceptInvitationCommand(token, "Passw0rd!", "Kwame", "Asante", null), CancellationToken.None);
 
         var coOwnerMembership = await context.BusinessUsers.IgnoreQueryFilters()
@@ -374,7 +443,7 @@ public class EmployeesTests : IDisposable
         var context = _db.CreateContext(owner);
         var cashierRole = await context.Roles.SingleAsync(r => r.Name == DefaultRoles.Cashier);
 
-        await new InviteEmployeeCommandHandler(context, owner, _emailSender).Handle(
+        await new InviteEmployeeCommandHandler(context, owner, _emailSender, _jwt).Handle(
             new InviteEmployeeCommand("pending@shop.test", cashierRole.Id, null), CancellationToken.None);
 
         var result = await new GetBusinessUsersQueryHandler(context, owner).Handle(new GetBusinessUsersQuery(), CancellationToken.None);
