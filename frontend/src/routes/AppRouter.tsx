@@ -18,6 +18,7 @@ import { SuppliersPage } from '@/features/suppliers/SuppliersPage'
 import { CustomersPage } from '@/features/customers/CustomersPage'
 import { EmployeesPage } from '@/features/employees/EmployeesPage'
 import { AcceptInvitePage } from '@/features/auth/AcceptInvitePage'
+import { JoinPage } from '@/features/auth/JoinPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { ComingSoon } from '@/components/ComingSoon'
 import { RequireActiveBusiness, RequireAuth, RedirectIfAuthed } from './guards'
@@ -38,6 +39,7 @@ export function AppRouter() {
       />
 
       <Route path="/accept-invite" element={<AcceptInvitePage />} />
+      <Route path="/join" element={<JoinPage />} />
 
       <Route
         element={

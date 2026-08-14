@@ -25,9 +25,19 @@ export interface PendingInvitationItem {
   expiresAt: string
 }
 
+export interface JoinRequestItem {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  phone: string | null
+  requestedAt: string
+}
+
 export interface BusinessUsersResponse {
   members: BusinessMember[]
   pendingInvitations: PendingInvitationItem[]
+  joinRequests: JoinRequestItem[]
 }
 
 export interface InvitationDetails {

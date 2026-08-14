@@ -10,6 +10,8 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { formatDateTime } from '@/lib/format'
 import type { ApiErrorPayload } from '@/types/auth'
 import { InviteEmployeeModal } from './InviteEmployeeModal'
+import { JoinCodeCard } from './JoinCodeCard'
+import { JoinRequestsSection } from './JoinRequestsSection'
 
 export function EmployeesPage() {
   const queryClient = useQueryClient()
@@ -51,6 +53,8 @@ export function EmployeesPage() {
           <Alert tone="error">{actionError}</Alert>
         </div>
       )}
+
+      <JoinCodeCard />
 
       <Card className="mb-6 overflow-hidden">
         {isLoading ? (
@@ -155,6 +159,8 @@ export function EmployeesPage() {
           </Card>
         </>
       )}
+
+      <JoinRequestsSection requests={data?.joinRequests ?? []} />
 
       <InviteEmployeeModal isOpen={inviteOpen} onClose={() => setInviteOpen(false)} />
     </div>
