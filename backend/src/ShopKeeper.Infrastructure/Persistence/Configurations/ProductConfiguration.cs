@@ -57,6 +57,7 @@ public class ProductStockConfiguration : IEntityTypeConfiguration<ProductStock>
     {
         builder.ToTable("ProductStocks");
         builder.HasIndex(s => new { s.ProductId, s.BranchId }).IsUnique();
+        builder.Property(s => s.RowVersion).IsConcurrencyToken();
 
         builder.HasOne(s => s.Product)
             .WithMany(p => p.StockByBranch)
