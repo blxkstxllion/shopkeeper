@@ -19,7 +19,10 @@ public class PendingInvitation : BaseEntity, ITenantEntity
     public Guid? BranchId { get; set; }
     public Branch? Branch { get; set; }
 
-    public string Token { get; set; } = default!;
+    /// <summary>SHA-256 hash of the raw invite token (same IJwtTokenService.Hash used for
+    /// RefreshToken.TokenHash) - the raw value is only ever held in memory long enough to email
+    /// it, never persisted, so a database read can't leak a usable invite link.</summary>
+    public string TokenHash { get; set; } = default!;
     public DateTimeOffset ExpiresAt { get; set; }
 
     public Guid InvitedByUserId { get; set; }
