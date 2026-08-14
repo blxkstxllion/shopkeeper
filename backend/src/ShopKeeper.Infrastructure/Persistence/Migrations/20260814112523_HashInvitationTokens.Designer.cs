@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using ShopKeeper.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using ShopKeeper.Infrastructure.Persistence;
 namespace ShopKeeper.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260814112523_HashInvitationTokens")]
+    partial class HashInvitationTokens
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -202,13 +205,6 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Goals")
                         .HasColumnType("text");
-
-                    b.Property<int>("NextSaleNumber")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("RowVersion")
-                        .IsConcurrencyToken()
-                        .HasColumnType("integer");
 
                     b.Property<bool>("TaxEnabled")
                         .HasColumnType("boolean");
@@ -903,10 +899,6 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<int>("QuantityOnHand")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("RowVersion")
-                        .IsConcurrencyToken()
                         .HasColumnType("integer");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
