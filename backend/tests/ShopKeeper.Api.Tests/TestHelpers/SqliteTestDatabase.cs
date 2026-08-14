@@ -10,7 +10,7 @@ using ShopKeeper.Infrastructure.Persistence;
 /// translation, unique indexes, and HasData seeding (unlike the InMemory provider).
 /// The connection must stay open for the database's lifetime; closing it drops everything.
 /// </summary>
-public sealed class SqliteTestDatabase : IDisposable
+public sealed class SqliteTestDatabase : ITestDatabase, IDisposable
 {
     private readonly SqliteConnection _connection;
     private bool _created;

@@ -10,7 +10,14 @@ public class PendingInvitationConfiguration : IEntityTypeConfiguration<PendingIn
     {
         builder.ToTable("PendingInvitations");
         builder.HasIndex(i => i.Token).IsUnique();
-        builder.HasIndex(i => new { i.BusinessId, i.Email });
+
+        // Partial unique index: at most one still-pending (not yet accepted) invitation per
+        // business+email. This is the actual DB-level guard behind InviteEmployeeCommand's
+        // "already invited" check - without it, two concurrent invites for the same email have
+        // nothing stopping both inserts from succeeding.
+        builder.HasIndex(i => new { i.BusinessId, i.Email })
+            .IsUnique()
+            .HasFilter("\"AcceptedAt\" IS NULL");
 
         builder.Property(i => i.Email).HasMaxLength(256).IsRequired();
         builder.Property(i => i.Token).HasMaxLength(64).IsRequired();
