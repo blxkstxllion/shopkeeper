@@ -38,13 +38,18 @@ public class ApproveJoinRequestCommandHandler(IAppDbContext db, ICurrentUserServ
         var role = await db.Roles.FirstOrDefaultAsync(r => r.Id == request.RoleId, cancellationToken)
             ?? throw new NotFoundException(nameof(Role), request.RoleId);
 
+        if (role.Name == DefaultRoles.Owner && !currentUser.IsOwner)
+        {
+            throw new ForbiddenAccessException("Only an owner can approve someone as an owner.");
+        }
+
         db.BusinessUsers.Add(new BusinessUser
         {
             BusinessId = joinRequest.BusinessId,
             UserId = joinRequest.UserId,
             RoleId = role.Id,
             BranchId = request.BranchId,
-            IsOwner = false,
+            IsOwner = role.Name == DefaultRoles.Owner,
             Status = BusinessUserStatus.Active,
             JoinedAt = DateTimeOffset.UtcNow,
         });
