@@ -76,7 +76,26 @@ public class InviteEmployeeCommandHandler(IAppDbContext db, ICurrentUserService 
         };
 
         db.PendingInvitations.Add(invitation);
-        await db.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // The precheck above is the fast path; this is the race-window safety net (backed by
+            // PendingInvitationConfiguration's partial unique index on (BusinessId, Email) WHERE
+            // AcceptedAt IS NULL). Only convert when the specific condition is confirmed true
+            // after the fact - anything else rethrows unchanged.
+            var stillPending = await db.PendingInvitations
+                .AnyAsync(i => i.Email == normalizedEmail && i.AcceptedAt == null, cancellationToken);
+            if (!stillPending)
+            {
+                throw;
+            }
+
+            throw new ConflictException("An invitation is already pending for this email.");
+        }
 
         await emailSender.SendBusinessInviteAsync(
             normalizedEmail, business, $"{inviter.FirstName} {inviter.LastName}", invitation.Token, cancellationToken);
