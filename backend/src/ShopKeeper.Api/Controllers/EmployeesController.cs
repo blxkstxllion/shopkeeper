@@ -15,6 +15,7 @@ public class EmployeesController(ISender mediator, IWebHostEnvironment env) : Co
 {
     public record InviteRequest(string Email, Guid RoleId, Guid? BranchId);
     public record AcceptInvitationRequest(string Password, string FirstName, string LastName);
+    public record ApproveJoinRequestRequest(Guid RoleId, Guid? BranchId);
 
     [Authorize]
     [HttpGet]
@@ -61,5 +62,39 @@ public class EmployeesController(ISender mediator, IWebHostEnvironment env) : Co
 
         Response.SetRefreshTokenCookie(result.RefreshToken, env);
         return Ok(result with { RefreshToken = string.Empty });
+    }
+
+    [Authorize]
+    [HttpGet("join-code")]
+    public async Task<ActionResult<object>> GetJoinCode(CancellationToken ct) =>
+        Ok(new { code = await mediator.Send(new GetJoinCodeQuery(), ct) });
+
+    [Authorize]
+    [HttpPost("join-code/regenerate")]
+    public async Task<ActionResult<object>> RegenerateJoinCode(CancellationToken ct) =>
+        Ok(new { code = await mediator.Send(new RegenerateJoinCodeCommand(), ct) });
+
+    [Authorize]
+    [HttpDelete("join-code")]
+    public async Task<IActionResult> RevokeJoinCode(CancellationToken ct)
+    {
+        await mediator.Send(new RevokeJoinCodeCommand(), ct);
+        return NoContent();
+    }
+
+    [Authorize]
+    [HttpPost("join-requests/{id:guid}/approve")]
+    public async Task<IActionResult> ApproveJoinRequest(Guid id, ApproveJoinRequestRequest request, CancellationToken ct)
+    {
+        await mediator.Send(new ApproveJoinRequestCommand(id, request.RoleId, request.BranchId), ct);
+        return NoContent();
+    }
+
+    [Authorize]
+    [HttpPost("join-requests/{id:guid}/reject")]
+    public async Task<IActionResult> RejectJoinRequest(Guid id, CancellationToken ct)
+    {
+        await mediator.Send(new RejectJoinRequestCommand(id), ct);
+        return NoContent();
     }
 }

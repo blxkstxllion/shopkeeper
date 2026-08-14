@@ -22,9 +22,22 @@ public record PendingInvitationDto(
     DateTimeOffset InvitedAt,
     DateTimeOffset ExpiresAt);
 
+public record JoinRequestItemDto(
+    Guid Id,
+    string FirstName,
+    string LastName,
+    string Email,
+    string? Phone,
+    DateTimeOffset RequestedAt);
+
 public record BusinessUsersDto(
     IReadOnlyList<BusinessMemberDto> Members,
-    IReadOnlyList<PendingInvitationDto> PendingInvitations);
+    IReadOnlyList<PendingInvitationDto> PendingInvitations,
+    IReadOnlyList<JoinRequestItemDto> JoinRequests);
+
+/// <summary>Returned by the unauthenticated join-code lookup - just enough to render the
+/// "Join {BusinessName}" landing page before the visitor has an account or is logged in.</summary>
+public record JoinBusinessDto(Guid BusinessId, string BusinessName);
 
 /// <summary>UserAlreadyExists tells the accept-invite page whether to render a set-password
 /// form (new user) or a "log in, then accept" prompt (existing user) - see AcceptInvitationCommand
