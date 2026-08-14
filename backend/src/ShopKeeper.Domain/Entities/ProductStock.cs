@@ -20,4 +20,12 @@ public class ProductStock : BaseEntity, ITenantEntity
     public Branch Branch { get; set; } = default!;
 
     public int QuantityOnHand { get; set; }
+
+    /// <summary>Optimistic concurrency token, incremented by hand on every QuantityOnHand
+    /// change. EF Core includes it in the generated UPDATE's WHERE clause and throws
+    /// DbUpdateConcurrencyException if the row moved since it was read - this is what stops
+    /// two simultaneous sales from both reading the same stock and both succeeding. A plain
+    /// int rather than Postgres's native `xmin` because the same model has to work against
+    /// the SQLite provider the test suite runs on.</summary>
+    public int RowVersion { get; set; }
 }

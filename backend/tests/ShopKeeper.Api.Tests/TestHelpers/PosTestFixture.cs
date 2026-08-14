@@ -24,7 +24,7 @@ public static class PosTestFixture
     public record SeededBusiness(Guid BusinessId, Guid BranchId, Guid OwnerId);
 
     public static async Task<SeededBusiness> SeedAsync(
-        SqliteTestDatabase db, BcryptPasswordHasher hasher, JwtTokenService jwt, string ownerEmail = "owner@shop.test")
+        ITestDatabase db, BcryptPasswordHasher hasher, JwtTokenService jwt, string ownerEmail = "owner@shop.test")
     {
         var setupUser = new TestCurrentUserService();
         var context = db.CreateContext(setupUser);
