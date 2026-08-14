@@ -83,7 +83,23 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUserSe
         return filter;
     }
 
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        StampTimestamps();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        StampTimestamps();
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>Only IAppDbContext.SaveChangesAsync is exposed to Application-layer code, so the
+    /// sync SaveChanges override exists for completeness (anything calling the concrete
+    /// AppDbContext or the base DbContext directly, e.g. EF tooling) rather than a code path
+    /// this app currently uses - kept in sync with the async path so it can't silently drift.</summary>
+    private void StampTimestamps()
     {
         var now = DateTimeOffset.UtcNow;
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
@@ -98,7 +114,5 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUserSe
                 entry.Entity.UpdatedAt = now;
             }
         }
-
-        return base.SaveChangesAsync(cancellationToken);
     }
 }

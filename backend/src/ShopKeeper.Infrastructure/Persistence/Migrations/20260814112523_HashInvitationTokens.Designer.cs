@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using ShopKeeper.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using ShopKeeper.Infrastructure.Persistence;
 namespace ShopKeeper.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260814112523_HashInvitationTokens")]
+    partial class HashInvitationTokens
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -203,17 +206,6 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                     b.Property<string>("Goals")
                         .HasColumnType("text");
 
-                    b.Property<string>("JoinCode")
-                        .HasMaxLength(8)
-                        .HasColumnType("character varying(8)");
-
-                    b.Property<int>("NextSaleNumber")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("RowVersion")
-                        .IsConcurrencyToken()
-                        .HasColumnType("integer");
-
                     b.Property<bool>("TaxEnabled")
                         .HasColumnType("boolean");
 
@@ -233,9 +225,6 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BusinessId")
-                        .IsUnique();
-
-                    b.HasIndex("JoinCode")
                         .IsUnique();
 
                     b.ToTable("BusinessSettings", (string)null);
@@ -474,46 +463,6 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                     b.ToTable("InventoryTransactions", (string)null);
                 });
 
-            modelBuilder.Entity("ShopKeeper.Domain.Entities.JoinRequest", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("BusinessId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset?>("ReviewedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("ReviewedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ReviewedByUserId");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("BusinessId", "Status");
-
-                    b.ToTable("JoinRequests", (string)null);
-                });
-
             modelBuilder.Entity("ShopKeeper.Domain.Entities.Payment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -605,9 +554,7 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                     b.HasIndex("TokenHash")
                         .IsUnique();
 
-                    b.HasIndex("BusinessId", "Email")
-                        .IsUnique()
-                        .HasFilter("\"AcceptedAt\" IS NULL");
+                    b.HasIndex("BusinessId", "Email");
 
                     b.ToTable("PendingInvitations", (string)null);
                 });
@@ -952,10 +899,6 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<int>("QuantityOnHand")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("RowVersion")
-                        .IsConcurrencyToken()
                         .HasColumnType("integer");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
@@ -1563,32 +1506,6 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                     b.Navigation("Business");
 
                     b.Navigation("Product");
-                });
-
-            modelBuilder.Entity("ShopKeeper.Domain.Entities.JoinRequest", b =>
-                {
-                    b.HasOne("ShopKeeper.Domain.Entities.Business", "Business")
-                        .WithMany()
-                        .HasForeignKey("BusinessId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("ShopKeeper.Domain.Entities.User", "ReviewedByUser")
-                        .WithMany()
-                        .HasForeignKey("ReviewedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("ShopKeeper.Domain.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Business");
-
-                    b.Navigation("ReviewedByUser");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("ShopKeeper.Domain.Entities.Payment", b =>
