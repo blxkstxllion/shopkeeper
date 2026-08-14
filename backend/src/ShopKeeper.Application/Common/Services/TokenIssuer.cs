@@ -18,6 +18,42 @@ public class TokenIssuer(IAppDbContext db, IJwtTokenService jwt)
     public async Task<AuthResultDto> IssueAsync(
         User user, Guid? activeBusinessId, string? ipAddress, string? userAgent, CancellationToken ct)
     {
+        var (accessToken, userDto, resolvedBusinessId) = await BuildAccessTokenAsync(user, activeBusinessId, ct);
+        var refreshTokenValue = jwt.GenerateRefreshTokenValue();
+
+        db.RefreshTokens.Add(new RefreshToken
+        {
+            UserId = user.Id,
+            ActiveBusinessId = resolvedBusinessId,
+            TokenHash = jwt.Hash(refreshTokenValue),
+            ExpiresAt = DateTimeOffset.UtcNow.AddDays(RefreshTokenLifetimeDays),
+            CreatedByIp = ipAddress,
+            UserAgent = userAgent,
+        });
+        await db.SaveChangesAsync(ct);
+
+        return new AuthResultDto(
+            accessToken,
+            refreshTokenValue,
+            DateTimeOffset.UtcNow.AddMinutes(AccessTokenLifetimeMinutes),
+            userDto);
+    }
+
+    /// <summary>
+    /// Used only for the refresh-token grace-period race (RefreshTokenCommandHandler): when a
+    /// second, near-simultaneous refresh request presents a token that a first request already
+    /// rotated, the caller already has a valid successor RefreshToken - this hands back a fresh
+    /// access token for the same session without creating a second RefreshToken row.
+    /// </summary>
+    public async Task<AuthResultDto> IssueAccessTokenOnlyAsync(User user, Guid? activeBusinessId, CancellationToken ct)
+    {
+        var (accessToken, userDto, _) = await BuildAccessTokenAsync(user, activeBusinessId, ct);
+        return new AuthResultDto(accessToken, string.Empty, DateTimeOffset.UtcNow.AddMinutes(AccessTokenLifetimeMinutes), userDto);
+    }
+
+    private async Task<(string AccessToken, UserDto UserDto, Guid? ResolvedBusinessId)> BuildAccessTokenAsync(
+        User user, Guid? activeBusinessId, CancellationToken ct)
+    {
         var memberships = await db.BusinessUsers
             .IgnoreQueryFilters()
             .Where(bu => bu.UserId == user.Id && bu.Status != Domain.Enums.BusinessUserStatus.Removed)
@@ -40,18 +76,6 @@ public class TokenIssuer(IAppDbContext db, IJwtTokenService jwt)
             IsOwner: active?.IsOwner ?? false);
 
         var accessToken = jwt.GenerateAccessToken(claims);
-        var refreshTokenValue = jwt.GenerateRefreshTokenValue();
-
-        db.RefreshTokens.Add(new RefreshToken
-        {
-            UserId = user.Id,
-            ActiveBusinessId = active?.BusinessId,
-            TokenHash = jwt.Hash(refreshTokenValue),
-            ExpiresAt = DateTimeOffset.UtcNow.AddDays(RefreshTokenLifetimeDays),
-            CreatedByIp = ipAddress,
-            UserAgent = userAgent,
-        });
-        await db.SaveChangesAsync(ct);
 
         var userDto = new UserDto(
             user.Id,
@@ -62,10 +86,6 @@ public class TokenIssuer(IAppDbContext db, IJwtTokenService jwt)
             memberships.Select(m => new UserBusinessDto(
                 m.BusinessId, m.Business.Name, m.Role.Name, m.IsOwner, m.Business.OnboardingCompleted)).ToList());
 
-        return new AuthResultDto(
-            accessToken,
-            refreshTokenValue,
-            DateTimeOffset.UtcNow.AddMinutes(AccessTokenLifetimeMinutes),
-            userDto);
+        return (accessToken, userDto, active?.BusinessId);
     }
 }
