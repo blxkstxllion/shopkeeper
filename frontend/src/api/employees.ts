@@ -34,3 +34,28 @@ export async function acceptInvitationForExistingUser(token: string): Promise<Au
   const { data } = await apiClient.post<AuthResult>(`/employees/invitations/${token}/accept-existing`)
   return data
 }
+
+export async function getJoinCode(): Promise<string | null> {
+  const { data } = await apiClient.get<{ code: string | null }>('/employees/join-code')
+  return data.code
+}
+
+export async function regenerateJoinCode(): Promise<string> {
+  const { data } = await apiClient.post<{ code: string }>('/employees/join-code/regenerate')
+  return data.code
+}
+
+export async function revokeJoinCode(): Promise<void> {
+  await apiClient.delete('/employees/join-code')
+}
+
+export async function approveJoinRequest(
+  id: string,
+  payload: { roleId: string; branchId?: string | null },
+): Promise<void> {
+  await apiClient.post(`/employees/join-requests/${id}/approve`, payload)
+}
+
+export async function rejectJoinRequest(id: string): Promise<void> {
+  await apiClient.post(`/employees/join-requests/${id}/reject`)
+}
