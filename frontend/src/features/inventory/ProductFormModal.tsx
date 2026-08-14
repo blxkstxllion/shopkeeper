@@ -5,13 +5,19 @@ import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, FormField } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
-import { createProduct, getProductCategories, updateProduct, uploadProductImage } from '@/api/products'
+import {
+  createProduct,
+  createProductCategory,
+  getProductCategories,
+  updateProduct,
+  uploadProductImage,
+} from '@/api/products'
 import { getSuppliers } from '@/api/suppliers'
 import { resolveUploadUrl } from '@/lib/format'
 import type { ApiErrorPayload } from '@/types/auth'
 import type { Product } from '@/types/product'
 import { AxiosError } from 'axios'
-import { Package, Upload, X } from 'lucide-react'
+import { Package, Plus, Upload, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { productDefaults, productSchema, type ProductFormValues } from './product.schema'
 
@@ -33,6 +39,8 @@ export function ProductFormModal({
   const [serverError, setServerError] = useState<string | null>(null)
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [isAddingCategory, setIsAddingCategory] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isEditing = Boolean(product)
 
@@ -44,6 +52,7 @@ export function ProductFormModal({
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
+    setValue,
   } = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     values: product
@@ -70,8 +79,24 @@ export function ProductFormModal({
     if (isOpen) {
       setImageUrl(product?.imageUrl ?? null)
       setServerError(null)
+      setIsAddingCategory(false)
+      setNewCategoryName('')
     }
   }, [isOpen, product])
+
+  const categoryMutation = useMutation({
+    mutationFn: () => createProductCategory({ name: newCategoryName }),
+    onSuccess: async (category) => {
+      await queryClient.invalidateQueries({ queryKey: ['product-categories'] })
+      setValue('categoryId', category.id, { shouldValidate: true })
+      setIsAddingCategory(false)
+      setNewCategoryName('')
+    },
+    onError: (err) => {
+      const apiErr = (err as AxiosError<ApiErrorPayload>).response?.data
+      setServerError(apiErr?.title ?? 'Unable to create that category. Please try again.')
+    },
+  })
 
   const mutation = useMutation({
     mutationFn: async (values: ProductFormValues) => {
@@ -192,18 +217,47 @@ export function ProductFormModal({
             <Input id="barcode" {...register('barcode')} />
           </FormField>
           <FormField label="Category (optional)" htmlFor="categoryId">
-            <select
-              id="categoryId"
-              {...register('categoryId')}
-              className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-            >
-              <option value="">No category</option>
-              {categories?.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            {isAddingCategory ? (
+              <div className="flex gap-2">
+                <Input
+                  autoFocus
+                  placeholder="New category name"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  isLoading={categoryMutation.isPending}
+                  disabled={!newCategoryName.trim()}
+                  onClick={() => categoryMutation.mutate()}
+                >
+                  Add
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setIsAddingCategory(false)}>
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <select
+                  id="categoryId"
+                  {...register('categoryId')}
+                  className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                >
+                  <option value="">No category</option>
+                  {categories?.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setIsAddingCategory(true)}>
+                  <Plus className="h-3.5 w-3.5" />
+                  New
+                </Button>
+              </div>
+            )}
           </FormField>
         </div>
 
