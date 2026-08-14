@@ -27,7 +27,7 @@ public class InviteEmployeeCommandValidator : AbstractValidator<InviteEmployeeCo
     }
 }
 
-public class InviteEmployeeCommandHandler(IAppDbContext db, ICurrentUserService currentUser, IEmailSender emailSender)
+public class InviteEmployeeCommandHandler(IAppDbContext db, ICurrentUserService currentUser, IEmailSender emailSender, IJwtTokenService jwt)
     : IRequestHandler<InviteEmployeeCommand, Guid>
 {
     public async Task<Guid> Handle(InviteEmployeeCommand request, CancellationToken cancellationToken)
@@ -69,13 +69,18 @@ public class InviteEmployeeCommandHandler(IAppDbContext db, ICurrentUserService 
         var business = await db.Businesses.Where(b => b.Id == businessId)
             .Select(b => b.Name).FirstAsync(cancellationToken);
 
+        // Raw token lives only in this local - never assigned to the entity, never logged, never
+        // returned to the caller. Only its hash is persisted, so a database read (backup, dump,
+        // compromised replica) can't yield a usable invite link.
+        var rawToken = Guid.NewGuid().ToString("N");
+
         var invitation = new PendingInvitation
         {
             BusinessId = businessId,
             Email = normalizedEmail,
             RoleId = request.RoleId,
             BranchId = request.BranchId,
-            Token = Guid.NewGuid().ToString("N"),
+            TokenHash = jwt.Hash(rawToken),
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(7),
             InvitedByUserId = inviterId,
         };
@@ -84,7 +89,7 @@ public class InviteEmployeeCommandHandler(IAppDbContext db, ICurrentUserService 
         await db.SaveChangesAsync(cancellationToken);
 
         await emailSender.SendBusinessInviteAsync(
-            normalizedEmail, business, $"{inviter.FirstName} {inviter.LastName}", invitation.Token, cancellationToken);
+            normalizedEmail, business, $"{inviter.FirstName} {inviter.LastName}", rawToken, cancellationToken);
 
         return invitation.Id;
     }
