@@ -56,7 +56,25 @@ public class RegisterCommandHandler(IAppDbContext db, IPasswordHasher hasher, To
         };
 
         db.Users.Add(user);
-        await db.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // The precheck above is the fast path; this is the race-window safety net. Only
+            // convert to the same ConflictException when the specific condition it protects is
+            // confirmed true after the fact - anything else rethrows unchanged and still
+            // surfaces as a logged 500, exactly as an unrelated DbUpdateException should.
+            var stillExists = await db.Users.AnyAsync(u => u.Email == normalizedEmail, cancellationToken);
+            if (!stillExists)
+            {
+                throw;
+            }
+
+            throw new ConflictException("An account with this email already exists.");
+        }
 
         // TODO: dispatch email-verification message once IEmailSender has a real provider (Phase 5+).
 
