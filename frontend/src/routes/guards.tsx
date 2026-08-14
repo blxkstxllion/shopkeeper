@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useSessionClaims } from '@/hooks/useSessionClaims'
 
 function FullScreenLoader() {
   return (
@@ -30,6 +31,19 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   if (isInitializing) return <FullScreenLoader />
   if (!user) return <Navigate to="/login" replace />
+
+  return <>{children}</>
+}
+
+/** Blocks users who lack a specific permission key (owners bypass, matching the backend's
+ * ICurrentUserService.HasPermission). Redirects rather than showing a bare error page - the
+ * nav item itself isn't hidden from unauthorized users yet, so this is the actual gate. */
+export function RequirePermission({ permission, children }: { permission: string; children: ReactNode }) {
+  const claims = useSessionClaims()
+
+  if (claims && !claims.isOwner && !claims.permissions.includes(permission)) {
+    return <Navigate to="/app" replace />
+  }
 
   return <>{children}</>
 }

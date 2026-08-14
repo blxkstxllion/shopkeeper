@@ -10,6 +10,7 @@ import {
   Receipt,
   Settings,
   Sparkles,
+  History,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -33,5 +34,6 @@ export const navItems: NavItem[] = [
   { label: 'Customers', to: '/app/customers', icon: UserCircle },
   { label: 'Expenses', to: '/app/expenses', icon: Receipt },
   { label: 'Reports', to: '/app/reports', icon: BarChart3 },
+  { label: 'Audit Logs', to: '/app/audit-logs', icon: History },
   { label: 'Settings', to: '/app/settings', icon: Settings },
 ]
