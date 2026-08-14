@@ -8,6 +8,7 @@ using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Application.Common.Services;
+using ShopKeeper.Domain.Constants;
 using ShopKeeper.Domain.Entities;
 using ShopKeeper.Domain.Enums;
 
@@ -61,6 +62,12 @@ public class AcceptInvitationForExistingUserCommandHandler(IAppDbContext db, ICu
             throw new ConflictException("You are already a member of this business.");
         }
 
+        // IgnoreQueryFilters: the caller's active tenant context may be a different business
+        // than the one they're accepting an invite into - invitation.BusinessId is already a
+        // trusted, validated value from the token lookup above.
+        var roleName = await db.Roles.IgnoreQueryFilters()
+            .Where(r => r.Id == invitation.RoleId).Select(r => r.Name).FirstAsync(cancellationToken);
+
         db.BusinessUsers.Add(new BusinessUser
         {
             BusinessId = invitation.BusinessId,
@@ -68,7 +75,7 @@ public class AcceptInvitationForExistingUserCommandHandler(IAppDbContext db, ICu
             User = user,
             RoleId = invitation.RoleId,
             BranchId = invitation.BranchId,
-            IsOwner = false,
+            IsOwner = roleName == DefaultRoles.Owner,
             Status = BusinessUserStatus.Active,
             JoinedAt = DateTimeOffset.UtcNow,
         });
