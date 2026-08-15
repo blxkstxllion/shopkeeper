@@ -5,6 +5,7 @@ import { queryClient } from '@/lib/query-client'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import { AppRouter } from '@/routes/AppRouter'
+import { UpdateAvailableBanner } from '@/offline/UpdateAvailableBanner'
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
             <AppRouter />
           </AuthProvider>
         </BrowserRouter>
+        <UpdateAvailableBanner />
         {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
       </QueryClientProvider>
     </ThemeProvider>
