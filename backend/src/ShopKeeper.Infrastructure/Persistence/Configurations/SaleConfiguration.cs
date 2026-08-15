@@ -12,6 +12,13 @@ public class SaleConfiguration : IEntityTypeConfiguration<Sale>
         builder.HasIndex(s => new { s.BusinessId, s.SaleNumber }).IsUnique();
         builder.HasIndex(s => new { s.BusinessId, s.BranchId, s.CreatedAt });
 
+        // Partial unique index: an offline-queued sale's client-generated key can only ever
+        // back one real Sale per business. Null (today's normal online-created sales) is never
+        // compared as equal to itself under a partial index, so any number of them can coexist.
+        builder.HasIndex(s => new { s.BusinessId, s.ClientRequestId })
+            .IsUnique()
+            .HasFilter("\"ClientRequestId\" IS NOT NULL");
+
         builder.Property(s => s.SaleNumber).HasMaxLength(30).IsRequired();
         builder.Property(s => s.Status).HasConversion<string>().HasMaxLength(20);
         builder.Property(s => s.VoidReason).HasMaxLength(500);

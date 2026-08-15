@@ -9,8 +9,13 @@ import { Alert } from '@/components/ui/Alert'
 import { formatMoney } from '@/lib/format'
 import { createSale } from '@/api/sales'
 import { createCustomer, getCustomers } from '@/api/customers'
+import { useAuth } from '@/contexts/AuthContext'
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'
+import { isNetworkError } from '@/lib/api-client'
+import { cacheCustomers, getCachedCustomers } from '@/offline/customerCache'
+import { enqueueSale } from '@/offline/outbox'
 import type { ApiErrorPayload } from '@/types/auth'
-import type { PaymentMethod, Sale } from '@/types/sale'
+import type { PaymentMethod, QueuedSale, Sale } from '@/types/sale'
 import { cartLineDiscountTotal, cartSubtotal, type CartLine } from './cart'
 
 interface PaymentRow {
@@ -31,6 +36,7 @@ export function CheckoutModal({
   lines,
   discountAmount,
   branchId,
+  branchName,
   onSuccess,
 }: {
   isOpen: boolean
@@ -38,9 +44,13 @@ export function CheckoutModal({
   lines: CartLine[]
   discountAmount: number
   branchId: string
-  onSuccess: (sale: Sale) => void
+  branchName: string
+  onSuccess: (sale: Sale | QueuedSale) => void
 }) {
   const queryClient = useQueryClient()
+  const { activeBusiness } = useAuth()
+  const businessId = activeBusiness?.businessId
+  const isOnline = useOnlineStatus()
   const [payments, setPayments] = useState<PaymentRow[]>([])
   const [serverError, setServerError] = useState<string | null>(null)
   const [customerId, setCustomerId] = useState('')
@@ -49,8 +59,28 @@ export function CheckoutModal({
 
   const { data: customers } = useQuery({
     queryKey: ['customers', { activeOnly: true, pageSize: 200 }],
-    queryFn: () => getCustomers({ activeOnly: true, pageSize: 200 }),
+    queryFn: async () => {
+      if (isOnline) {
+        try {
+          const fresh = await getCustomers({ activeOnly: true, pageSize: 200 })
+          if (businessId) void cacheCustomers(businessId, fresh.items)
+          return fresh
+        } catch (err) {
+          if (!businessId) throw err
+          const cached = await getCachedCustomers(businessId)
+          if (cached.length > 0)
+            return { items: cached, totalCount: cached.length, page: 1, pageSize: cached.length, totalPages: 1 }
+          throw err
+        }
+      }
+      if (!businessId) return { items: [], totalCount: 0, page: 1, pageSize: 0, totalPages: 0 }
+      const cached = await getCachedCustomers(businessId)
+      return { items: cached, totalCount: cached.length, page: 1, pageSize: cached.length, totalPages: 1 }
+    },
     enabled: isOpen,
+    // See the identical comment in PosPage.tsx's product query - the queryFn already
+    // handles offline itself, so React Query's default pausing must be turned off.
+    networkMode: 'always',
   })
 
   useEffect(() => {
@@ -73,6 +103,11 @@ export function CheckoutModal({
       const apiErr = (err as AxiosError<ApiErrorPayload>).response?.data
       setServerError(apiErr?.title ?? 'Unable to add that customer. Please try again.')
     },
+    // Without this, React Query's default network-aware pausing leaves mutate() stuck
+    // "pending" forever while offline instead of running mutationFn (which would fail
+    // fast with a real error) - adding a customer genuinely isn't supported offline,
+    // but it must fail visibly, not hang.
+    networkMode: 'always',
   })
 
   const subtotal = cartSubtotal(lines)
@@ -82,8 +117,8 @@ export function CheckoutModal({
   const remaining = Math.round((total - paid) * 100) / 100
 
   const mutation = useMutation({
-    mutationFn: () =>
-      createSale({
+    mutationFn: async (): Promise<Sale | QueuedSale> => {
+      const payload = {
         branchId,
         items: lines.map((l) => ({
           productId: l.product.productId,
@@ -97,17 +132,61 @@ export function CheckoutModal({
           referenceNumber: p.referenceNumber || null,
         })),
         customerId: customerId || null,
-      }),
-    onSuccess: (sale) => {
-      queryClient.invalidateQueries({ queryKey: ['products'] })
-      queryClient.invalidateQueries({ queryKey: ['sales'] })
+        // Generated fresh for every attempt, online or offline - a retry of this exact
+        // payload (flaky connection, or a resync after reconnecting) can never double-sell.
+        clientRequestId: crypto.randomUUID(),
+      }
+
+      if (isOnline) {
+        try {
+          return await createSale(payload)
+        } catch (err) {
+          if (!isNetworkError(err)) throw err // a real rejection (e.g. insufficient stock) must surface, not queue
+        }
+      }
+
+      if (!businessId) throw new Error('No active business to queue this sale under.')
+
+      const displayItems = lines.map((l) => ({
+        productId: l.product.productId,
+        productName: l.product.name,
+        quantity: l.quantity,
+        unitPrice: l.product.sellingPrice,
+        lineRevenue: l.product.sellingPrice * l.quantity - l.discountAmount,
+      }))
+      const queuedAt = new Date().toISOString()
+      await enqueueSale(businessId, { payload, queuedAt, branchName, displayItems })
+
+      return {
+        queued: true,
+        clientRequestId: payload.clientRequestId,
+        branchName,
+        queuedAt,
+        items: displayItems,
+        subtotal,
+        discountAmount: lineDiscounts + discountAmount,
+        total,
+        payments: payload.payments,
+      }
+    },
+    onSuccess: (result) => {
+      if ('queued' in result) {
+        queryClient.invalidateQueries({ queryKey: ['outbox-count', businessId] })
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['sellable-products'] })
+        queryClient.invalidateQueries({ queryKey: ['sales'] })
+      }
       setPayments([])
-      onSuccess(sale)
+      onSuccess(result)
     },
     onError: (err) => {
       const apiErr = (err as AxiosError<ApiErrorPayload>).response?.data
       setServerError(apiErr?.title ?? 'Unable to complete the sale. Please try again.')
     },
+    // mutationFn already decides what to do offline (queue to the outbox) - without
+    // this, React Query's default network-aware pausing would leave mutate() stuck
+    // "pending" forever while offline instead of ever calling it.
+    networkMode: 'always',
   })
 
   function addPaymentMethod(method: PaymentMethod) {
