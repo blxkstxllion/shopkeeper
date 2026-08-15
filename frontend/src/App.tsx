@@ -6,6 +6,7 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import { AppRouter } from '@/routes/AppRouter'
 import { UpdateAvailableBanner } from '@/offline/UpdateAvailableBanner'
+import { OfflineSyncManager } from '@/offline/OfflineSyncManager'
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
         <BrowserRouter>
           <AuthProvider>
             <AppRouter />
+            <OfflineSyncManager />
           </AuthProvider>
         </BrowserRouter>
         <UpdateAvailableBanner />

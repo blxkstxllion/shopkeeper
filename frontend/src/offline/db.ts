@@ -1,9 +1,20 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
-import type { SellableProduct } from '@/types/sale'
+import type { CreateSalePayload, SellableProduct } from '@/types/sale'
 import type { ProductCategory } from '@/types/product'
 import type { Customer } from '@/types/customer'
 
-const DB_VERSION = 1
+const DB_VERSION = 2
+
+export interface OutboxSaleRecord {
+  payload: CreateSalePayload
+  queuedAt: string
+  attempts: number
+  lastError?: string
+  // Denormalized so the outbox/receipt UI can show something meaningful without
+  // re-resolving product names/branch name from a cache that may have moved on.
+  branchName: string
+  displayItems: { productId: string; productName: string; quantity: number; unitPrice: number; lineRevenue: number }[]
+}
 
 export interface OfflineDbSchema extends DBSchema {
   products: {
@@ -18,6 +29,10 @@ export interface OfflineDbSchema extends DBSchema {
   customers: {
     key: string // id
     value: Customer
+  }
+  outbox: {
+    key: string // payload.clientRequestId
+    value: OutboxSaleRecord
   }
 }
 
@@ -45,6 +60,9 @@ export function getOfflineDb(businessId: string): Promise<IDBPDatabase<OfflineDb
         }
         if (!database.objectStoreNames.contains('customers')) {
           database.createObjectStore('customers', { keyPath: 'id' })
+        }
+        if (!database.objectStoreNames.contains('outbox')) {
+          database.createObjectStore('outbox', { keyPath: 'payload.clientRequestId' })
         }
       },
     })
