@@ -222,5 +222,85 @@ public class SalesCommandTests : IDisposable
             new RefundSaleCommand(sale.Id, [new RefundLineInput(saleItemId, 6)], "Too many"), CancellationToken.None));
     }
 
+    [Fact]
+    public async Task CreateSale_ReplayedWithSameClientRequestId_ReturnsOriginalSale_DoesNotDoubleSell()
+    {
+        var (seeded, context, owner, productId) = await SeedWithProductAsync(initialQuantity: 20);
+        var clientRequestId = Guid.NewGuid();
+
+        var first = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
+            new CreateSaleCommand(
+                seeded.BranchId, [new SaleLineInput(productId, 5, 0)], 0,
+                [new SalePaymentInput(PaymentMethod.Cash, 50m, null)], ClientRequestId: clientRequestId),
+            CancellationToken.None);
+
+        // Simulates the offline sync engine retrying because the first response never arrived,
+        // even though the sale actually was created - same ClientRequestId, same request.
+        var replay = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
+            new CreateSaleCommand(
+                seeded.BranchId, [new SaleLineInput(productId, 5, 0)], 0,
+                [new SalePaymentInput(PaymentMethod.Cash, 50m, null)], ClientRequestId: clientRequestId),
+            CancellationToken.None);
+
+        Assert.Equal(first.Id, replay.Id);
+        Assert.Equal(first.SaleNumber, replay.SaleNumber);
+
+        Assert.Single(await context.Sales.AsNoTracking().ToListAsync());
+        var stock = await context.ProductStocks.AsNoTracking().SingleAsync(s => s.ProductId == productId);
+        Assert.Equal(15, stock.QuantityOnHand); // stock only decremented once, not twice
+    }
+
+    [Fact]
+    public async Task CreateSale_GenuineConcurrentReplay_ExactlyOneSaleCreated_BothCallersGetSameSale()
+    {
+        using var db = new ConcurrentSqliteTestDatabase();
+        var hasher = new BcryptPasswordHasher();
+        var jwt = new JwtTokenService(Options.Create(PosTestFixture.JwtTestSettings));
+        var seeded = await PosTestFixture.SeedAsync(db, hasher, jwt);
+        var owner = seeded.AsOwner();
+        var setupContext = db.CreateContext(owner);
+
+        var product = await new CreateProductCommandHandler(setupContext, owner).Handle(
+            new CreateProductCommand("Widget", "SKU-IDEMPOTENT", null, null, null, null, 10m, 6m, 0, 0, true, 20, seeded.BranchId),
+            CancellationToken.None);
+
+        var clientRequestId = Guid.NewGuid();
+
+        Task<ShopKeeper.Application.Sales.Dtos.SaleDto> Send()
+        {
+            var context = db.CreateContext(owner);
+            return new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
+                new CreateSaleCommand(
+                    seeded.BranchId, [new SaleLineInput(product.Id, 5, 0)], 0,
+                    [new SalePaymentInput(PaymentMethod.Cash, 50m, null)], ClientRequestId: clientRequestId),
+                CancellationToken.None);
+        }
+
+        // Two genuinely concurrent requests carrying the identical client key - exactly what
+        // happens if the sync engine's retry fires before the first attempt's response lands.
+        var results = await Task.WhenAll(Send(), Send());
+
+        Assert.Equal(results[0].Id, results[1].Id);
+        Assert.Single(await setupContext.Sales.AsNoTracking().ToListAsync());
+        var stock = await setupContext.ProductStocks.AsNoTracking().SingleAsync(s => s.ProductId == product.Id);
+        Assert.Equal(15, stock.QuantityOnHand);
+    }
+
+    [Fact]
+    public async Task CreateSale_WithoutClientRequestId_StillWorksUnchanged()
+    {
+        var (seeded, context, owner, productId) = await SeedWithProductAsync(initialQuantity: 20);
+
+        var saleA = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
+            new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(productId, 1, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 10m, null)]),
+            CancellationToken.None);
+        var saleB = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
+            new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(productId, 1, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 10m, null)]),
+            CancellationToken.None);
+
+        Assert.NotEqual(saleA.Id, saleB.Id); // two genuinely separate sales, both without a client key
+        Assert.Equal(2, await context.Sales.AsNoTracking().CountAsync());
+    }
+
     public void Dispose() => _db.Dispose();
 }

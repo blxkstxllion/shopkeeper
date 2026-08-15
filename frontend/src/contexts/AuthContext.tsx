@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import * as authApi from '@/api/auth'
 import { dedupedRefresh } from '@/lib/api-client'
 import { setAccessToken, onAccessTokenChange } from '@/lib/token-store'
+import { clearOfflineDb } from '@/offline/db'
 import type { AuthResult, User, UserBusiness } from '@/types/auth'
 import type { Business } from '@/types/business'
 
@@ -109,10 +110,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await authApi.logout().catch(() => undefined)
+    // A shared/public POS terminal shouldn't keep this business's cached products and
+    // customers around for whoever logs in next - offline reads must go stale, not leak.
+    if (activeBusinessId) {
+      await clearOfflineDb(activeBusinessId).catch(() => undefined)
+    }
     setAccessToken(null)
     setUser(null)
     setActiveBusinessId(null)
-  }, [])
+  }, [activeBusinessId])
 
   const selectBusiness = useCallback(async (businessId: string) => {
     const result = await authApi.switchBusiness(businessId)
