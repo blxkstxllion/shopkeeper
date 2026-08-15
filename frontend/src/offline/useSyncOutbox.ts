@@ -45,6 +45,7 @@ export function useSyncOutbox() {
           await recordSyncFailure(businessId, record.payload.clientRequestId, message)
         }
       }
+      await queryClient.invalidateQueries({ queryKey: ['outbox-count', businessId] })
       if (syncedAny) {
         await queryClient.invalidateQueries({ queryKey: ['sellable-products'] })
         await queryClient.invalidateQueries({ queryKey: ['sales'] })
