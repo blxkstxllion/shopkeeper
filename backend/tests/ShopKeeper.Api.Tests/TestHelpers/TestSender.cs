@@ -1,4 +1,5 @@
 namespace ShopKeeper.Api.Tests.TestHelpers;
+using ShopKeeper.Application.Common.Services;
 
 using MediatR;
 using ShopKeeper.Application.Common.Interfaces;
@@ -14,7 +15,7 @@ public class TestSender(IAppDbContext db, ICurrentUserService currentUser) : ISe
     {
         if (request is AdjustStockCommand adjustStock)
         {
-            return (Task<TResponse>)(object)new AdjustStockCommandHandler(db, currentUser).Handle(adjustStock, cancellationToken);
+            return (Task<TResponse>)(object)new AdjustStockCommandHandler(db, currentUser, new NotificationDispatcher(db)).Handle(adjustStock, cancellationToken);
         }
 
         throw new NotSupportedException($"TestSender does not support {request.GetType().Name}");
