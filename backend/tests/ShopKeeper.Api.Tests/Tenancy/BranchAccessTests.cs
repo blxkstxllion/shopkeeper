@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using ShopKeeper.Api.Tests.TestHelpers;
 using ShopKeeper.Application.Common.Exceptions;
+using ShopKeeper.Application.Common.Services;
 using ShopKeeper.Application.Inventory.Commands;
 using ShopKeeper.Application.Products.Commands;
 using ShopKeeper.Application.Sales.Commands;
@@ -58,7 +59,7 @@ public class BranchAccessTests : IDisposable
     {
         var (branchAId, _, productId, context, cashier) = await SeedTwoBranchesWithCashierAsync();
 
-        var sale = await new CreateSaleCommandHandler(context, cashier).Handle(
+        var sale = await new CreateSaleCommandHandler(context, cashier, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(branchAId, [new SaleLineInput(productId, 2, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 20m, null)]),
             CancellationToken.None);
 
@@ -70,7 +71,7 @@ public class BranchAccessTests : IDisposable
     {
         var (_, branchBId, productId, context, cashier) = await SeedTwoBranchesWithCashierAsync();
 
-        await Assert.ThrowsAsync<ForbiddenAccessException>(() => new CreateSaleCommandHandler(context, cashier).Handle(
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() => new CreateSaleCommandHandler(context, cashier, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(branchBId, [new SaleLineInput(productId, 2, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 20m, null)]),
             CancellationToken.None));
     }
@@ -80,7 +81,7 @@ public class BranchAccessTests : IDisposable
     {
         var (_, branchBId, productId, context, cashier) = await SeedTwoBranchesWithCashierAsync();
 
-        await Assert.ThrowsAsync<ForbiddenAccessException>(() => new AdjustStockCommandHandler(context, cashier).Handle(
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() => new AdjustStockCommandHandler(context, cashier, new NotificationDispatcher(context)).Handle(
             new AdjustStockCommand(productId, branchBId, 5, "Should not be allowed"), CancellationToken.None));
     }
 
@@ -100,7 +101,7 @@ public class BranchAccessTests : IDisposable
             CancellationToken.None);
 
         // Owner has BranchId == null, so acting on branchB (not the business's main branch) must not throw.
-        var quantity = await new AdjustStockCommandHandler(context, owner).Handle(
+        var quantity = await new AdjustStockCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new AdjustStockCommand(product.Id, branchB.Id, 5, "Owner adjusting a non-default branch"), CancellationToken.None);
 
         Assert.Equal(15, quantity);

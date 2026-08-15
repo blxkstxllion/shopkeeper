@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using ShopKeeper.Api.Tests.TestHelpers;
 using ShopKeeper.Application.Common.Exceptions;
+using ShopKeeper.Application.Common.Services;
 using ShopKeeper.Application.Inventory.Commands;
 using ShopKeeper.Application.Products.Commands;
 using ShopKeeper.Application.Sales.Commands;
@@ -46,14 +47,14 @@ public class InventoryConcurrencyTests
         Assert.Equal(1, stockA.QuantityOnHand);
         Assert.Equal(1, stockB.QuantityOnHand);
 
-        var quantityA = await new AdjustStockCommandHandler(contextA, owner).Handle(
+        var quantityA = await new AdjustStockCommandHandler(contextA, owner, new NotificationDispatcher(contextA)).Handle(
             new AdjustStockCommand(product.Id, seeded.BranchId, -1, "Sale A"), CancellationToken.None);
         Assert.Equal(0, quantityA);
 
         // contextB is still holding the stale (QuantityOnHand=1, RowVersion=0) entity it read
         // before contextA's write - its handler recomputes -1 against that stale value and
         // tries to save; RowVersion must stop this from silently succeeding.
-        await Assert.ThrowsAsync<ConflictException>(() => new AdjustStockCommandHandler(contextB, owner).Handle(
+        await Assert.ThrowsAsync<ConflictException>(() => new AdjustStockCommandHandler(contextB, owner, new NotificationDispatcher(contextB)).Handle(
             new AdjustStockCommand(product.Id, seeded.BranchId, -1, "Sale B"), CancellationToken.None));
 
         var finalStock = await setupContext.ProductStocks.AsNoTracking().SingleAsync(s => s.ProductId == product.Id);
@@ -75,7 +76,7 @@ public class InventoryConcurrencyTests
         var contextA = db.CreateContext(owner);
         var contextB = db.CreateContext(owner);
 
-        var saleA = await new CreateSaleCommandHandler(contextA, owner).Handle(
+        var saleA = await new CreateSaleCommandHandler(contextA, owner, new NotificationDispatcher(contextA)).Handle(
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(product.Id, 1, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 10m, null)]),
             CancellationToken.None);
         Assert.NotNull(saleA);
@@ -83,7 +84,7 @@ public class InventoryConcurrencyTests
         // contextB still believes 1 unit is available (it read stock before contextA's sale
         // committed) - this is precisely "Cashier A reads 1, Cashier B reads 1, both believe
         // the sale is valid" from the review. It must not be allowed to also succeed.
-        await Assert.ThrowsAsync<ConflictException>(() => new CreateSaleCommandHandler(contextB, owner).Handle(
+        await Assert.ThrowsAsync<ConflictException>(() => new CreateSaleCommandHandler(contextB, owner, new NotificationDispatcher(contextB)).Handle(
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(product.Id, 1, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 10m, null)]),
             CancellationToken.None));
 
@@ -113,7 +114,7 @@ public class InventoryConcurrencyTests
             var context = db.CreateContext(owner);
             try
             {
-                await new AdjustStockCommandHandler(context, owner).Handle(
+                await new AdjustStockCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
                     new AdjustStockCommand(product.Id, seeded.BranchId, -1, "Concurrent adjustment"), CancellationToken.None);
                 return true;
             }
@@ -149,7 +150,7 @@ public class InventoryConcurrencyTests
             var context = db.CreateContext(owner);
             try
             {
-                await new CreateSaleCommandHandler(context, owner).Handle(
+                await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
                     new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(product.Id, 1, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 10m, null)]),
                     CancellationToken.None);
                 return true;
@@ -182,7 +183,7 @@ public class InventoryConcurrencyTests
             new CreateProductCommand("Widget", "SKU-INSUFFICIENT", null, null, null, null, 10m, 6m, 0, 0, true, 3, seeded.BranchId),
             CancellationToken.None);
 
-        var ex = await Assert.ThrowsAsync<ConflictException>(() => new AdjustStockCommandHandler(context, owner).Handle(
+        var ex = await Assert.ThrowsAsync<ConflictException>(() => new AdjustStockCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new AdjustStockCommand(product.Id, seeded.BranchId, -10, "Too much"), CancellationToken.None));
 
         Assert.Contains("units", ex.Message); // unchanged existing "this adjustment would take X to Y units" message
@@ -214,10 +215,10 @@ public class InventoryConcurrencyTests
         var contextB = db.CreateContext(ownerB);
 
         var results = await Task.WhenAll(
-            new CreateSaleCommandHandler(contextA, ownerA).Handle(
+            new CreateSaleCommandHandler(contextA, ownerA, new NotificationDispatcher(contextA)).Handle(
                 new CreateSaleCommand(businessA.BranchId, [new SaleLineInput(productA.Id, 1, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 10m, null)]),
                 CancellationToken.None),
-            new CreateSaleCommandHandler(contextB, ownerB).Handle(
+            new CreateSaleCommandHandler(contextB, ownerB, new NotificationDispatcher(contextB)).Handle(
                 new CreateSaleCommand(businessB.BranchId, [new SaleLineInput(productB.Id, 1, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 10m, null)]),
                 CancellationToken.None));
 
@@ -244,7 +245,7 @@ public class InventoryConcurrencyTests
         Task<Application.Sales.Dtos.SaleDto> Sell()
         {
             var context = db.CreateContext(owner);
-            return new CreateSaleCommandHandler(context, owner).Handle(
+            return new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
                 new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(product.Id, 1, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 10m, null)]),
                 CancellationToken.None);
         }
@@ -280,10 +281,10 @@ public class InventoryConcurrencyTests
         var contextA = db.CreateContext(ownerA);
         var contextB = db.CreateContext(ownerB);
 
-        var saleA = await new CreateSaleCommandHandler(contextA, ownerA).Handle(
+        var saleA = await new CreateSaleCommandHandler(contextA, ownerA, new NotificationDispatcher(contextA)).Handle(
             new CreateSaleCommand(businessA.BranchId, [new SaleLineInput(productA.Id, 1, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 10m, null)]),
             CancellationToken.None);
-        var saleB = await new CreateSaleCommandHandler(contextB, ownerB).Handle(
+        var saleB = await new CreateSaleCommandHandler(contextB, ownerB, new NotificationDispatcher(contextB)).Handle(
             new CreateSaleCommand(businessB.BranchId, [new SaleLineInput(productB.Id, 1, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 10m, null)]),
             CancellationToken.None);
 

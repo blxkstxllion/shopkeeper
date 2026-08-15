@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Bell, Sparkles, ChevronDown, LogOut, Building2, Sun, Moon } from 'lucide-react'
+import { Search, Sparkles, ChevronDown, LogOut, Building2, Sun, Moon } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useBranchContext } from '@/contexts/BranchContext'
 import { useTheme } from '@/contexts/ThemeContext'
+import { NotificationBell } from './NotificationBell'
 
 export function TopNav() {
   const { user, activeBusiness, logout } = useAuth()
@@ -101,12 +102,7 @@ export function TopNav() {
         >
           <Sparkles className="h-[18px] w-[18px]" />
         </button>
-        <button
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-          aria-label="Notifications"
-        >
-          <Bell className="h-[18px] w-[18px]" />
-        </button>
+        <NotificationBell />
 
         <div className="relative ml-1" ref={menuRef}>
           <button

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using ShopKeeper.Api.Tests.TestHelpers;
 using ShopKeeper.Application.Common.Exceptions;
+using ShopKeeper.Application.Common.Services;
 using ShopKeeper.Application.Employees.Commands;
 using ShopKeeper.Application.Employees.Queries;
 using ShopKeeper.Domain.Constants;
@@ -72,7 +73,7 @@ public class JoinRequestsTests : IDisposable
         var context = _db.CreateContext(owner);
         var code = await new RegenerateJoinCodeCommandHandler(context, owner).Handle(new RegenerateJoinCodeCommand(), CancellationToken.None);
 
-        await new SubmitJoinRequestCommandHandler(context, _hasher).Handle(
+        await new SubmitJoinRequestCommandHandler(context, _hasher, new NotificationDispatcher(context)).Handle(
             new SubmitJoinRequestCommand(code, "Kofi", "Mensah", "kofi@shop.test", "0244000000", "Passw0rd!"),
             CancellationToken.None);
 
@@ -93,7 +94,7 @@ public class JoinRequestsTests : IDisposable
         var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
         var context = _db.CreateContext(new TestCurrentUserService());
 
-        await Assert.ThrowsAsync<NotFoundException>(() => new SubmitJoinRequestCommandHandler(context, _hasher).Handle(
+        await Assert.ThrowsAsync<NotFoundException>(() => new SubmitJoinRequestCommandHandler(context, _hasher, new NotificationDispatcher(context)).Handle(
             new SubmitJoinRequestCommand("BOGUSCOD", "Kofi", "Mensah", "kofi@shop.test", "0244000000", "Passw0rd!"),
             CancellationToken.None));
     }
@@ -106,7 +107,7 @@ public class JoinRequestsTests : IDisposable
         var context = _db.CreateContext(owner);
         var code = await new RegenerateJoinCodeCommandHandler(context, owner).Handle(new RegenerateJoinCodeCommand(), CancellationToken.None);
 
-        await Assert.ThrowsAsync<ConflictException>(() => new SubmitJoinRequestCommandHandler(context, _hasher).Handle(
+        await Assert.ThrowsAsync<ConflictException>(() => new SubmitJoinRequestCommandHandler(context, _hasher, new NotificationDispatcher(context)).Handle(
             new SubmitJoinRequestCommand(code, "Ama", "Owusu", "owner@shop.test", "0244000000", "Passw0rd!"),
             CancellationToken.None));
     }
@@ -123,7 +124,7 @@ public class JoinRequestsTests : IDisposable
         var otherOwner = otherBusiness.AsOwner();
         var otherContext = _db.CreateContext(otherOwner);
 
-        await new SubmitJoinRequestForExistingUserCommandHandler(otherContext, otherOwner).Handle(
+        await new SubmitJoinRequestForExistingUserCommandHandler(otherContext, otherOwner, new NotificationDispatcher(otherContext)).Handle(
             new SubmitJoinRequestForExistingUserCommand(code), CancellationToken.None);
 
         var joinRequest = await context.JoinRequests.SingleAsync(r => r.UserId == otherBusiness.OwnerId);
@@ -139,7 +140,7 @@ public class JoinRequestsTests : IDisposable
         var context = _db.CreateContext(owner);
         var code = await new RegenerateJoinCodeCommandHandler(context, owner).Handle(new RegenerateJoinCodeCommand(), CancellationToken.None);
 
-        await Assert.ThrowsAsync<ConflictException>(() => new SubmitJoinRequestForExistingUserCommandHandler(context, owner).Handle(
+        await Assert.ThrowsAsync<ConflictException>(() => new SubmitJoinRequestForExistingUserCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new SubmitJoinRequestForExistingUserCommand(code), CancellationToken.None));
     }
 
@@ -155,10 +156,10 @@ public class JoinRequestsTests : IDisposable
         var otherOwner = other.AsOwner();
         var otherContext = _db.CreateContext(otherOwner);
 
-        await new SubmitJoinRequestForExistingUserCommandHandler(otherContext, otherOwner).Handle(
+        await new SubmitJoinRequestForExistingUserCommandHandler(otherContext, otherOwner, new NotificationDispatcher(otherContext)).Handle(
             new SubmitJoinRequestForExistingUserCommand(code), CancellationToken.None);
 
-        await Assert.ThrowsAsync<ConflictException>(() => new SubmitJoinRequestForExistingUserCommandHandler(otherContext, otherOwner).Handle(
+        await Assert.ThrowsAsync<ConflictException>(() => new SubmitJoinRequestForExistingUserCommandHandler(otherContext, otherOwner, new NotificationDispatcher(otherContext)).Handle(
             new SubmitJoinRequestForExistingUserCommand(code), CancellationToken.None));
     }
 
@@ -170,7 +171,7 @@ public class JoinRequestsTests : IDisposable
         var context = _db.CreateContext(owner);
         var code = await new RegenerateJoinCodeCommandHandler(context, owner).Handle(new RegenerateJoinCodeCommand(), CancellationToken.None);
 
-        await new SubmitJoinRequestCommandHandler(context, _hasher).Handle(
+        await new SubmitJoinRequestCommandHandler(context, _hasher, new NotificationDispatcher(context)).Handle(
             new SubmitJoinRequestCommand(code, "Kofi", "Mensah", "kofi2@shop.test", "0244000001", "Passw0rd!"),
             CancellationToken.None);
 
@@ -199,7 +200,7 @@ public class JoinRequestsTests : IDisposable
         var context = _db.CreateContext(owner);
         var code = await new RegenerateJoinCodeCommandHandler(context, owner).Handle(new RegenerateJoinCodeCommand(), CancellationToken.None);
 
-        await new SubmitJoinRequestCommandHandler(context, _hasher).Handle(
+        await new SubmitJoinRequestCommandHandler(context, _hasher, new NotificationDispatcher(context)).Handle(
             new SubmitJoinRequestCommand(code, "Kofi", "Mensah", "kofi3@shop.test", "0244000002", "Passw0rd!"),
             CancellationToken.None);
 
@@ -221,7 +222,7 @@ public class JoinRequestsTests : IDisposable
         var context = _db.CreateContext(owner);
         var code = await new RegenerateJoinCodeCommandHandler(context, owner).Handle(new RegenerateJoinCodeCommand(), CancellationToken.None);
 
-        await new SubmitJoinRequestCommandHandler(context, _hasher).Handle(
+        await new SubmitJoinRequestCommandHandler(context, _hasher, new NotificationDispatcher(context)).Handle(
             new SubmitJoinRequestCommand(code, "Kofi", "Mensah", "kofi4@shop.test", "0244000003", "Passw0rd!"),
             CancellationToken.None);
 
@@ -243,7 +244,7 @@ public class JoinRequestsTests : IDisposable
         var context = _db.CreateContext(owner);
         var code = await new RegenerateJoinCodeCommandHandler(context, owner).Handle(new RegenerateJoinCodeCommand(), CancellationToken.None);
 
-        await new SubmitJoinRequestCommandHandler(context, _hasher).Handle(
+        await new SubmitJoinRequestCommandHandler(context, _hasher, new NotificationDispatcher(context)).Handle(
             new SubmitJoinRequestCommand(code, "Kofi", "Mensah", "kofi6@shop.test", "0244000005", "Passw0rd!"),
             CancellationToken.None);
 
@@ -274,7 +275,7 @@ public class JoinRequestsTests : IDisposable
         var context = _db.CreateContext(owner);
         var code = await new RegenerateJoinCodeCommandHandler(context, owner).Handle(new RegenerateJoinCodeCommand(), CancellationToken.None);
 
-        await new SubmitJoinRequestCommandHandler(context, _hasher).Handle(
+        await new SubmitJoinRequestCommandHandler(context, _hasher, new NotificationDispatcher(context)).Handle(
             new SubmitJoinRequestCommand(code, "Kofi", "Mensah", "kofi7@shop.test", "0244000006", "Passw0rd!"),
             CancellationToken.None);
 
@@ -303,7 +304,7 @@ public class JoinRequestsTests : IDisposable
             var context = db.CreateContext(new TestCurrentUserService());
             try
             {
-                await new SubmitJoinRequestCommandHandler(context, _hasher).Handle(
+                await new SubmitJoinRequestCommandHandler(context, _hasher, new NotificationDispatcher(context)).Handle(
                     new SubmitJoinRequestCommand(code, "Kofi", "Mensah", "racejoiner@shop.test", "0244000007", "Passw0rd!"),
                     CancellationToken.None);
                 return true;
@@ -340,7 +341,7 @@ public class JoinRequestsTests : IDisposable
             var context = db.CreateContext(applicantUser);
             try
             {
-                await new SubmitJoinRequestForExistingUserCommandHandler(context, applicantUser).Handle(
+                await new SubmitJoinRequestForExistingUserCommandHandler(context, applicantUser, new NotificationDispatcher(context)).Handle(
                     new SubmitJoinRequestForExistingUserCommand(code), CancellationToken.None);
                 return true;
             }
@@ -368,7 +369,7 @@ public class JoinRequestsTests : IDisposable
         var context = _db.CreateContext(owner);
         var code = await new RegenerateJoinCodeCommandHandler(context, owner).Handle(new RegenerateJoinCodeCommand(), CancellationToken.None);
 
-        await new SubmitJoinRequestCommandHandler(context, _hasher).Handle(
+        await new SubmitJoinRequestCommandHandler(context, _hasher, new NotificationDispatcher(context)).Handle(
             new SubmitJoinRequestCommand(code, "Kofi", "Mensah", "kofi5@shop.test", "0244000004", "Passw0rd!"),
             CancellationToken.None);
 

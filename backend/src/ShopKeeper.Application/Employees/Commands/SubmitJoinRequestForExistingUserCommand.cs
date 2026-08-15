@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
+using ShopKeeper.Application.Common.Services;
 using ShopKeeper.Domain.Entities;
 using ShopKeeper.Domain.Enums;
 
@@ -19,7 +20,8 @@ public class SubmitJoinRequestForExistingUserCommandValidator : AbstractValidato
     public SubmitJoinRequestForExistingUserCommandValidator() => RuleFor(x => x.Code).NotEmpty();
 }
 
-public class SubmitJoinRequestForExistingUserCommandHandler(IAppDbContext db, ICurrentUserService currentUser)
+public class SubmitJoinRequestForExistingUserCommandHandler(
+    IAppDbContext db, ICurrentUserService currentUser, NotificationDispatcher notifications)
     : IRequestHandler<SubmitJoinRequestForExistingUserCommand>
 {
     public async Task Handle(SubmitJoinRequestForExistingUserCommand request, CancellationToken cancellationToken)
@@ -50,6 +52,12 @@ public class SubmitJoinRequestForExistingUserCommandHandler(IAppDbContext db, IC
             BusinessId = setting.BusinessId,
             UserId = userId,
         });
+
+        var requester = await db.Users.Where(u => u.Id == userId)
+            .Select(u => new { u.FirstName, u.LastName }).FirstAsync(cancellationToken);
+        await notifications.NotifyOwnersAsync(
+            setting.BusinessId, "JoinRequestSubmitted", "New join request",
+            $"{requester.FirstName} {requester.LastName} wants to join your team.", "/app/employees", cancellationToken);
 
         try
         {

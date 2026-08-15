@@ -5,6 +5,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Interfaces;
+using ShopKeeper.Application.Common.Services;
 using ShopKeeper.Domain.Entities;
 
 /// <summary>
@@ -35,7 +36,8 @@ public class SubmitJoinRequestCommandValidator : AbstractValidator<SubmitJoinReq
     }
 }
 
-public class SubmitJoinRequestCommandHandler(IAppDbContext db, IPasswordHasher hasher) : IRequestHandler<SubmitJoinRequestCommand>
+public class SubmitJoinRequestCommandHandler(IAppDbContext db, IPasswordHasher hasher, NotificationDispatcher notifications)
+    : IRequestHandler<SubmitJoinRequestCommand>
 {
     public async Task Handle(SubmitJoinRequestCommand request, CancellationToken cancellationToken)
     {
@@ -69,6 +71,10 @@ public class SubmitJoinRequestCommandHandler(IAppDbContext db, IPasswordHasher h
             UserId = user.Id,
             User = user,
         });
+
+        await notifications.NotifyOwnersAsync(
+            setting.BusinessId, "JoinRequestSubmitted", "New join request",
+            $"{request.FirstName.Trim()} {request.LastName.Trim()} wants to join your team.", "/app/employees", cancellationToken);
 
         try
         {
