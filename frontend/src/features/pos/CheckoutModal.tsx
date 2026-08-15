@@ -170,7 +170,9 @@ export function CheckoutModal({
       }
     },
     onSuccess: (result) => {
-      if (!('queued' in result)) {
+      if ('queued' in result) {
+        queryClient.invalidateQueries({ queryKey: ['outbox-count', businessId] })
+      } else {
         queryClient.invalidateQueries({ queryKey: ['sellable-products'] })
         queryClient.invalidateQueries({ queryKey: ['sales'] })
       }

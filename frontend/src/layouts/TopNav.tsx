@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useBranchContext } from '@/contexts/BranchContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { NotificationBell } from './NotificationBell'
+import { OfflineStatusIndicator } from '@/offline/OfflineStatusIndicator'
 
 export function TopNav() {
   const { user, activeBusiness, logout } = useAuth()
@@ -88,6 +89,7 @@ export function TopNav() {
       </div>
 
       <div className="ml-auto flex items-center gap-1">
+        <OfflineStatusIndicator />
         <button
           className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
           aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
