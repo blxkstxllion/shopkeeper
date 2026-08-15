@@ -1,9 +1,9 @@
 namespace ShopKeeper.Api.Tests.Dashboard;
-using ShopKeeper.Application.Common.Services;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using ShopKeeper.Api.Tests.TestHelpers;
+using ShopKeeper.Application.Common.Services;
 using ShopKeeper.Application.Dashboard.Queries;
 using ShopKeeper.Application.Products.Commands;
 using ShopKeeper.Application.Sales.Commands;

@@ -107,11 +107,19 @@ public class NotificationsTests : IDisposable
         });
         context.Notifications.Add(new ShopKeeper.Domain.Entities.Notification
         {
-            BusinessId = seeded.BusinessId, UserId = seeded.OwnerId, Type = "Test", Title = "Mine", Message = "Mine",
+            BusinessId = seeded.BusinessId,
+            UserId = seeded.OwnerId,
+            Type = "Test",
+            Title = "Mine",
+            Message = "Mine",
         });
         context.Notifications.Add(new ShopKeeper.Domain.Entities.Notification
         {
-            BusinessId = seeded.BusinessId, UserId = otherUserId, Type = "Test", Title = "Not mine", Message = "Not mine",
+            BusinessId = seeded.BusinessId,
+            UserId = otherUserId,
+            Type = "Test",
+            Title = "Not mine",
+            Message = "Not mine",
         });
         await context.SaveChangesAsync(CancellationToken.None);
 
@@ -130,11 +138,20 @@ public class NotificationsTests : IDisposable
 
         context.Notifications.Add(new ShopKeeper.Domain.Entities.Notification
         {
-            BusinessId = seeded.BusinessId, UserId = seeded.OwnerId, Type = "Test", Title = "Unread", Message = "Unread",
+            BusinessId = seeded.BusinessId,
+            UserId = seeded.OwnerId,
+            Type = "Test",
+            Title = "Unread",
+            Message = "Unread",
         });
         context.Notifications.Add(new ShopKeeper.Domain.Entities.Notification
         {
-            BusinessId = seeded.BusinessId, UserId = seeded.OwnerId, Type = "Test", Title = "Read", Message = "Read", ReadAt = DateTimeOffset.UtcNow,
+            BusinessId = seeded.BusinessId,
+            UserId = seeded.OwnerId,
+            Type = "Test",
+            Title = "Read",
+            Message = "Read",
+            ReadAt = DateTimeOffset.UtcNow,
         });
         await context.SaveChangesAsync(CancellationToken.None);
 
@@ -152,7 +169,11 @@ public class NotificationsTests : IDisposable
 
         var notification = new ShopKeeper.Domain.Entities.Notification
         {
-            BusinessId = seeded.BusinessId, UserId = seeded.OwnerId, Type = "Test", Title = "T", Message = "M",
+            BusinessId = seeded.BusinessId,
+            UserId = seeded.OwnerId,
+            Type = "Test",
+            Title = "T",
+            Message = "M",
         };
         context.Notifications.Add(notification);
         await context.SaveChangesAsync(CancellationToken.None);
@@ -172,13 +193,20 @@ public class NotificationsTests : IDisposable
 
         var otherUser = new ShopKeeper.Domain.Entities.User
         {
-            Email = "other-notif@shop.test", PasswordHash = "x", FirstName = "Kwame", LastName = "Asante",
+            Email = "other-notif@shop.test",
+            PasswordHash = "x",
+            FirstName = "Kwame",
+            LastName = "Asante",
         };
         context.Users.Add(otherUser);
 
         var notification = new ShopKeeper.Domain.Entities.Notification
         {
-            BusinessId = seeded.BusinessId, UserId = otherUser.Id, Type = "Test", Title = "T", Message = "M",
+            BusinessId = seeded.BusinessId,
+            UserId = otherUser.Id,
+            Type = "Test",
+            Title = "T",
+            Message = "M",
         };
         context.Notifications.Add(notification);
         await context.SaveChangesAsync(CancellationToken.None);
@@ -196,11 +224,19 @@ public class NotificationsTests : IDisposable
 
         context.Notifications.Add(new ShopKeeper.Domain.Entities.Notification
         {
-            BusinessId = seeded.BusinessId, UserId = seeded.OwnerId, Type = "Test", Title = "A", Message = "A",
+            BusinessId = seeded.BusinessId,
+            UserId = seeded.OwnerId,
+            Type = "Test",
+            Title = "A",
+            Message = "A",
         });
         context.Notifications.Add(new ShopKeeper.Domain.Entities.Notification
         {
-            BusinessId = seeded.BusinessId, UserId = seeded.OwnerId, Type = "Test", Title = "B", Message = "B",
+            BusinessId = seeded.BusinessId,
+            UserId = seeded.OwnerId,
+            Type = "Test",
+            Title = "B",
+            Message = "B",
         });
         await context.SaveChangesAsync(CancellationToken.None);
 

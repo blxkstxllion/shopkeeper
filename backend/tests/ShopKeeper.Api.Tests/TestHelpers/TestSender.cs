@@ -1,8 +1,8 @@
 namespace ShopKeeper.Api.Tests.TestHelpers;
-using ShopKeeper.Application.Common.Services;
 
 using MediatR;
 using ShopKeeper.Application.Common.Interfaces;
+using ShopKeeper.Application.Common.Services;
 using ShopKeeper.Application.Inventory.Commands;
 
 /// <summary>Minimal ISender for handler-calls-handler tests (e.g. RestockFromSupplierCommand
