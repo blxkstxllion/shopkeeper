@@ -89,6 +89,26 @@ export interface CreateSalePayload {
   discountAmount: number
   payments: SalePaymentInput[]
   customerId?: string | null
+  /** Client-generated idempotency key, sent on every attempt (online or queued offline)
+   * so a retry - whether from a flaky connection or a resync after reconnecting - can
+   * never double-sell. See CreateSaleCommandHandler's use of it on the backend. */
+  clientRequestId: string
+}
+
+/** A sale that couldn't reach the server (offline, or the request failed with a real
+ * network error) and is sitting in the outbox waiting to sync. It has no server-assigned
+ * id/saleNumber yet, and no cost/profit figures (SellableProduct doesn't carry cost) -
+ * everything shown here is derived purely from the cart at the moment it was queued. */
+export interface QueuedSale {
+  queued: true
+  clientRequestId: string
+  branchName: string
+  queuedAt: string
+  items: { productId: string; productName: string; quantity: number; unitPrice: number; lineRevenue: number }[]
+  subtotal: number
+  discountAmount: number
+  total: number
+  payments: { method: PaymentMethod; amount: number }[]
 }
 
 export interface Refund {
