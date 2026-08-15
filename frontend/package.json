@@ -19,6 +19,7 @@
     "@tanstack/react-query-devtools": "^5.101.4",
     "axios": "^1.19.0",
     "clsx": "^2.1.1",
+    "idb": "^8.0.3",
     "lucide-react": "^1.30.0",
     "qrcode": "^1.5.4",
     "react": "^19.2.8",

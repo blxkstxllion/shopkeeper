@@ -9,6 +9,9 @@ import { Alert } from '@/components/ui/Alert'
 import { formatMoney } from '@/lib/format'
 import { createSale } from '@/api/sales'
 import { createCustomer, getCustomers } from '@/api/customers'
+import { useAuth } from '@/contexts/AuthContext'
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'
+import { cacheCustomers, getCachedCustomers } from '@/offline/customerCache'
 import type { ApiErrorPayload } from '@/types/auth'
 import type { PaymentMethod, Sale } from '@/types/sale'
 import { cartLineDiscountTotal, cartSubtotal, type CartLine } from './cart'
@@ -41,6 +44,9 @@ export function CheckoutModal({
   onSuccess: (sale: Sale) => void
 }) {
   const queryClient = useQueryClient()
+  const { activeBusiness } = useAuth()
+  const businessId = activeBusiness?.businessId
+  const isOnline = useOnlineStatus()
   const [payments, setPayments] = useState<PaymentRow[]>([])
   const [serverError, setServerError] = useState<string | null>(null)
   const [customerId, setCustomerId] = useState('')
@@ -49,8 +55,28 @@ export function CheckoutModal({
 
   const { data: customers } = useQuery({
     queryKey: ['customers', { activeOnly: true, pageSize: 200 }],
-    queryFn: () => getCustomers({ activeOnly: true, pageSize: 200 }),
+    queryFn: async () => {
+      if (isOnline) {
+        try {
+          const fresh = await getCustomers({ activeOnly: true, pageSize: 200 })
+          if (businessId) void cacheCustomers(businessId, fresh.items)
+          return fresh
+        } catch (err) {
+          if (!businessId) throw err
+          const cached = await getCachedCustomers(businessId)
+          if (cached.length > 0)
+            return { items: cached, totalCount: cached.length, page: 1, pageSize: cached.length, totalPages: 1 }
+          throw err
+        }
+      }
+      if (!businessId) return { items: [], totalCount: 0, page: 1, pageSize: 0, totalPages: 0 }
+      const cached = await getCachedCustomers(businessId)
+      return { items: cached, totalCount: cached.length, page: 1, pageSize: cached.length, totalPages: 1 }
+    },
     enabled: isOpen,
+    // See the identical comment in PosPage.tsx's product query - the queryFn already
+    // handles offline itself, so React Query's default pausing must be turned off.
+    networkMode: 'always',
   })
 
   useEffect(() => {

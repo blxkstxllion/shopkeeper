@@ -65,6 +65,14 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // Docker Desktop on Windows doesn't reliably propagate inotify events for files
+    // edited on the host through a bind mount into the container - chokidar's default
+    // watcher then silently stops picking up changes after a while, serving stale
+    // modules with no error. Polling is slower but actually notices edits.
+    watch: {
+      usePolling: true,
+      interval: 300,
+    },
   },
   test: {
     environment: 'jsdom',
