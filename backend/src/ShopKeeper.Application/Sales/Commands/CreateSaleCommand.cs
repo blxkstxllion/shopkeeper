@@ -21,7 +21,8 @@ public record CreateSaleCommand(
     IReadOnlyList<SaleLineInput> Items,
     decimal DiscountAmount,
     IReadOnlyList<SalePaymentInput> Payments,
-    Guid? CustomerId = null) : IRequest<SaleDto>;
+    Guid? CustomerId = null,
+    Guid? ClientRequestId = null) : IRequest<SaleDto>;
 
 public class CreateSaleCommandValidator : AbstractValidator<CreateSaleCommand>
 {
@@ -50,6 +51,19 @@ public class CreateSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
         currentUser.RequireBranchAccess(request.BranchId);
         var businessId = currentUser.RequireBusinessId();
         var userId = currentUser.RequireUserId();
+
+        // Idempotent replay: an offline-queued sale carries a client-generated key so retrying
+        // a sync whose response was lost (not whose request failed) returns the sale that
+        // already exists instead of erroring or double-selling. Checked before any other work -
+        // in particular before ClaimNextSaleNumberAsync, which burns a number on every call.
+        if (request.ClientRequestId.HasValue)
+        {
+            var existing = await FindByClientRequestIdAsync(businessId, request.ClientRequestId.Value, cancellationToken);
+            if (existing is not null)
+            {
+                return existing;
+            }
+        }
 
         var branch = await db.Branches.FirstOrDefaultAsync(b => b.Id == request.BranchId, cancellationToken)
             ?? throw new NotFoundException(nameof(Branch), request.BranchId);
@@ -96,6 +110,7 @@ public class CreateSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
             CustomerId = request.CustomerId,
             CashierUserId = userId,
             SaleNumber = await ClaimNextSaleNumberAsync(businessId, cancellationToken),
+            ClientRequestId = request.ClientRequestId,
         };
 
         decimal subtotal = 0, totalCost = 0, lineDiscountTotal = 0;
@@ -227,6 +242,22 @@ public class CreateSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
             // caller (POS UI) can just retry with fresh stock numbers.
             throw new ConflictException("Stock changed while this sale was being processed. Please try again.");
         }
+        catch (DbUpdateException) when (request.ClientRequestId.HasValue)
+        {
+            // Two concurrent syncs replaying the same offline sale both passed the precheck
+            // above and raced to insert - the partial unique index on (BusinessId,
+            // ClientRequestId) caught it. This is not a real conflict from the client's point
+            // of view: the sale IS created, just by the other request. Return the winner's
+            // data instead of an error. If no such sale exists, this was a genuinely different
+            // DbUpdateException and must not be swallowed.
+            var winner = await FindByClientRequestIdAsync(businessId, request.ClientRequestId.Value, cancellationToken);
+            if (winner is null)
+            {
+                throw;
+            }
+
+            return winner;
+        }
 
         var cashier = await db.Users.Where(u => u.Id == userId).Select(u => new { u.FirstName, u.LastName }).FirstAsync(cancellationToken);
         var customerName = request.CustomerId.HasValue
@@ -234,6 +265,24 @@ public class CreateSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
             : null;
 
         return SaleMapper.ToDto(sale, branch.Name, $"{cashier.FirstName} {cashier.LastName}", customerName);
+    }
+
+    private async Task<SaleDto?> FindByClientRequestIdAsync(Guid businessId, Guid clientRequestId, CancellationToken ct)
+    {
+        var existing = await db.Sales.Include(s => s.Items).Include(s => s.Payments).Include(s => s.Branch)
+            .FirstOrDefaultAsync(s => s.BusinessId == businessId && s.ClientRequestId == clientRequestId, ct);
+        if (existing is null)
+        {
+            return null;
+        }
+
+        var cashier = await db.Users.Where(u => u.Id == existing.CashierUserId)
+            .Select(u => new { u.FirstName, u.LastName }).FirstAsync(ct);
+        var customerName = existing.CustomerId.HasValue
+            ? await db.Customers.Where(c => c.Id == existing.CustomerId).Select(c => c.Name).FirstOrDefaultAsync(ct)
+            : null;
+
+        return SaleMapper.ToDto(existing, existing.Branch.Name, $"{cashier.FirstName} {cashier.LastName}", customerName);
     }
 
     /// <summary>

@@ -16,6 +16,12 @@ public class Sale : BaseEntity, ITenantEntity
 
     public string SaleNumber { get; set; } = default!;
 
+    /// <summary>Client-generated idempotency key (e.g. a Guid minted offline, before a
+    /// connection exists to ask the server for one). Null for sales created online today, but
+    /// every offline-queued sale sets it, so replaying a sync after a dropped response can't
+    /// create a duplicate - see CreateSaleCommandHandler's use of it.</summary>
+    public Guid? ClientRequestId { get; set; }
+
     public Guid CashierUserId { get; set; }
     public User CashierUser { get; set; } = default!;
 
