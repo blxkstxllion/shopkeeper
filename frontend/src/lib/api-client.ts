@@ -14,6 +14,14 @@ export class ApiError extends Error {
   }
 }
 
+/** True only when the request never reached the server (offline, DNS failure, the API
+ * being down) - see the response interceptor below, which stamps status 0 exactly in
+ * that case. A real 4xx/5xx means the server was reached and rejected the request for
+ * an actual reason, which callers must never treat the same as "try again later". */
+export function isNetworkError(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 0
+}
+
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   withCredentials: true, // send the httpOnly refresh-token cookie
