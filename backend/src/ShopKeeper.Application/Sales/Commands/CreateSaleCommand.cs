@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
+using ShopKeeper.Application.Common.Services;
 using ShopKeeper.Application.Sales.Dtos;
 using ShopKeeper.Domain.Constants;
 using ShopKeeper.Domain.Entities;
@@ -38,7 +39,8 @@ public class CreateSaleCommandValidator : AbstractValidator<CreateSaleCommand>
     }
 }
 
-public class CreateSaleCommandHandler(IAppDbContext db, ICurrentUserService currentUser) : IRequestHandler<CreateSaleCommand, SaleDto>
+public class CreateSaleCommandHandler(IAppDbContext db, ICurrentUserService currentUser, NotificationDispatcher notifications)
+    : IRequestHandler<CreateSaleCommand, SaleDto>
 {
     private const decimal RoundingTolerance = 0.01m;
 
@@ -97,6 +99,7 @@ public class CreateSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
         };
 
         decimal subtotal = 0, totalCost = 0, lineDiscountTotal = 0;
+        var lowStockAlerts = new List<(string ProductName, int NewQuantity, int ReorderLevel)>();
 
         foreach (var line in request.Items)
         {
@@ -125,9 +128,17 @@ public class CreateSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
 
             if (stockByProduct.TryGetValue(line.ProductId, out var stock))
             {
-                var newQuantity = stock.QuantityOnHand - line.Quantity;
+                var previousQuantity = stock.QuantityOnHand;
+                var newQuantity = previousQuantity - line.Quantity;
                 stock.QuantityOnHand = newQuantity;
                 stock.RowVersion++;
+
+                // Fires once, on the sale that actually crosses the reorder level going down -
+                // not on every subsequent sale while stock is already low.
+                if (product.ReorderLevel > 0 && newQuantity <= product.ReorderLevel && previousQuantity > product.ReorderLevel)
+                {
+                    lowStockAlerts.Add((product.Name, newQuantity, product.ReorderLevel));
+                }
 
                 db.InventoryTransactions.Add(new InventoryTransaction
                 {
@@ -195,6 +206,14 @@ public class CreateSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
         }
 
         db.Sales.Add(sale);
+
+        foreach (var alert in lowStockAlerts)
+        {
+            await notifications.NotifyOwnersAsync(
+                businessId, "LowStock", "Low stock alert",
+                $"'{alert.ProductName}' is down to {alert.NewQuantity} units (reorder level: {alert.ReorderLevel}).",
+                "/app/inventory", cancellationToken);
+        }
 
         try
         {
