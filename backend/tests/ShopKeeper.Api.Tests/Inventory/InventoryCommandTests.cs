@@ -1,4 +1,5 @@
 namespace ShopKeeper.Api.Tests.Inventory;
+using ShopKeeper.Application.Common.Services;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -34,7 +35,7 @@ public class InventoryCommandTests : IDisposable
     {
         var (seeded, context, owner, productId) = await SeedWithProductAsync(initialQuantity: 20);
 
-        var newQuantity = await new AdjustStockCommandHandler(context, owner).Handle(
+        var newQuantity = await new AdjustStockCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new AdjustStockCommand(productId, seeded.BranchId, 15, "Received delivery"), CancellationToken.None);
 
         Assert.Equal(35, newQuantity);
@@ -47,7 +48,7 @@ public class InventoryCommandTests : IDisposable
     {
         var (seeded, context, owner, productId) = await SeedWithProductAsync(initialQuantity: 5);
 
-        await Assert.ThrowsAsync<ConflictException>(() => new AdjustStockCommandHandler(context, owner).Handle(
+        await Assert.ThrowsAsync<ConflictException>(() => new AdjustStockCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new AdjustStockCommand(productId, seeded.BranchId, -10, "Stock count correction"), CancellationToken.None));
 
         var stock = await context.ProductStocks.SingleAsync(s => s.ProductId == productId);
@@ -59,7 +60,7 @@ public class InventoryCommandTests : IDisposable
     {
         var (seeded, context, owner, productId) = await SeedWithProductAsync(initialQuantity: 20);
 
-        await new AdjustStockCommandHandler(context, owner).Handle(
+        await new AdjustStockCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new AdjustStockCommand(productId, seeded.BranchId, -3, "Damaged in storage"), CancellationToken.None);
 
         var transaction = await context.InventoryTransactions

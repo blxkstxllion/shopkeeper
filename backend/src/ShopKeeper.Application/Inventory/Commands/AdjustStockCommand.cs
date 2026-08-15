@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
+using ShopKeeper.Application.Common.Services;
 using ShopKeeper.Domain.Constants;
 using ShopKeeper.Domain.Entities;
 using ShopKeeper.Domain.Enums;
@@ -33,7 +34,8 @@ public class AdjustStockCommandValidator : AbstractValidator<AdjustStockCommand>
 }
 
 /// <summary>Returns the resulting quantity on hand.</summary>
-public class AdjustStockCommandHandler(IAppDbContext db, ICurrentUserService currentUser) : IRequestHandler<AdjustStockCommand, int>
+public class AdjustStockCommandHandler(IAppDbContext db, ICurrentUserService currentUser, NotificationDispatcher notifications)
+    : IRequestHandler<AdjustStockCommand, int>
 {
     public async Task<int> Handle(AdjustStockCommand request, CancellationToken cancellationToken)
     {
@@ -58,7 +60,8 @@ public class AdjustStockCommandHandler(IAppDbContext db, ICurrentUserService cur
             db.ProductStocks.Add(stock);
         }
 
-        var newQuantity = stock.QuantityOnHand + request.QuantityChange;
+        var previousQuantity = stock.QuantityOnHand;
+        var newQuantity = previousQuantity + request.QuantityChange;
         if (newQuantity < 0)
         {
             throw new ConflictException(
@@ -67,6 +70,16 @@ public class AdjustStockCommandHandler(IAppDbContext db, ICurrentUserService cur
 
         stock.QuantityOnHand = newQuantity;
         stock.RowVersion++;
+
+        // Fires once, on the adjustment that actually crosses the reorder level going down -
+        // not on every subsequent adjustment while stock is already low.
+        if (product.ReorderLevel > 0 && newQuantity <= product.ReorderLevel && previousQuantity > product.ReorderLevel)
+        {
+            await notifications.NotifyOwnersAsync(
+                businessId, "LowStock", "Low stock alert",
+                $"'{product.Name}' is down to {newQuantity} units (reorder level: {product.ReorderLevel}).",
+                "/app/inventory", cancellationToken);
+        }
 
         db.InventoryTransactions.Add(new InventoryTransaction
         {

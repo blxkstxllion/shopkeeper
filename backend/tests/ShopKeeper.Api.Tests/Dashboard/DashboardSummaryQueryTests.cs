@@ -1,4 +1,5 @@
 namespace ShopKeeper.Api.Tests.Dashboard;
+using ShopKeeper.Application.Common.Services;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -48,12 +49,12 @@ public class DashboardSummaryQueryTests : IDisposable
     {
         var (seeded, context, owner, productId) = await SeedWithProductAsync(sellingPrice: 10m, costPrice: 6m);
 
-        var yesterdaySale = await new CreateSaleCommandHandler(context, owner).Handle(
+        var yesterdaySale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(productId, 2, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 20m, null)]),
             CancellationToken.None);
         await BackdateSaleAsync(context, yesterdaySale.Id, DateTimeOffset.UtcNow.AddDays(-1));
 
-        await new CreateSaleCommandHandler(context, owner).Handle(
+        await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(productId, 5, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 50m, null)]),
             CancellationToken.None);
 
@@ -69,7 +70,7 @@ public class DashboardSummaryQueryTests : IDisposable
     {
         var (seeded, context, owner, productId) = await SeedWithProductAsync();
 
-        await new CreateSaleCommandHandler(context, owner).Handle(
+        await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(productId, 1, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 10m, null)]),
             CancellationToken.None);
 
@@ -83,7 +84,7 @@ public class DashboardSummaryQueryTests : IDisposable
     {
         var (seeded, context, owner, productId) = await SeedWithProductAsync();
 
-        var sale = await new CreateSaleCommandHandler(context, owner).Handle(
+        var sale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(productId, 2, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 20m, null)]),
             CancellationToken.None);
         await new VoidSaleCommandHandler(context, owner).Handle(new VoidSaleCommand(sale.Id, "Mistake"), CancellationToken.None);
@@ -110,7 +111,7 @@ public class DashboardSummaryQueryTests : IDisposable
     {
         var (seeded, context, owner, productId) = await SeedWithProductAsync(sellingPrice: 10m);
 
-        await new CreateSaleCommandHandler(context, owner).Handle(
+        await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(productId, 3, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 30m, null)]),
             CancellationToken.None);
 
@@ -131,12 +132,12 @@ public class DashboardSummaryQueryTests : IDisposable
     {
         var (seeded, context, owner, productId) = await SeedWithProductAsync();
 
-        var first = await new CreateSaleCommandHandler(context, owner).Handle(
+        var first = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(productId, 1, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 10m, null)]),
             CancellationToken.None);
         await BackdateSaleAsync(context, first.Id, DateTimeOffset.UtcNow.AddMinutes(-10));
 
-        var second = await new CreateSaleCommandHandler(context, owner).Handle(
+        var second = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(productId, 1, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 10m, null)]),
             CancellationToken.None);
 
@@ -164,10 +165,10 @@ public class DashboardSummaryQueryTests : IDisposable
         context.ProductStocks.Add(new ProductStock { BusinessId = seeded.BusinessId, ProductId = product.Id, BranchId = branchB.Id, QuantityOnHand = 10 });
         await context.SaveChangesAsync(CancellationToken.None);
 
-        await new CreateSaleCommandHandler(context, owner).Handle(
+        await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(product.Id, 1, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 10m, null)]),
             CancellationToken.None);
-        await new CreateSaleCommandHandler(context, owner).Handle(
+        await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(branchB.Id, [new SaleLineInput(product.Id, 1, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 10m, null)]),
             CancellationToken.None);
 

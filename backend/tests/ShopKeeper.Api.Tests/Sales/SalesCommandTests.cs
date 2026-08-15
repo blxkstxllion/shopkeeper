@@ -1,4 +1,5 @@
 namespace ShopKeeper.Api.Tests.Sales;
+using ShopKeeper.Application.Common.Services;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -35,7 +36,7 @@ public class SalesCommandTests : IDisposable
     {
         var (seeded, context, owner, productId) = await SeedWithProductAsync(sellingPrice: 10m, costPrice: 6m, initialQuantity: 20);
 
-        var sale = await new CreateSaleCommandHandler(context, owner).Handle(
+        var sale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(
                 seeded.BranchId,
                 [new SaleLineInput(productId, 5, 0)],
@@ -64,7 +65,7 @@ public class SalesCommandTests : IDisposable
     {
         var (seeded, context, owner, productId) = await SeedWithProductAsync(sellingPrice: 10m, costPrice: 6m, initialQuantity: 20);
 
-        var sale = await new CreateSaleCommandHandler(context, owner).Handle(
+        var sale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(
                 seeded.BranchId,
                 [new SaleLineInput(productId, 5, 5m)], // GHS 5 off the line
@@ -84,7 +85,7 @@ public class SalesCommandTests : IDisposable
     {
         var (seeded, context, owner, productId) = await SeedWithProductAsync(initialQuantity: 3);
 
-        await Assert.ThrowsAsync<ConflictException>(() => new CreateSaleCommandHandler(context, owner).Handle(
+        await Assert.ThrowsAsync<ConflictException>(() => new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(
                 seeded.BranchId,
                 [new SaleLineInput(productId, 10, 0)],
@@ -102,7 +103,7 @@ public class SalesCommandTests : IDisposable
     {
         var (seeded, context, owner, productId) = await SeedWithProductAsync();
 
-        await Assert.ThrowsAsync<ConflictException>(() => new CreateSaleCommandHandler(context, owner).Handle(
+        await Assert.ThrowsAsync<ConflictException>(() => new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(
                 seeded.BranchId,
                 [new SaleLineInput(productId, 5, 0)],
@@ -116,7 +117,7 @@ public class SalesCommandTests : IDisposable
     {
         var (seeded, context, owner, productId) = await SeedWithProductAsync();
 
-        var sale = await new CreateSaleCommandHandler(context, owner).Handle(
+        var sale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(
                 seeded.BranchId,
                 [new SaleLineInput(productId, 5, 0)],
@@ -136,7 +137,7 @@ public class SalesCommandTests : IDisposable
     {
         var (seeded, context, owner, productId) = await SeedWithProductAsync(initialQuantity: 20);
 
-        var sale = await new CreateSaleCommandHandler(context, owner).Handle(
+        var sale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(productId, 5, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 50m, null)]),
             CancellationToken.None);
 
@@ -155,7 +156,7 @@ public class SalesCommandTests : IDisposable
     {
         var (seeded, context, owner, productId) = await SeedWithProductAsync();
 
-        var sale = await new CreateSaleCommandHandler(context, owner).Handle(
+        var sale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(productId, 5, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 50m, null)]),
             CancellationToken.None);
 
@@ -170,7 +171,7 @@ public class SalesCommandTests : IDisposable
     {
         var (seeded, context, owner, productId) = await SeedWithProductAsync(initialQuantity: 20);
 
-        var sale = await new CreateSaleCommandHandler(context, owner).Handle(
+        var sale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(productId, 10, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 100m, null)]),
             CancellationToken.None);
 
@@ -193,7 +194,7 @@ public class SalesCommandTests : IDisposable
     {
         var (seeded, context, owner, productId) = await SeedWithProductAsync();
 
-        var sale = await new CreateSaleCommandHandler(context, owner).Handle(
+        var sale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(productId, 5, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 50m, null)]),
             CancellationToken.None);
 
@@ -211,7 +212,7 @@ public class SalesCommandTests : IDisposable
     {
         var (seeded, context, owner, productId) = await SeedWithProductAsync();
 
-        var sale = await new CreateSaleCommandHandler(context, owner).Handle(
+        var sale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(productId, 5, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 50m, null)]),
             CancellationToken.None);
 

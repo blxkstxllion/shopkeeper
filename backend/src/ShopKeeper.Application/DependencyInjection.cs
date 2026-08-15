@@ -17,6 +17,7 @@ public static class DependencyInjection
         services.AddTransient(typeof(MediatR.IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
         services.AddScoped<TokenIssuer>();
+        services.AddScoped<NotificationDispatcher>();
 
         return services;
     }
