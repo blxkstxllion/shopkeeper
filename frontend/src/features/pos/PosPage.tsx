@@ -4,6 +4,15 @@ import { Search } from 'lucide-react'
 import { getSellableProducts } from '@/api/sales'
 import { getProductCategories } from '@/api/products'
 import { useActiveBranch } from '@/hooks/useActiveBranch'
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'
+import { useAuth } from '@/contexts/AuthContext'
+import {
+  cacheCatalog,
+  cacheCategories,
+  filterCatalog,
+  getCachedCatalog,
+  getCachedCategories,
+} from '@/offline/catalogCache'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
 import type { Sale, SellableProduct } from '@/types/sale'
@@ -15,6 +24,9 @@ import type { CartLine } from './cart'
 
 export function PosPage() {
   const { branch, isLoading: isBranchLoading } = useActiveBranch()
+  const { activeBusiness } = useAuth()
+  const businessId = activeBusiness?.businessId
+  const isOnline = useOnlineStatus()
   const [search, setSearch] = useState('')
   const [categoryId, setCategoryId] = useState<string | undefined>(undefined)
   const [cart, setCart] = useState<CartLine[]>([])
@@ -22,11 +34,54 @@ export function PosPage() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
   const [completedSale, setCompletedSale] = useState<Sale | null>(null)
 
-  const { data: categories } = useQuery({ queryKey: ['product-categories'], queryFn: getProductCategories })
+  const { data: categories } = useQuery({
+    queryKey: ['product-categories'],
+    queryFn: async () => {
+      if (isOnline) {
+        try {
+          const fresh = await getProductCategories()
+          if (businessId) void cacheCategories(businessId, fresh)
+          return fresh
+        } catch (err) {
+          if (!businessId) throw err
+          const cached = await getCachedCategories(businessId)
+          if (cached.length > 0) return cached
+          throw err
+        }
+      }
+      return businessId ? getCachedCategories(businessId) : []
+    },
+    // The queryFn above already decides what to do offline (read from IndexedDB) -
+    // React Query's own default network-aware pausing would otherwise refuse to even
+    // call it while navigator.onLine is false, which defeats that entirely.
+    networkMode: 'always',
+  })
+
+  // The unfiltered (no search/category) fetch is the one cached as the offline catalog
+  // snapshot - a filtered server response would only cover a slice of the catalog, which
+  // isn't enough to answer a *different* search once the connection drops.
   const { data: products, isLoading } = useQuery({
     queryKey: ['sellable-products', branch?.id, search, categoryId],
-    queryFn: () => getSellableProducts(branch!.id, search || undefined, categoryId),
+    queryFn: async () => {
+      const isUnfiltered = !search && !categoryId
+      if (isOnline) {
+        try {
+          const fresh = await getSellableProducts(branch!.id, search || undefined, categoryId)
+          if (isUnfiltered && businessId) void cacheCatalog(businessId, branch!.id, fresh)
+          return fresh
+        } catch (err) {
+          if (!businessId) throw err
+          const cached = await getCachedCatalog(businessId, branch!.id)
+          if (cached.length > 0) return filterCatalog(cached, search, categoryId)
+          throw err
+        }
+      }
+      if (!businessId) return []
+      const cached = await getCachedCatalog(businessId, branch!.id)
+      return filterCatalog(cached, search, categoryId)
+    },
     enabled: Boolean(branch),
+    networkMode: 'always',
   })
 
   function handleSelectProduct(product: SellableProduct) {
