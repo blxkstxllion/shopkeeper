@@ -1,10 +1,10 @@
 namespace ShopKeeper.Api.Tests.Customers;
-using ShopKeeper.Application.Common.Services;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using ShopKeeper.Api.Tests.TestHelpers;
 using ShopKeeper.Application.Common.Exceptions;
+using ShopKeeper.Application.Common.Services;
 using ShopKeeper.Application.Customers.Commands;
 using ShopKeeper.Application.Customers.Queries;
 using ShopKeeper.Application.Products.Commands;
