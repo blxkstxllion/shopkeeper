@@ -15,7 +15,7 @@ import {
 } from '@/offline/catalogCache'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
-import type { Sale, SellableProduct } from '@/types/sale'
+import type { QueuedSale, Sale, SellableProduct } from '@/types/sale'
 import { ProductGrid } from './ProductGrid'
 import { CartPanel } from './CartPanel'
 import { CheckoutModal } from './CheckoutModal'
@@ -32,7 +32,7 @@ export function PosPage() {
   const [cart, setCart] = useState<CartLine[]>([])
   const [discountAmount, setDiscountAmount] = useState(0)
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
-  const [completedSale, setCompletedSale] = useState<Sale | null>(null)
+  const [completedSale, setCompletedSale] = useState<Sale | QueuedSale | null>(null)
 
   const { data: categories } = useQuery({
     queryKey: ['product-categories'],
@@ -106,7 +106,7 @@ export function PosPage() {
     setCart((prev) => prev.filter((l) => l.product.productId !== productId))
   }
 
-  function handleSaleComplete(sale: Sale) {
+  function handleSaleComplete(sale: Sale | QueuedSale) {
     setIsCheckoutOpen(false)
     setCompletedSale(sale)
     setCart([])
@@ -190,6 +190,7 @@ export function PosPage() {
         lines={cart}
         discountAmount={discountAmount}
         branchId={branch.id}
+        branchName={branch.name}
         onSuccess={handleSaleComplete}
       />
       <ReceiptModal sale={completedSale} onClose={() => setCompletedSale(null)} />

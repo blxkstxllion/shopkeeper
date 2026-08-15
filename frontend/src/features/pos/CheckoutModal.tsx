@@ -11,9 +11,11 @@ import { createSale } from '@/api/sales'
 import { createCustomer, getCustomers } from '@/api/customers'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
+import { isNetworkError } from '@/lib/api-client'
 import { cacheCustomers, getCachedCustomers } from '@/offline/customerCache'
+import { enqueueSale } from '@/offline/outbox'
 import type { ApiErrorPayload } from '@/types/auth'
-import type { PaymentMethod, Sale } from '@/types/sale'
+import type { PaymentMethod, QueuedSale, Sale } from '@/types/sale'
 import { cartLineDiscountTotal, cartSubtotal, type CartLine } from './cart'
 
 interface PaymentRow {
@@ -34,6 +36,7 @@ export function CheckoutModal({
   lines,
   discountAmount,
   branchId,
+  branchName,
   onSuccess,
 }: {
   isOpen: boolean
@@ -41,7 +44,8 @@ export function CheckoutModal({
   lines: CartLine[]
   discountAmount: number
   branchId: string
-  onSuccess: (sale: Sale) => void
+  branchName: string
+  onSuccess: (sale: Sale | QueuedSale) => void
 }) {
   const queryClient = useQueryClient()
   const { activeBusiness } = useAuth()
@@ -99,6 +103,11 @@ export function CheckoutModal({
       const apiErr = (err as AxiosError<ApiErrorPayload>).response?.data
       setServerError(apiErr?.title ?? 'Unable to add that customer. Please try again.')
     },
+    // Without this, React Query's default network-aware pausing leaves mutate() stuck
+    // "pending" forever while offline instead of running mutationFn (which would fail
+    // fast with a real error) - adding a customer genuinely isn't supported offline,
+    // but it must fail visibly, not hang.
+    networkMode: 'always',
   })
 
   const subtotal = cartSubtotal(lines)
@@ -108,8 +117,8 @@ export function CheckoutModal({
   const remaining = Math.round((total - paid) * 100) / 100
 
   const mutation = useMutation({
-    mutationFn: () =>
-      createSale({
+    mutationFn: async (): Promise<Sale | QueuedSale> => {
+      const payload = {
         branchId,
         items: lines.map((l) => ({
           productId: l.product.productId,
@@ -123,17 +132,59 @@ export function CheckoutModal({
           referenceNumber: p.referenceNumber || null,
         })),
         customerId: customerId || null,
-      }),
-    onSuccess: (sale) => {
-      queryClient.invalidateQueries({ queryKey: ['products'] })
-      queryClient.invalidateQueries({ queryKey: ['sales'] })
+        // Generated fresh for every attempt, online or offline - a retry of this exact
+        // payload (flaky connection, or a resync after reconnecting) can never double-sell.
+        clientRequestId: crypto.randomUUID(),
+      }
+
+      if (isOnline) {
+        try {
+          return await createSale(payload)
+        } catch (err) {
+          if (!isNetworkError(err)) throw err // a real rejection (e.g. insufficient stock) must surface, not queue
+        }
+      }
+
+      if (!businessId) throw new Error('No active business to queue this sale under.')
+
+      const displayItems = lines.map((l) => ({
+        productId: l.product.productId,
+        productName: l.product.name,
+        quantity: l.quantity,
+        unitPrice: l.product.sellingPrice,
+        lineRevenue: l.product.sellingPrice * l.quantity - l.discountAmount,
+      }))
+      const queuedAt = new Date().toISOString()
+      await enqueueSale(businessId, { payload, queuedAt, branchName, displayItems })
+
+      return {
+        queued: true,
+        clientRequestId: payload.clientRequestId,
+        branchName,
+        queuedAt,
+        items: displayItems,
+        subtotal,
+        discountAmount: lineDiscounts + discountAmount,
+        total,
+        payments: payload.payments,
+      }
+    },
+    onSuccess: (result) => {
+      if (!('queued' in result)) {
+        queryClient.invalidateQueries({ queryKey: ['sellable-products'] })
+        queryClient.invalidateQueries({ queryKey: ['sales'] })
+      }
       setPayments([])
-      onSuccess(sale)
+      onSuccess(result)
     },
     onError: (err) => {
       const apiErr = (err as AxiosError<ApiErrorPayload>).response?.data
       setServerError(apiErr?.title ?? 'Unable to complete the sale. Please try again.')
     },
+    // mutationFn already decides what to do offline (queue to the outbox) - without
+    // this, React Query's default network-aware pausing would leave mutate() stuck
+    // "pending" forever while offline instead of ever calling it.
+    networkMode: 'always',
   })
 
   function addPaymentMethod(method: PaymentMethod) {

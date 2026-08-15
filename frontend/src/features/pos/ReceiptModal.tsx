@@ -1,26 +1,50 @@
-import { CheckCircle2, Printer } from 'lucide-react'
+import { CheckCircle2, Printer, RefreshCw } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { formatMoney, formatDateTime } from '@/lib/format'
-import type { Sale } from '@/types/sale'
+import type { QueuedSale, Sale } from '@/types/sale'
 
-export function ReceiptModal({ sale, onClose }: { sale: Sale | null; onClose: () => void }) {
+export function ReceiptModal({ sale, onClose }: { sale: Sale | QueuedSale | null; onClose: () => void }) {
   if (!sale) return null
 
+  const isQueued = 'queued' in sale
+  const items = isQueued
+    ? sale.items.map((i) => ({
+        key: i.productId,
+        quantity: i.quantity,
+        productName: i.productName,
+        lineRevenue: i.lineRevenue,
+      }))
+    : sale.items.map((i) => ({
+        key: i.id,
+        quantity: i.quantity,
+        productName: i.productName,
+        lineRevenue: i.lineRevenue,
+      }))
+  const payments = isQueued
+    ? sale.payments.map((p, i) => ({ key: i, method: p.method, amount: p.amount }))
+    : sale.payments.map((p) => ({ key: p.id, method: p.method, amount: p.amount }))
+
   return (
-    <Modal isOpen={Boolean(sale)} onClose={onClose} title="Sale complete" size="sm">
+    <Modal isOpen={Boolean(sale)} onClose={onClose} title={isQueued ? 'Sale queued' : 'Sale complete'} size="sm">
       <div className="flex flex-col gap-4">
         <div className="flex flex-col items-center gap-1 py-2 text-center">
-          <CheckCircle2 className="h-10 w-10 text-primary-600" />
-          <p className="text-sm text-slate-500 dark:text-slate-400">{sale.saleNumber}</p>
-          <p className="text-xs text-slate-400">{formatDateTime(sale.createdAt)}</p>
+          {isQueued ? (
+            <RefreshCw className="h-10 w-10 text-amber-500" />
+          ) : (
+            <CheckCircle2 className="h-10 w-10 text-primary-600" />
+          )}
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {isQueued ? 'Will sync automatically once back online' : sale.saleNumber}
+          </p>
+          <p className="text-xs text-slate-400">{formatDateTime(isQueued ? sale.queuedAt : sale.createdAt)}</p>
         </div>
 
         <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-700" id="receipt-content">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{sale.branchName}</p>
           <ul className="divide-y divide-slate-100 text-sm dark:divide-slate-800">
-            {sale.items.map((item) => (
-              <li key={item.id} className="flex justify-between py-1.5">
+            {items.map((item) => (
+              <li key={item.key} className="flex justify-between py-1.5">
                 <span className="text-slate-700 dark:text-slate-300">
                   {item.quantity} × {item.productName}
                 </span>
@@ -39,7 +63,7 @@ export function ReceiptModal({ sale, onClose }: { sale: Sale | null; onClose: ()
                 <span>-{formatMoney(sale.discountAmount)}</span>
               </div>
             )}
-            {sale.taxAmount > 0 && (
+            {!isQueued && sale.taxAmount > 0 && (
               <div className="flex justify-between text-slate-500 dark:text-slate-400">
                 <span>Tax</span>
                 <span>{formatMoney(sale.taxAmount)}</span>
@@ -51,8 +75,8 @@ export function ReceiptModal({ sale, onClose }: { sale: Sale | null; onClose: ()
             </div>
           </div>
           <div className="mt-2 border-t border-slate-100 pt-2 text-xs text-slate-400 dark:border-slate-800">
-            {sale.payments.map((p) => (
-              <div key={p.id} className="flex justify-between">
+            {payments.map((p) => (
+              <div key={p.key} className="flex justify-between">
                 <span>{p.method}</span>
                 <span>{formatMoney(p.amount)}</span>
               </div>
