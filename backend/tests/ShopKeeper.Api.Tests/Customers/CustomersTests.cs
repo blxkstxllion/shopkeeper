@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using ShopKeeper.Api.Tests.TestHelpers;
 using ShopKeeper.Application.Common.Exceptions;
+using ShopKeeper.Application.Common.Services;
 using ShopKeeper.Application.Customers.Commands;
 using ShopKeeper.Application.Customers.Queries;
 using ShopKeeper.Application.Products.Commands;
@@ -89,7 +90,7 @@ public class CustomersTests : IDisposable
             new CreateProductCommand("Widget", "SKU-CUST", null, null, null, null, 10m, 6m, 5, 10, true, 20, seeded.BranchId),
             CancellationToken.None);
 
-        var sale = await new CreateSaleCommandHandler(context, owner).Handle(
+        var sale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(
                 seeded.BranchId,
                 [new SaleLineInput(product.Id, 2, 0)],
@@ -121,7 +122,7 @@ public class CustomersTests : IDisposable
             new CreateProductCommand("Widget", "SKU-CUST2", null, null, null, null, 10m, 6m, 5, 10, true, 20, seeded.BranchId),
             CancellationToken.None);
 
-        var sale = await new CreateSaleCommandHandler(context, owner).Handle(
+        var sale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(
                 seeded.BranchId,
                 [new SaleLineInput(product.Id, 2, 0)],
@@ -145,7 +146,7 @@ public class CustomersTests : IDisposable
             new CreateProductCommand("Widget", "SKU-WALKIN", null, null, null, null, 10m, 6m, 5, 10, true, 20, seeded.BranchId),
             CancellationToken.None);
 
-        var sale = await new CreateSaleCommandHandler(context, owner).Handle(
+        var sale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(
                 seeded.BranchId,
                 [new SaleLineInput(product.Id, 2, 0)],
@@ -171,10 +172,10 @@ public class CustomersTests : IDisposable
             new CreateProductCommand("Widget", "SKU-AGG", null, null, null, null, 10m, 6m, 5, 10, true, 20, seeded.BranchId),
             CancellationToken.None);
 
-        await new CreateSaleCommandHandler(context, owner).Handle(
+        await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(product.Id, 2, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 20m, null)], customer.Id),
             CancellationToken.None);
-        await new CreateSaleCommandHandler(context, owner).Handle(
+        await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(product.Id, 3, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 30m, null)], customer.Id),
             CancellationToken.None);
 
