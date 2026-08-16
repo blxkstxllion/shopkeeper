@@ -21,9 +21,8 @@ import { AcceptInvitePage } from '@/features/auth/AcceptInvitePage'
 import { JoinPage } from '@/features/auth/JoinPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { AuditLogsPage } from '@/features/audit-logs/AuditLogsPage'
-import { ComingSoon } from '@/components/ComingSoon'
+import { AdvisorPage } from '@/features/advisor/AdvisorPage'
 import { RequireActiveBusiness, RequireAuth, RedirectIfAuthed, RequirePermission } from './guards'
-import { Sparkles } from 'lucide-react'
 
 export function AppRouter() {
   return (
@@ -84,7 +83,11 @@ export function AppRouter() {
         <Route path="/app/inventory" element={<InventoryPage />} />
         <Route
           path="/app/ai"
-          element={<ComingSoon title="The Shop Keeper Advisor" icon={Sparkles} phase="Phase 6" />}
+          element={
+            <RequirePermission permission="ai_consultant:use">
+              <AdvisorPage />
+            </RequirePermission>
+          }
         />
         <Route path="/app/branches" element={<BranchesPage />} />
         <Route path="/app/employees" element={<EmployeesPage />} />
