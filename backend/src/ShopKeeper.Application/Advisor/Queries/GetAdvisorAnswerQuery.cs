@@ -3,13 +3,19 @@ namespace ShopKeeper.Application.Advisor.Queries;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using ShopKeeper.Application.Advisor.Dtos;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Application.Reports.Queries;
 using ShopKeeper.Application.Dashboard.Queries;
 using ShopKeeper.Domain.Constants;
 
-public record GetAdvisorAnswerQuery(AdvisorQuestionId QuestionId, Guid? BranchId) : IRequest<AdvisorAnswerDto>;
+public record GetAdvisorAnswerQuery(AdvisorQuestionId QuestionId, Guid? BranchId)
+    : IRequest<AdvisorAnswerDto>, IRequirePlanFeature
+{
+    public bool RequiresReports => false;
+    public bool RequiresAi => true;
+}
 
 /// <summary>
 /// Answers a fixed set of business questions by calling the same MediatR queries

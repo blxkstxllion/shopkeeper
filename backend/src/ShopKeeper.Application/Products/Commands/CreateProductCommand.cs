@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
+using ShopKeeper.Application.Common.Services;
 using ShopKeeper.Application.Products.Dtos;
 using ShopKeeper.Domain.Constants;
 using ShopKeeper.Domain.Entities;
@@ -44,7 +45,7 @@ public class CreateProductCommandValidator : AbstractValidator<CreateProductComm
     }
 }
 
-public class CreateProductCommandHandler(IAppDbContext db, ICurrentUserService currentUser)
+public class CreateProductCommandHandler(IAppDbContext db, ICurrentUserService currentUser, PlanLimitService planLimits)
     : IRequestHandler<CreateProductCommand, ProductDto>
 {
     public async Task<ProductDto> Handle(CreateProductCommand request, CancellationToken cancellationToken)
@@ -55,6 +56,7 @@ public class CreateProductCommandHandler(IAppDbContext db, ICurrentUserService c
             currentUser.RequireBranchAccess(request.BranchId.Value);
         }
         var businessId = currentUser.RequireBusinessId();
+        await planLimits.EnsureCanAddProductAsync(businessId, cancellationToken);
 
         var skuTaken = await db.Products.AnyAsync(p => p.Sku == request.Sku, cancellationToken);
         if (skuTaken)

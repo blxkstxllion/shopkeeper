@@ -28,7 +28,7 @@ public class DashboardSummaryQueryTests : IDisposable
         var category = await new CreateProductCategoryCommandHandler(context, owner).Handle(
             new CreateProductCategoryCommand("Beverages", null), CancellationToken.None);
 
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand("Widget", "SKU-DASH", null, null, null, category.Id, sellingPrice, costPrice, 5, reorderLevel, true, initialQuantity, seeded.BranchId),
             CancellationToken.None);
 
@@ -159,7 +159,7 @@ public class DashboardSummaryQueryTests : IDisposable
         context.Branches.Add(branchB);
         await context.SaveChangesAsync(CancellationToken.None);
 
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand("Widget", "SKU-BRANCH", null, null, null, null, 10m, 6m, 5, 10, true, 10, seeded.BranchId),
             CancellationToken.None);
         context.ProductStocks.Add(new ProductStock { BusinessId = seeded.BusinessId, ProductId = product.Id, BranchId = branchB.Id, QuantityOnHand = 10 });

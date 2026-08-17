@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { AxiosError } from 'axios'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Alert } from '@/components/ui/Alert'
 import { rejectJoinRequest } from '@/api/employees'
+import { ApiError } from '@/lib/api-client'
 import { formatDateTime } from '@/lib/format'
-import type { ApiErrorPayload } from '@/types/auth'
 import type { JoinRequestItem } from '@/types/employee'
 import { ApproveJoinRequestModal } from './ApproveJoinRequestModal'
 
@@ -22,8 +21,7 @@ export function JoinRequestsSection({ requests }: { requests: JoinRequestItem[] 
       queryClient.invalidateQueries({ queryKey: ['business-users'] })
     },
     onError: (err) => {
-      const apiErr = (err as AxiosError<ApiErrorPayload>).response?.data
-      setActionError(apiErr?.title ?? 'Unable to reject this request. Please try again.')
+      setActionError(err instanceof ApiError ? err.message : 'Unable to reject this request. Please try again.')
     },
   })
 

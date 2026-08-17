@@ -3,13 +3,19 @@ namespace ShopKeeper.Application.Reports.Queries;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Application.Reports.Dtos;
 using ShopKeeper.Domain.Constants;
 using ShopKeeper.Domain.Enums;
 
-public record GetProfitabilityReportQuery(DateOnly From, DateOnly To, Guid? BranchId) : IRequest<ProfitabilityReportDto>;
+public record GetProfitabilityReportQuery(DateOnly From, DateOnly To, Guid? BranchId)
+    : IRequest<ProfitabilityReportDto>, IRequirePlanFeature
+{
+    public bool RequiresReports => true;
+    public bool RequiresAi => false;
+}
 
 public class GetProfitabilityReportQueryValidator : AbstractValidator<GetProfitabilityReportQuery>
 {

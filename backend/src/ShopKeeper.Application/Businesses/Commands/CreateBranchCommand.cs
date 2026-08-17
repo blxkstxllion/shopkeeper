@@ -7,6 +7,7 @@ using ShopKeeper.Application.Businesses.Dtos;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
+using ShopKeeper.Application.Common.Services;
 using ShopKeeper.Domain.Constants;
 using ShopKeeper.Domain.Entities;
 
@@ -28,13 +29,14 @@ public class CreateBranchCommandValidator : AbstractValidator<CreateBranchComman
     }
 }
 
-public class CreateBranchCommandHandler(IAppDbContext db, ICurrentUserService currentUser)
+public class CreateBranchCommandHandler(IAppDbContext db, ICurrentUserService currentUser, PlanLimitService planLimits)
     : IRequestHandler<CreateBranchCommand, BranchDto>
 {
     public async Task<BranchDto> Handle(CreateBranchCommand request, CancellationToken cancellationToken)
     {
         currentUser.RequirePermission(PermissionKeys.BranchesManage);
         var businessId = currentUser.RequireBusinessId();
+        await planLimits.EnsureCanAddBranchAsync(businessId, cancellationToken);
 
         var codeTaken = await db.Branches.AnyAsync(b => b.Code == request.Code, cancellationToken);
         if (codeTaken)

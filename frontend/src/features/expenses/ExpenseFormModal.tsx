@@ -3,14 +3,13 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AxiosError } from 'axios'
 import { Plus } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, FormField } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
 import { createExpense, createExpenseCategory, getExpenseCategories, updateExpense } from '@/api/expenses'
-import type { ApiErrorPayload } from '@/types/auth'
+import { ApiError } from '@/lib/api-client'
 import type { Expense } from '@/types/expense'
 
 const schema = z.object({
@@ -86,8 +85,7 @@ export function ExpenseFormModal({
       setNewCategoryName('')
     },
     onError: (err) => {
-      const apiErr = (err as AxiosError<ApiErrorPayload>).response?.data
-      setServerError(apiErr?.title ?? 'Unable to create that category. Please try again.')
+      setServerError(err instanceof ApiError ? err.message : 'Unable to create that category. Please try again.')
     },
   })
 
@@ -112,8 +110,7 @@ export function ExpenseFormModal({
       onClose()
     },
     onError: (err) => {
-      const apiErr = (err as AxiosError<ApiErrorPayload>).response?.data
-      setServerError(apiErr?.title ?? 'Unable to save this expense. Please try again.')
+      setServerError(err instanceof ApiError ? err.message : 'Unable to save this expense. Please try again.')
     },
   })
 

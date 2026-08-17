@@ -34,7 +34,7 @@ public class BranchAccessTests : IDisposable
         var branchB = new Branch { BusinessId = seeded.BusinessId, Name = "Second Branch", Code = "B2", Country = "Ghana" };
         context.Branches.Add(branchB);
 
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand("Widget", "SKU-BR", null, null, null, null, 10m, 6m, 5, 10, true, 20, seeded.BranchId),
             CancellationToken.None);
 
@@ -96,7 +96,7 @@ public class BranchAccessTests : IDisposable
         context.Branches.Add(branchB);
         await context.SaveChangesAsync(CancellationToken.None);
 
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand("Gadget", "SKU-OWN", null, null, null, null, 10m, 6m, 5, 10, true, 10, branchB.Id),
             CancellationToken.None);
 

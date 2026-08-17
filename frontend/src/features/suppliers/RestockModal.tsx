@@ -3,7 +3,6 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AxiosError } from 'axios'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, FormField } from '@/components/ui/Input'
@@ -11,7 +10,7 @@ import { Alert } from '@/components/ui/Alert'
 import { getProducts } from '@/api/products'
 import { restockFromSupplier } from '@/api/suppliers'
 import { useActiveBranch } from '@/hooks/useActiveBranch'
-import type { ApiErrorPayload } from '@/types/auth'
+import { ApiError } from '@/lib/api-client'
 import type { Supplier } from '@/types/supplier'
 
 const schema = z.object({
@@ -66,8 +65,7 @@ export function RestockModal({
       onClose()
     },
     onError: (err) => {
-      const apiErr = (err as AxiosError<ApiErrorPayload>).response?.data
-      setServerError(apiErr?.title ?? 'Unable to record this restock. Please try again.')
+      setServerError(err instanceof ApiError ? err.message : 'Unable to record this restock. Please try again.')
     },
   })
 

@@ -6,15 +6,26 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { StatTile } from '@/components/ui/StatTile'
 import { CategoryBreakdown } from '@/components/ui/CategoryBreakdown'
+import { UpgradePrompt } from '@/components/ui/UpgradePrompt'
+import { ApiError } from '@/lib/api-client'
 import { formatMoney } from '@/lib/format'
 import { downloadCsv } from '@/lib/csv'
 import type { DateRange } from '@/components/ui/DateRangePicker'
 
 export function ExpensesTab({ range, branchId }: { range: DateRange; branchId?: string }) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['reports-expenses', range, branchId],
     queryFn: () => getExpenseReport({ from: range.from, to: range.to, branchId }),
   })
+
+  if (error instanceof ApiError && error.status === 403) {
+    return (
+      <UpgradePrompt
+        title="Reports aren't available on your current plan"
+        description="Upgrade your plan to see profitability, expenses, and inventory reports."
+      />
+    )
+  }
 
   if (isLoading || !data) {
     return (

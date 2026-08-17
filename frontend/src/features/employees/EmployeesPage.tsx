@@ -1,14 +1,13 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AxiosError } from 'axios'
 import { Users, Plus, Clock } from 'lucide-react'
 import { getBusinessUsers, removeEmployee } from '@/api/employees'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Alert } from '@/components/ui/Alert'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { ApiError } from '@/lib/api-client'
 import { formatDateTime } from '@/lib/format'
-import type { ApiErrorPayload } from '@/types/auth'
 import { InviteEmployeeModal } from './InviteEmployeeModal'
 import { JoinCodeCard } from './JoinCodeCard'
 import { JoinRequestsSection } from './JoinRequestsSection'
@@ -27,8 +26,7 @@ export function EmployeesPage() {
       queryClient.invalidateQueries({ queryKey: ['business-users'] })
     },
     onError: (err) => {
-      const apiErr = (err as AxiosError<ApiErrorPayload>).response?.data
-      setActionError(apiErr?.title ?? 'Unable to remove this team member. Please try again.')
+      setActionError(err instanceof ApiError ? err.message : 'Unable to remove this team member. Please try again.')
     },
   })
 
