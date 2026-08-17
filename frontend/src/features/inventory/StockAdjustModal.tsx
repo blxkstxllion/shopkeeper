@@ -2,14 +2,13 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
-import { AxiosError } from 'axios'
 import { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, FormField } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
 import { adjustStock } from '@/api/inventory'
-import type { ApiErrorPayload } from '@/types/auth'
+import { ApiError } from '@/lib/api-client'
 import type { Product } from '@/types/product'
 
 const schema = z.object({
@@ -59,8 +58,7 @@ export function StockAdjustModal({
       onClose()
     },
     onError: (err) => {
-      const apiErr = (err as AxiosError<ApiErrorPayload>).response?.data
-      setServerError(apiErr?.title ?? 'Unable to adjust stock. Please try again.')
+      setServerError(err instanceof ApiError ? err.message : 'Unable to adjust stock. Please try again.')
     },
   })
 

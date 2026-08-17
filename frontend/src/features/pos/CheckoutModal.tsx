@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AxiosError } from 'axios'
 import { Banknote, CreditCard, Plus, Smartphone, Trash2 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
@@ -11,10 +10,9 @@ import { createSale } from '@/api/sales'
 import { createCustomer, getCustomers } from '@/api/customers'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
-import { isNetworkError } from '@/lib/api-client'
+import { ApiError, isNetworkError } from '@/lib/api-client'
 import { cacheCustomers, getCachedCustomers } from '@/offline/customerCache'
 import { enqueueSale } from '@/offline/outbox'
-import type { ApiErrorPayload } from '@/types/auth'
 import type { PaymentMethod, QueuedSale, Sale } from '@/types/sale'
 import { cartLineDiscountTotal, cartSubtotal, type CartLine } from './cart'
 
@@ -100,8 +98,7 @@ export function CheckoutModal({
       setNewCustomerName('')
     },
     onError: (err) => {
-      const apiErr = (err as AxiosError<ApiErrorPayload>).response?.data
-      setServerError(apiErr?.title ?? 'Unable to add that customer. Please try again.')
+      setServerError(err instanceof ApiError ? err.message : 'Unable to add that customer. Please try again.')
     },
     // Without this, React Query's default network-aware pausing leaves mutate() stuck
     // "pending" forever while offline instead of running mutationFn (which would fail
@@ -180,8 +177,7 @@ export function CheckoutModal({
       onSuccess(result)
     },
     onError: (err) => {
-      const apiErr = (err as AxiosError<ApiErrorPayload>).response?.data
-      setServerError(apiErr?.title ?? 'Unable to complete the sale. Please try again.')
+      setServerError(err instanceof ApiError ? err.message : 'Unable to complete the sale. Please try again.')
     },
     // mutationFn already decides what to do offline (queue to the outbox) - without
     // this, React Query's default network-aware pausing would leave mutate() stuck

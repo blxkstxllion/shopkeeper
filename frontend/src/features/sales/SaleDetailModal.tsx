@@ -1,14 +1,13 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AxiosError } from 'axios'
 import { Ban, RotateCcw } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
+import { ApiError } from '@/lib/api-client'
 import { formatMoney, formatDateTime } from '@/lib/format'
 import { getSale, refundSale, voidSale } from '@/api/sales'
-import type { ApiErrorPayload } from '@/types/auth'
 import type { SaleStatus } from '@/types/sale'
 
 const statusTone: Record<SaleStatus, string> = {
@@ -38,8 +37,7 @@ export function SaleDetailModal({ saleId, onClose }: { saleId: string | null; on
       queryClient.invalidateQueries({ queryKey: ['sale', saleId] })
       handleClose()
     },
-    onError: (err) =>
-      setError((err as AxiosError<ApiErrorPayload>).response?.data?.title ?? 'Unable to void this sale.'),
+    onError: (err) => setError(err instanceof ApiError ? err.message : 'Unable to void this sale.'),
   })
 
   const refundMutation = useMutation({
@@ -55,8 +53,7 @@ export function SaleDetailModal({ saleId, onClose }: { saleId: string | null; on
       queryClient.invalidateQueries({ queryKey: ['sale', saleId] })
       handleClose()
     },
-    onError: (err) =>
-      setError((err as AxiosError<ApiErrorPayload>).response?.data?.title ?? 'Unable to process this refund.'),
+    onError: (err) => setError(err instanceof ApiError ? err.message : 'Unable to process this refund.'),
   })
 
   function handleClose() {

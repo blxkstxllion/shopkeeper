@@ -3,7 +3,6 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AxiosError } from 'axios'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { FormField } from '@/components/ui/Input'
@@ -11,7 +10,7 @@ import { Alert } from '@/components/ui/Alert'
 import { approveJoinRequest } from '@/api/employees'
 import { getRoles } from '@/api/roles'
 import { getBranches } from '@/api/branches'
-import type { ApiErrorPayload } from '@/types/auth'
+import { ApiError } from '@/lib/api-client'
 import type { JoinRequestItem } from '@/types/employee'
 
 const schema = z.object({
@@ -54,8 +53,7 @@ export function ApproveJoinRequestModal({
       onClose()
     },
     onError: (err) => {
-      const apiErr = (err as AxiosError<ApiErrorPayload>).response?.data
-      setServerError(apiErr?.title ?? 'Unable to approve this request. Please try again.')
+      setServerError(err instanceof ApiError ? err.message : 'Unable to approve this request. Please try again.')
     },
   })
 

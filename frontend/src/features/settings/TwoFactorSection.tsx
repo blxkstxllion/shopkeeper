@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import QRCode from 'qrcode'
 import { useEffect } from 'react'
-import { AxiosError } from 'axios'
 import { ShieldCheck, ShieldOff, Copy, Check } from 'lucide-react'
 import * as authApi from '@/api/auth'
 import { Card } from '@/components/ui/Card'
@@ -11,7 +10,7 @@ import { Input } from '@/components/ui/Input'
 import { DigitCodeInput } from '@/components/ui/DigitCodeInput'
 import { Alert } from '@/components/ui/Alert'
 import { Modal } from '@/components/ui/Modal'
-import type { ApiErrorPayload } from '@/types/auth'
+import { ApiError } from '@/lib/api-client'
 
 type SetupStep = 'scan' | 'recoveryCodes'
 
@@ -56,8 +55,7 @@ export function TwoFactorSection() {
       queryClient.invalidateQueries({ queryKey: ['2fa-status'] })
     },
     onError: (err) => {
-      const apiErr = (err as AxiosError<ApiErrorPayload>).response?.data
-      setError(apiErr?.title ?? 'Invalid code. Please try again.')
+      setError(err instanceof ApiError ? err.message : 'Invalid code. Please try again.')
     },
   })
 
@@ -70,8 +68,7 @@ export function TwoFactorSection() {
       queryClient.invalidateQueries({ queryKey: ['2fa-status'] })
     },
     onError: (err) => {
-      const apiErr = (err as AxiosError<ApiErrorPayload>).response?.data
-      setError(apiErr?.title ?? 'Incorrect password.')
+      setError(err instanceof ApiError ? err.message : 'Incorrect password.')
     },
   })
 
