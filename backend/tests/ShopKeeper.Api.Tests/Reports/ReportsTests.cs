@@ -38,7 +38,7 @@ public class ReportsTests : IDisposable
 
         var category = await new CreateProductCategoryCommandHandler(context, owner).Handle(
             new CreateProductCategoryCommand("Beverages", null), CancellationToken.None);
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand("Widget", "SKU-RPT", null, null, null, category.Id, 10m, 6m, 5, 10, true, 50, seeded.BranchId),
             CancellationToken.None);
 
@@ -69,7 +69,7 @@ public class ReportsTests : IDisposable
         var owner = seeded.AsOwner();
         var context = _db.CreateContext(owner);
 
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand("Widget", "SKU-OOR", null, null, null, null, 10m, 6m, 5, 10, true, 50, seeded.BranchId),
             CancellationToken.None);
 
@@ -100,7 +100,7 @@ public class ReportsTests : IDisposable
         context.Branches.Add(branchB);
         await context.SaveChangesAsync(CancellationToken.None);
 
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand("Widget", "SKU-BR", null, null, null, null, 10m, 6m, 5, 10, true, 10, seeded.BranchId),
             CancellationToken.None);
         context.ProductStocks.Add(new ProductStock { BusinessId = seeded.BusinessId, ProductId = product.Id, BranchId = branchB.Id, QuantityOnHand = 10 });
@@ -130,10 +130,10 @@ public class ReportsTests : IDisposable
         var owner = seeded.AsOwner();
         var context = _db.CreateContext(owner);
 
-        var goodProduct = await new CreateProductCommandHandler(context, owner).Handle(
+        var goodProduct = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand("High Margin", "SKU-HI", null, null, null, null, 20m, 5m, 5, 10, true, 10, seeded.BranchId),
             CancellationToken.None);
-        var badProduct = await new CreateProductCommandHandler(context, owner).Handle(
+        var badProduct = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand("Low Margin", "SKU-LO", null, null, null, null, 10m, 9m, 5, 10, true, 10, seeded.BranchId),
             CancellationToken.None);
 
@@ -188,7 +188,7 @@ public class ReportsTests : IDisposable
         var owner = seeded.AsOwner();
         var context = _db.CreateContext(owner);
 
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand("Widget", "SKU-INV", null, null, null, null, 10m, 6m, 5, 25, true, 20, seeded.BranchId),
             CancellationToken.None);
 

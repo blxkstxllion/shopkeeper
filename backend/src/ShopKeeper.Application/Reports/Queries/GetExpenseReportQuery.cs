@@ -3,12 +3,18 @@ namespace ShopKeeper.Application.Reports.Queries;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Application.Reports.Dtos;
 using ShopKeeper.Domain.Constants;
 
-public record GetExpenseReportQuery(DateOnly From, DateOnly To, Guid? BranchId, Guid? CategoryId) : IRequest<ExpenseReportDto>;
+public record GetExpenseReportQuery(DateOnly From, DateOnly To, Guid? BranchId, Guid? CategoryId)
+    : IRequest<ExpenseReportDto>, IRequirePlanFeature
+{
+    public bool RequiresReports => true;
+    public bool RequiresAi => false;
+}
 
 public class GetExpenseReportQueryValidator : AbstractValidator<GetExpenseReportQuery>
 {

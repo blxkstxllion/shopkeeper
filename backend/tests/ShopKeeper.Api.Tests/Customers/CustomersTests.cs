@@ -86,7 +86,7 @@ public class CustomersTests : IDisposable
         var customer = await new CreateCustomerCommandHandler(context, owner).Handle(
             new CreateCustomerCommand("Kwame Boateng", null, null, null), CancellationToken.None);
 
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand("Widget", "SKU-CUST", null, null, null, null, 10m, 6m, 5, 10, true, 20, seeded.BranchId),
             CancellationToken.None);
 
@@ -118,7 +118,7 @@ public class CustomersTests : IDisposable
         var customer = await new CreateCustomerCommandHandler(context, owner).Handle(
             new CreateCustomerCommand("Kwame Boateng", null, null, null), CancellationToken.None);
 
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand("Widget", "SKU-CUST2", null, null, null, null, 10m, 6m, 5, 10, true, 20, seeded.BranchId),
             CancellationToken.None);
 
@@ -142,7 +142,7 @@ public class CustomersTests : IDisposable
         var owner = seeded.AsOwner();
         var context = _db.CreateContext(owner);
 
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand("Widget", "SKU-WALKIN", null, null, null, null, 10m, 6m, 5, 10, true, 20, seeded.BranchId),
             CancellationToken.None);
 
@@ -168,7 +168,7 @@ public class CustomersTests : IDisposable
         var customer = await new CreateCustomerCommandHandler(context, owner).Handle(
             new CreateCustomerCommand("Kwame Boateng", null, null, null), CancellationToken.None);
 
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand("Widget", "SKU-AGG", null, null, null, null, 10m, 6m, 5, 10, true, 20, seeded.BranchId),
             CancellationToken.None);
 

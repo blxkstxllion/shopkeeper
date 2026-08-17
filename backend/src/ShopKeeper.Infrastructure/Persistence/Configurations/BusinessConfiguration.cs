@@ -14,6 +14,7 @@ public class BusinessConfiguration : IEntityTypeConfiguration<Business>
         builder.Property(b => b.Country).HasMaxLength(100).IsRequired();
         builder.Property(b => b.CurrencyCode).HasMaxLength(3).IsRequired();
         builder.Property(b => b.BusinessType).HasConversion<string>().HasMaxLength(50);
+        builder.Property(b => b.PlanTier).HasConversion<string>().HasMaxLength(20);
 
         builder.HasMany(b => b.Branches).WithOne(br => br.Business).HasForeignKey(br => br.BusinessId).OnDelete(DeleteBehavior.Cascade);
         builder.HasMany(b => b.Roles).WithOne(r => r.Business).HasForeignKey(r => r.BusinessId).OnDelete(DeleteBehavior.Cascade);

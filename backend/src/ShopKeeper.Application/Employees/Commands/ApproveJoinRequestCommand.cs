@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
+using ShopKeeper.Application.Common.Services;
 using ShopKeeper.Domain.Constants;
 using ShopKeeper.Domain.Entities;
 using ShopKeeper.Domain.Enums;
@@ -19,7 +20,7 @@ public class ApproveJoinRequestCommandValidator : AbstractValidator<ApproveJoinR
     public ApproveJoinRequestCommandValidator() => RuleFor(x => x.RoleId).NotEmpty();
 }
 
-public class ApproveJoinRequestCommandHandler(IAppDbContext db, ICurrentUserService currentUser)
+public class ApproveJoinRequestCommandHandler(IAppDbContext db, ICurrentUserService currentUser, PlanLimitService planLimits)
     : IRequestHandler<ApproveJoinRequestCommand>
 {
     public async Task Handle(ApproveJoinRequestCommand request, CancellationToken cancellationToken)
@@ -34,6 +35,8 @@ public class ApproveJoinRequestCommandHandler(IAppDbContext db, ICurrentUserServ
         {
             throw new ConflictException("This request has already been reviewed.");
         }
+
+        await planLimits.EnsureCanAddStaffAsync(joinRequest.BusinessId, cancellationToken);
 
         var role = await db.Roles.FirstOrDefaultAsync(r => r.Id == request.RoleId, cancellationToken)
             ?? throw new NotFoundException(nameof(Role), request.RoleId);

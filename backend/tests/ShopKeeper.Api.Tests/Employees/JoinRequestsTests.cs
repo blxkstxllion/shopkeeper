@@ -179,7 +179,7 @@ public class JoinRequestsTests : IDisposable
         var joinRequest = await context.JoinRequests.SingleAsync(r => r.UserId == user.Id);
         var cashierRole = await context.Roles.SingleAsync(r => r.Name == DefaultRoles.Cashier);
 
-        await new ApproveJoinRequestCommandHandler(context, owner).Handle(
+        await new ApproveJoinRequestCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new ApproveJoinRequestCommand(joinRequest.Id, cashierRole.Id, seeded.BranchId), CancellationToken.None);
 
         var updated = await context.JoinRequests.SingleAsync(r => r.Id == joinRequest.Id);
@@ -232,7 +232,7 @@ public class JoinRequestsTests : IDisposable
 
         await new RejectJoinRequestCommandHandler(context, owner).Handle(new RejectJoinRequestCommand(joinRequest.Id), CancellationToken.None);
 
-        await Assert.ThrowsAsync<ConflictException>(() => new ApproveJoinRequestCommandHandler(context, owner).Handle(
+        await Assert.ThrowsAsync<ConflictException>(() => new ApproveJoinRequestCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new ApproveJoinRequestCommand(joinRequest.Id, cashierRole.Id, null), CancellationToken.None));
     }
 
@@ -260,7 +260,7 @@ public class JoinRequestsTests : IDisposable
             PermissionsList = DefaultRoles.RolePermissionKeys[DefaultRoles.Administrator].ToList(),
         };
 
-        await Assert.ThrowsAsync<ForbiddenAccessException>(() => new ApproveJoinRequestCommandHandler(context, administrator).Handle(
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() => new ApproveJoinRequestCommandHandler(context, administrator, new PlanLimitService(context)).Handle(
             new ApproveJoinRequestCommand(joinRequest.Id, ownerRole.Id, null), CancellationToken.None));
 
         var stillPending = await context.JoinRequests.SingleAsync(r => r.Id == joinRequest.Id);
@@ -283,7 +283,7 @@ public class JoinRequestsTests : IDisposable
         var joinRequest = await context.JoinRequests.SingleAsync(r => r.UserId == user.Id);
         var ownerRole = await context.Roles.SingleAsync(r => r.Name == DefaultRoles.Owner);
 
-        await new ApproveJoinRequestCommandHandler(context, owner).Handle(
+        await new ApproveJoinRequestCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new ApproveJoinRequestCommand(joinRequest.Id, ownerRole.Id, null), CancellationToken.None);
 
         var membership = await context.BusinessUsers.SingleAsync(bu => bu.UserId == user.Id);

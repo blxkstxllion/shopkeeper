@@ -2,6 +2,7 @@ namespace ShopKeeper.Api.Tests.Inventory;
 
 using Microsoft.Extensions.Options;
 using ShopKeeper.Api.Tests.TestHelpers;
+using ShopKeeper.Application.Common.Services;
 using ShopKeeper.Application.Inventory.Queries;
 using ShopKeeper.Application.Products.Commands;
 using ShopKeeper.Domain.Constants;
@@ -22,13 +23,13 @@ public class InventoryStatsQueryTests : IDisposable
         var owner = seeded.AsOwner();
         var context = _db.CreateContext(owner);
 
-        await new CreateProductCommandHandler(context, owner).Handle(
+        await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand("In stock", "SKU-A", null, null, null, null, 10m, 6m, 5, 10, true, 20, seeded.BranchId),
             CancellationToken.None);
-        await new CreateProductCommandHandler(context, owner).Handle(
+        await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand("Low stock", "SKU-B", null, null, null, null, 10m, 4m, 5, 25, true, 5, seeded.BranchId),
             CancellationToken.None);
-        await new CreateProductCommandHandler(context, owner).Handle(
+        await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand("Out of stock", "SKU-C", null, null, null, null, 10m, 2m, 5, 10, true, 0, seeded.BranchId),
             CancellationToken.None);
 
@@ -51,7 +52,7 @@ public class InventoryStatsQueryTests : IDisposable
         context.Branches.Add(branchB);
         await context.SaveChangesAsync(CancellationToken.None);
 
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand("Widget", "SKU-BRANCH", null, null, null, null, 10m, 6m, 5, 10, true, 10, seeded.BranchId),
             CancellationToken.None);
         context.ProductStocks.Add(new ProductStock { BusinessId = seeded.BusinessId, ProductId = product.Id, BranchId = branchB.Id, QuantityOnHand = 40 });
@@ -73,7 +74,7 @@ public class InventoryStatsQueryTests : IDisposable
         var owner = seeded.AsOwner();
         var context = _db.CreateContext(owner);
 
-        await new CreateProductCommandHandler(context, owner).Handle(
+        await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand("Widget", "SKU-IM", null, null, null, null, 10m, 6m, 5, 10, true, 10, seeded.BranchId),
             CancellationToken.None);
 

@@ -23,7 +23,7 @@ public class InventoryCommandTests : IDisposable
         var owner = seeded.AsOwner();
         var context = _db.CreateContext(owner);
 
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand("Widget", "SKU-INV", null, null, null, null, 5m, 3m, 5, 10, true, initialQuantity, seeded.BranchId),
             CancellationToken.None);
 

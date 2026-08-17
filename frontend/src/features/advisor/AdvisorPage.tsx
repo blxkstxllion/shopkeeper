@@ -4,6 +4,8 @@ import { Sparkles, Loader2 } from 'lucide-react'
 import { getAdvisorAnswer, getAdvisorQuestions } from '@/api/advisor'
 import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { UpgradePrompt } from '@/components/ui/UpgradePrompt'
+import { ApiError } from '@/lib/api-client'
 import { formatDateTime } from '@/lib/format'
 import type { AdvisorQuestion } from '@/types/advisor'
 
@@ -18,7 +20,11 @@ interface TranscriptEntry {
 export function AdvisorPage() {
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([])
 
-  const { data: questions, isLoading: questionsLoading } = useQuery({
+  const {
+    data: questions,
+    isLoading: questionsLoading,
+    error: questionsError,
+  } = useQuery({
     queryKey: ['advisor-questions'],
     queryFn: getAdvisorQuestions,
   })
@@ -54,6 +60,15 @@ export function AdvisorPage() {
 
   function handleAsk(question: AdvisorQuestion) {
     mutation.mutate(question.id)
+  }
+
+  if (questionsError instanceof ApiError && questionsError.status === 403) {
+    return (
+      <UpgradePrompt
+        title="The AI Advisor isn't available on your current plan"
+        description="Upgrade to a Business + AI or Enterprise + AI plan to unlock instant answers about your business."
+      />
+    )
   }
 
   return (
