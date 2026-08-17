@@ -26,7 +26,8 @@ public class AcceptInvitationForExistingUserCommandValidator : AbstractValidator
     public AcceptInvitationForExistingUserCommandValidator() => RuleFor(x => x.Token).NotEmpty();
 }
 
-public class AcceptInvitationForExistingUserCommandHandler(IAppDbContext db, ICurrentUserService currentUser, TokenIssuer tokenIssuer, IJwtTokenService jwt)
+public class AcceptInvitationForExistingUserCommandHandler(
+    IAppDbContext db, ICurrentUserService currentUser, TokenIssuer tokenIssuer, IJwtTokenService jwt, PlanLimitService planLimits)
     : IRequestHandler<AcceptInvitationForExistingUserCommand, AuthResultDto>
 {
     public async Task<AuthResultDto> Handle(AcceptInvitationForExistingUserCommand request, CancellationToken cancellationToken)
@@ -62,6 +63,8 @@ public class AcceptInvitationForExistingUserCommandHandler(IAppDbContext db, ICu
         {
             throw new ConflictException("You are already a member of this business.");
         }
+
+        await planLimits.EnsureCanAddStaffAsync(invitation.BusinessId, cancellationToken);
 
         // IgnoreQueryFilters: the caller's active tenant context may be a different business
         // than the one they're accepting an invite into - invitation.BusinessId is already a

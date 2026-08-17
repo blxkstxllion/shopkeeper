@@ -93,7 +93,7 @@ public class EmployeesTests : IDisposable
         var token = _emailSender.LastInvite!.Value.InviteToken;
 
         var tokenIssuer = new TokenIssuer(context, _jwt);
-        var result = await new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
+        var result = await new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt, new PlanLimitService(context)).Handle(
             new AcceptInvitationCommand(token, "Passw0rd!", "Kofi", "Mensah", null), CancellationToken.None);
 
         Assert.Equal("newhire@shop.test", result.User.Email);
@@ -126,7 +126,7 @@ public class EmployeesTests : IDisposable
         await context.SaveChangesAsync(CancellationToken.None);
 
         var tokenIssuer = new TokenIssuer(context, _jwt);
-        await Assert.ThrowsAsync<ConflictException>(() => new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
+        await Assert.ThrowsAsync<ConflictException>(() => new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt, new PlanLimitService(context)).Handle(
             new AcceptInvitationCommand(token, "Passw0rd!", "Kofi", "Mensah", null), CancellationToken.None));
     }
 
@@ -150,7 +150,7 @@ public class EmployeesTests : IDisposable
         var invitee = new TestCurrentUserService { UserId = registerResult.User.Id, IsOwner = false };
         var inviteeContext = _db.CreateContext(invitee);
 
-        var result = await new AcceptInvitationForExistingUserCommandHandler(inviteeContext, invitee, tokenIssuer, _jwt).Handle(
+        var result = await new AcceptInvitationForExistingUserCommandHandler(inviteeContext, invitee, tokenIssuer, _jwt, new PlanLimitService(inviteeContext)).Handle(
             new AcceptInvitationForExistingUserCommand(token, null), CancellationToken.None);
 
         Assert.Equal(seeded.BusinessId, result.User.Businesses.Single(b => b.BusinessId == seeded.BusinessId).BusinessId);
@@ -184,7 +184,7 @@ public class EmployeesTests : IDisposable
         await new InviteEmployeeCommandHandler(context, owner, _emailSender, _jwt).Handle(
             new InviteEmployeeCommand("newhire@shop.test", cashierRole.Id, null), CancellationToken.None);
         var token = _emailSender.LastInvite!.Value.InviteToken;
-        await new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
+        await new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt, new PlanLimitService(context)).Handle(
             new AcceptInvitationCommand(token, "Passw0rd!", "Kofi", "Mensah", null), CancellationToken.None);
 
         var membership = await context.BusinessUsers.IgnoreQueryFilters()
@@ -204,7 +204,7 @@ public class EmployeesTests : IDisposable
         var context = _db.CreateContext(owner);
         var tokenIssuer = new TokenIssuer(context, _jwt);
 
-        await Assert.ThrowsAsync<NotFoundException>(() => new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
+        await Assert.ThrowsAsync<NotFoundException>(() => new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt, new PlanLimitService(context)).Handle(
             new AcceptInvitationCommand("not-a-real-token", "Passw0rd!", "Kofi", "Mensah", null), CancellationToken.None));
     }
 
@@ -221,12 +221,12 @@ public class EmployeesTests : IDisposable
             new InviteEmployeeCommand("newhire@shop.test", cashierRole.Id, null), CancellationToken.None);
         var token = _emailSender.LastInvite!.Value.InviteToken;
 
-        await new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
+        await new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt, new PlanLimitService(context)).Handle(
             new AcceptInvitationCommand(token, "Passw0rd!", "Kofi", "Mensah", null), CancellationToken.None);
 
         // Reusing the same (still-valid-looking) raw token a second time must not be usable -
         // proves hashing didn't regress the existing single-use enforcement.
-        await Assert.ThrowsAsync<ConflictException>(() => new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
+        await Assert.ThrowsAsync<ConflictException>(() => new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt, new PlanLimitService(context)).Handle(
             new AcceptInvitationCommand(token, "Passw0rd!", "Kofi", "Mensah", null), CancellationToken.None));
     }
 
@@ -333,7 +333,7 @@ public class EmployeesTests : IDisposable
         var token = _emailSender.LastInvite!.Value.InviteToken;
 
         var tokenIssuer = new TokenIssuer(context, _jwt);
-        await new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
+        await new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt, new PlanLimitService(context)).Handle(
             new AcceptInvitationCommand(token, "Passw0rd!", "Kwame", "Asante", null), CancellationToken.None);
 
         var membership = await context.BusinessUsers.IgnoreQueryFilters()
@@ -360,7 +360,7 @@ public class EmployeesTests : IDisposable
         var invitee = new TestCurrentUserService { UserId = registerResult.User.Id, IsOwner = false };
         var inviteeContext = _db.CreateContext(invitee);
 
-        await new AcceptInvitationForExistingUserCommandHandler(inviteeContext, invitee, tokenIssuer, _jwt).Handle(
+        await new AcceptInvitationForExistingUserCommandHandler(inviteeContext, invitee, tokenIssuer, _jwt, new PlanLimitService(inviteeContext)).Handle(
             new AcceptInvitationForExistingUserCommand(token, null), CancellationToken.None);
 
         var membership = await context.BusinessUsers.IgnoreQueryFilters()
@@ -404,7 +404,7 @@ public class EmployeesTests : IDisposable
         await new InviteEmployeeCommandHandler(context, owner, _emailSender, _jwt).Handle(
             new InviteEmployeeCommand("co-owner@shop.test", ownerRole.Id, null), CancellationToken.None);
         var token = _emailSender.LastInvite!.Value.InviteToken;
-        await new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
+        await new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt, new PlanLimitService(context)).Handle(
             new AcceptInvitationCommand(token, "Passw0rd!", "Kwame", "Asante", null), CancellationToken.None);
 
         var coOwnerMembership = await context.BusinessUsers.IgnoreQueryFilters()

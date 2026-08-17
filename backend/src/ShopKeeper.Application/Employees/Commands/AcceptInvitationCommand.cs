@@ -35,7 +35,7 @@ public class AcceptInvitationCommandValidator : AbstractValidator<AcceptInvitati
     }
 }
 
-public class AcceptInvitationCommandHandler(IAppDbContext db, IPasswordHasher hasher, TokenIssuer tokenIssuer, IJwtTokenService jwt)
+public class AcceptInvitationCommandHandler(IAppDbContext db, IPasswordHasher hasher, TokenIssuer tokenIssuer, IJwtTokenService jwt, PlanLimitService planLimits)
     : IRequestHandler<AcceptInvitationCommand, AuthResultDto>
 {
     public async Task<AuthResultDto> Handle(AcceptInvitationCommand request, CancellationToken cancellationToken)
@@ -54,6 +54,8 @@ public class AcceptInvitationCommandHandler(IAppDbContext db, IPasswordHasher ha
         {
             throw new ConflictException("This invitation has expired.");
         }
+
+        await planLimits.EnsureCanAddStaffAsync(invitation.BusinessId, cancellationToken);
 
         var existingUser = await db.Users.FirstOrDefaultAsync(u => u.Email == invitation.Email, cancellationToken);
         if (existingUser is not null)

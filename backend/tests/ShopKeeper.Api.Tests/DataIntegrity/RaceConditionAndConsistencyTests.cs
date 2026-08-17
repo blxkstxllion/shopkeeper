@@ -130,7 +130,7 @@ public class RaceConditionAndConsistencyTests
         await new InviteEmployeeCommandHandler(context, owner, emailSender, _jwt).Handle(
             new InviteEmployeeCommand("removeme@shop.test", cashierRoleId, null), CancellationToken.None);
         var token = emailSender.LastInvite!.Value.InviteToken;
-        await new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
+        await new AcceptInvitationCommandHandler(context, _hasher, tokenIssuer, _jwt, new PlanLimitService(context)).Handle(
             new AcceptInvitationCommand(token, "Passw0rd!", "Kofi", "Mensah", null), CancellationToken.None);
 
         var membership = await context.BusinessUsers.IgnoreQueryFilters()

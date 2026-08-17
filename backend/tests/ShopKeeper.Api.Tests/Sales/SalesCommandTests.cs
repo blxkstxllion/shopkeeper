@@ -24,7 +24,7 @@ public class SalesCommandTests : IDisposable
         var owner = seeded.AsOwner();
         var context = _db.CreateContext(owner);
 
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand("Widget", "SKU-SALE", null, null, null, null, sellingPrice, costPrice, 5, 10, true, initialQuantity, seeded.BranchId),
             CancellationToken.None);
 
@@ -260,7 +260,7 @@ public class SalesCommandTests : IDisposable
         var owner = seeded.AsOwner();
         var setupContext = db.CreateContext(owner);
 
-        var product = await new CreateProductCommandHandler(setupContext, owner).Handle(
+        var product = await new CreateProductCommandHandler(setupContext, owner, new PlanLimitService(setupContext)).Handle(
             new CreateProductCommand("Widget", "SKU-IDEMPOTENT", null, null, null, null, 10m, 6m, 0, 0, true, 20, seeded.BranchId),
             CancellationToken.None);
 

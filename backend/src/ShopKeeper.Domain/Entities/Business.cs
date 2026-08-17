@@ -19,6 +19,11 @@ public class Business : BaseEntity
 
     public bool IsActive { get; set; } = true;
 
+    /// <summary>Self-serve, not payment-backed yet - see PlanLimits. Owners set this themselves
+    /// from Settings; there's no real charge behind a tier change until billing (Paystack) lands.</summary>
+    public PlanTier PlanTier { get; set; } = PlanTier.Free;
+    public bool HasUnlimitedInventoryAddOn { get; set; }
+
     public bool OnboardingCompleted { get; set; }
     public int OnboardingStep { get; set; }
     public DateTimeOffset? OnboardingCompletedAt { get; set; }

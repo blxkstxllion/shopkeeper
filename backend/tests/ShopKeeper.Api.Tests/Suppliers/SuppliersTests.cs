@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using ShopKeeper.Api.Tests.TestHelpers;
 using ShopKeeper.Application.Common.Exceptions;
+using ShopKeeper.Application.Common.Services;
 using ShopKeeper.Application.Products.Commands;
 using ShopKeeper.Application.Suppliers.Commands;
 using ShopKeeper.Application.Suppliers.Queries;
@@ -63,7 +64,7 @@ public class SuppliersTests : IDisposable
         var supplier = await new CreateSupplierCommandHandler(context, owner).Handle(
             new CreateSupplierCommand("Accra Distributors", null, null, null, null), CancellationToken.None);
 
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand(
                 "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 10, 20, true, 50, seeded.BranchId, supplier.Id),
             CancellationToken.None);
@@ -91,7 +92,7 @@ public class SuppliersTests : IDisposable
         var supplier = await new CreateSupplierCommandHandler(context, owner).Handle(
             new CreateSupplierCommand("Accra Distributors", null, null, null, null), CancellationToken.None);
 
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand(
                 "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 10, 20, true, 50, seeded.BranchId, supplier.Id),
             CancellationToken.None);
@@ -120,7 +121,7 @@ public class SuppliersTests : IDisposable
         var supplier = await new CreateSupplierCommandHandler(context, owner).Handle(
             new CreateSupplierCommand("Accra Distributors", null, null, null, null), CancellationToken.None);
 
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand(
                 "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 10, 20, true, 50, seeded.BranchId, supplier.Id),
             CancellationToken.None);
@@ -145,7 +146,7 @@ public class SuppliersTests : IDisposable
         var supplierB = await new CreateSupplierCommandHandler(context, owner).Handle(
             new CreateSupplierCommand("Kumasi Traders", null, null, null, null), CancellationToken.None);
 
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand(
                 "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 10, 20, true, 50, seeded.BranchId, null),
             CancellationToken.None);
@@ -173,7 +174,7 @@ public class SuppliersTests : IDisposable
 
         var supplier = await new CreateSupplierCommandHandler(context, owner).Handle(
             new CreateSupplierCommand("Accra Distributors", null, null, null, null), CancellationToken.None);
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand(
                 "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 10, 20, true, 50, seeded.BranchId, supplier.Id),
             CancellationToken.None);
@@ -198,7 +199,7 @@ public class SuppliersTests : IDisposable
             new CreateSupplierCommand("Accra Distributors", null, null, null, null), CancellationToken.None);
         await new DeleteSupplierCommandHandler(context, owner).Handle(new DeleteSupplierCommand(supplier.Id), CancellationToken.None);
 
-        await Assert.ThrowsAsync<ConflictException>(() => new CreateProductCommandHandler(context, owner).Handle(
+        await Assert.ThrowsAsync<ConflictException>(() => new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand(
                 "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 10, 20, true, 50, seeded.BranchId, supplier.Id),
             CancellationToken.None));
@@ -211,7 +212,7 @@ public class SuppliersTests : IDisposable
         var owner = seeded.AsOwner();
         var context = _db.CreateContext(owner);
 
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand(
                 "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 10, 20, true, 50, seeded.BranchId, null),
             CancellationToken.None);
@@ -234,7 +235,7 @@ public class SuppliersTests : IDisposable
 
         var supplier = await new CreateSupplierCommandHandler(context, owner).Handle(
             new CreateSupplierCommand("Accra Distributors", null, null, null, null), CancellationToken.None);
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand(
                 "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 10, 20, true, 50, seeded.BranchId, supplier.Id),
             CancellationToken.None);
@@ -262,7 +263,7 @@ public class SuppliersTests : IDisposable
 
         var supplier = await new CreateSupplierCommandHandler(context, owner).Handle(
             new CreateSupplierCommand("Accra Distributors", null, null, null, null), CancellationToken.None);
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand(
                 "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 10, 20, true, 50, seeded.BranchId, supplier.Id),
             CancellationToken.None);

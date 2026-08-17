@@ -47,7 +47,7 @@ public class NotificationsTests : IDisposable
         var context = _db.CreateContext(owner);
         var notifications = new NotificationDispatcher(context);
 
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand("Widget", "SKU-LOWSTOCK", null, null, null, null, 10m, 6m, 0, 5, true, 10, seeded.BranchId),
             CancellationToken.None);
 
@@ -74,7 +74,7 @@ public class NotificationsTests : IDisposable
         var owner = seeded.AsOwner();
         var context = _db.CreateContext(owner);
 
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand("Widget", "SKU-SALE-LOWSTOCK", null, null, null, null, 10m, 6m, 0, 5, true, 6, seeded.BranchId),
             CancellationToken.None);
 
