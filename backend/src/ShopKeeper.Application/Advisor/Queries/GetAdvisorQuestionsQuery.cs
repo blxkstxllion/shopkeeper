@@ -2,11 +2,16 @@ namespace ShopKeeper.Application.Advisor.Queries;
 
 using MediatR;
 using ShopKeeper.Application.Advisor.Dtos;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Domain.Constants;
 
-public record GetAdvisorQuestionsQuery : IRequest<IReadOnlyList<AdvisorQuestionDto>>;
+public record GetAdvisorQuestionsQuery : IRequest<IReadOnlyList<AdvisorQuestionDto>>, IRequirePlanFeature
+{
+    public bool RequiresReports => false;
+    public bool RequiresAi => true;
+}
 
 /// <summary>The fixed label set behind the question cards on the Advisor page - backend-driven
 /// so the frontend never hardcodes a label that could drift from the id it's paired with.</summary>

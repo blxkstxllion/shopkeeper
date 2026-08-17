@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using ShopKeeper.Api.Tests.TestHelpers;
 using ShopKeeper.Application.Common.Exceptions;
+using ShopKeeper.Application.Common.Services;
 using ShopKeeper.Application.Products.Commands;
 using ShopKeeper.Infrastructure.Identity;
 
@@ -20,7 +21,7 @@ public class ProductCommandTests : IDisposable
         var owner = seeded.AsOwner();
         var context = _db.CreateContext(owner);
 
-        var handler = new CreateProductCommandHandler(context, owner);
+        var handler = new CreateProductCommandHandler(context, owner, new PlanLimitService(context));
         var result = await handler.Handle(
             new CreateProductCommand("Coca-Cola 500ml", "SKU-001", "5449000000996", null, null, null, 5.00m, 3.00m, 10, 20, true, 50, seeded.BranchId),
             CancellationToken.None);
@@ -44,7 +45,7 @@ public class ProductCommandTests : IDisposable
         var owner = seeded.AsOwner();
         var context = _db.CreateContext(owner);
 
-        await new CreateProductCommandHandler(context, owner).Handle(
+        await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand("Service Fee", "SKU-SVC", null, null, null, null, 10m, 0m, 0, 0, false, 0, null),
             CancellationToken.None);
 
@@ -57,7 +58,7 @@ public class ProductCommandTests : IDisposable
         var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
         var owner = seeded.AsOwner();
         var context = _db.CreateContext(owner);
-        var handler = new CreateProductCommandHandler(context, owner);
+        var handler = new CreateProductCommandHandler(context, owner, new PlanLimitService(context));
 
         await handler.Handle(
             new CreateProductCommand("Product A", "DUP-SKU", null, null, null, null, 5m, 3m, 0, 0, false, 0, null),
@@ -75,7 +76,7 @@ public class ProductCommandTests : IDisposable
         var cashier = new TestCurrentUserService { UserId = seeded.OwnerId, BusinessId = seeded.BusinessId, IsOwner = false };
         var context = _db.CreateContext(cashier);
 
-        await Assert.ThrowsAsync<ForbiddenAccessException>(() => new CreateProductCommandHandler(context, cashier).Handle(
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() => new CreateProductCommandHandler(context, cashier, new PlanLimitService(context)).Handle(
             new CreateProductCommand("Product A", "SKU-X", null, null, null, null, 5m, 3m, 0, 0, false, 0, null),
             CancellationToken.None));
     }
@@ -87,7 +88,7 @@ public class ProductCommandTests : IDisposable
         var owner = seeded.AsOwner();
         var context = _db.CreateContext(owner);
 
-        var product = await new CreateProductCommandHandler(context, owner).Handle(
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand("Product A", "SKU-DEL", null, null, null, null, 5m, 3m, 0, 0, false, 0, null),
             CancellationToken.None);
 

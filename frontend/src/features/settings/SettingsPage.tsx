@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Store, Percent, ShieldCheck, Users, Bell, Plug, CreditCard, Webhook, type LucideIcon } from 'lucide-react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { BusinessProfileSection } from './BusinessProfileSection'
 import { TaxSettingsSection } from './TaxSettingsSection'
 import { TwoFactorSection } from './TwoFactorSection'
 import { SessionsSection } from './SessionsSection'
+import { PlanBillingSection } from './PlanBillingSection'
 
 type SectionId = 'business' | 'tax' | 'roles' | 'notifications' | 'security' | 'integrations' | 'subscription' | 'api'
 
@@ -22,12 +24,15 @@ const SECTIONS: SectionConfig[] = [
   { id: 'notifications', label: 'Notifications', icon: Bell, comingSoonPhase: 'Phase 5' },
   { id: 'security', label: 'Security', icon: ShieldCheck },
   { id: 'integrations', label: 'Integrations', icon: Plug, comingSoonPhase: 'Phase 7' },
-  { id: 'subscription', label: 'Subscription', icon: CreditCard, comingSoonPhase: 'Phase 7' },
+  { id: 'subscription', label: 'Subscription', icon: CreditCard },
   { id: 'api', label: 'API & webhooks', icon: Webhook, comingSoonPhase: 'Phase 7' },
 ]
 
 export function SettingsPage() {
-  const [activeId, setActiveId] = useState<SectionId>('business')
+  const [searchParams] = useSearchParams()
+  const requestedSection = searchParams.get('section')
+  const initialSection = SECTIONS.some((s) => s.id === requestedSection) ? (requestedSection as SectionId) : 'business'
+  const [activeId, setActiveId] = useState<SectionId>(initialSection)
   const active = SECTIONS.find((s) => s.id === activeId)!
 
   return (
@@ -74,6 +79,8 @@ export function SettingsPage() {
               <TwoFactorSection />
               <SessionsSection />
             </div>
+          ) : activeId === 'subscription' ? (
+            <PlanBillingSection />
           ) : null}
         </div>
       </div>

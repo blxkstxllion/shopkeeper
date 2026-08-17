@@ -3,7 +3,6 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AxiosError } from 'axios'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, FormField } from '@/components/ui/Input'
@@ -11,7 +10,7 @@ import { Alert } from '@/components/ui/Alert'
 import { inviteEmployee } from '@/api/employees'
 import { getRoles } from '@/api/roles'
 import { getBranches } from '@/api/branches'
-import type { ApiErrorPayload } from '@/types/auth'
+import { ApiError } from '@/lib/api-client'
 
 const schema = z.object({
   email: z.string().min(1, 'Email is required').email('Enter a valid email address'),
@@ -46,8 +45,7 @@ export function InviteEmployeeModal({ isOpen, onClose }: { isOpen: boolean; onCl
       onClose()
     },
     onError: (err) => {
-      const apiErr = (err as AxiosError<ApiErrorPayload>).response?.data
-      setServerError(apiErr?.title ?? 'Unable to send this invitation. Please try again.')
+      setServerError(err instanceof ApiError ? err.message : 'Unable to send this invitation. Please try again.')
     },
   })
 

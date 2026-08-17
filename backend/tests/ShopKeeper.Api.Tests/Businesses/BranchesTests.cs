@@ -6,6 +6,7 @@ using ShopKeeper.Api.Tests.TestHelpers;
 using ShopKeeper.Application.Businesses.Commands;
 using ShopKeeper.Application.Businesses.Queries;
 using ShopKeeper.Application.Common.Exceptions;
+using ShopKeeper.Application.Common.Services;
 using ShopKeeper.Domain.Constants;
 using ShopKeeper.Infrastructure.Identity;
 using ShopKeeper.Infrastructure.Persistence;
@@ -23,7 +24,7 @@ public class BranchesTests : IDisposable
         var owner = seeded.AsOwner();
         var context = _db.CreateContext(owner);
 
-        var branch = await new CreateBranchCommandHandler(context, owner).Handle(
+        var branch = await new CreateBranchCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateBranchCommand("Kumasi Branch", "KUM-1", null, "Kumasi", "Ghana", null, null), CancellationToken.None);
 
         Assert.False(branch.IsMainBranch);
@@ -39,10 +40,10 @@ public class BranchesTests : IDisposable
         var owner = seeded.AsOwner();
         var context = _db.CreateContext(owner);
 
-        await new CreateBranchCommandHandler(context, owner).Handle(
+        await new CreateBranchCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateBranchCommand("Kumasi Branch", "KUM-1", null, null, null, null, null), CancellationToken.None);
 
-        await Assert.ThrowsAsync<ConflictException>(() => new CreateBranchCommandHandler(context, owner).Handle(
+        await Assert.ThrowsAsync<ConflictException>(() => new CreateBranchCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateBranchCommand("Another Branch", "KUM-1", null, null, null, null, null), CancellationToken.None));
     }
 
@@ -53,7 +54,7 @@ public class BranchesTests : IDisposable
         var owner = seeded.AsOwner();
         var context = _db.CreateContext(owner);
 
-        var newBranch = await new CreateBranchCommandHandler(context, owner).Handle(
+        var newBranch = await new CreateBranchCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateBranchCommand("Kumasi Branch", "KUM-1", null, null, null, null, null), CancellationToken.None);
 
         await new UpdateBranchCommandHandler(context, owner).Handle(
@@ -89,7 +90,7 @@ public class BranchesTests : IDisposable
 
         // Seeded business has exactly one (main) branch - deleting it should fail on both grounds;
         // this asserts the "only active branch" guard specifically by using a non-main branch.
-        var newBranch = await new CreateBranchCommandHandler(context, owner).Handle(
+        var newBranch = await new CreateBranchCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateBranchCommand("Kumasi Branch", "KUM-1", null, null, null, null, null), CancellationToken.None);
 
         // Deactivate the original main's sibling scenario: deactivate newBranch first is fine (2 active exist),
@@ -107,7 +108,7 @@ public class BranchesTests : IDisposable
         var owner = seeded.AsOwner();
         var context = _db.CreateContext(owner);
 
-        await new CreateBranchCommandHandler(context, owner).Handle(
+        await new CreateBranchCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateBranchCommand("Kumasi Branch", "KUM-1", null, null, null, null, null), CancellationToken.None);
 
         await Assert.ThrowsAsync<ConflictException>(() => new DeleteBranchCommandHandler(context, owner).Handle(
@@ -129,7 +130,7 @@ public class BranchesTests : IDisposable
             PermissionsList = DefaultRoles.RolePermissionKeys[DefaultRoles.BranchManager].ToList(),
         };
 
-        await Assert.ThrowsAsync<ForbiddenAccessException>(() => new CreateBranchCommandHandler(context, branchManager).Handle(
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() => new CreateBranchCommandHandler(context, branchManager, new PlanLimitService(context)).Handle(
             new CreateBranchCommand("Kumasi Branch", "KUM-1", null, null, null, null, null), CancellationToken.None));
     }
 

@@ -13,10 +13,9 @@ import {
   uploadProductImage,
 } from '@/api/products'
 import { getSuppliers } from '@/api/suppliers'
+import { ApiError } from '@/lib/api-client'
 import { resolveUploadUrl } from '@/lib/format'
-import type { ApiErrorPayload } from '@/types/auth'
 import type { Product } from '@/types/product'
-import { AxiosError } from 'axios'
 import { Package, Plus, Upload, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { productDefaults, productSchema, type ProductFormValues } from './product.schema'
@@ -93,8 +92,7 @@ export function ProductFormModal({
       setNewCategoryName('')
     },
     onError: (err) => {
-      const apiErr = (err as AxiosError<ApiErrorPayload>).response?.data
-      setServerError(apiErr?.title ?? 'Unable to create that category. Please try again.')
+      setServerError(err instanceof ApiError ? err.message : 'Unable to create that category. Please try again.')
     },
   })
 
@@ -128,8 +126,7 @@ export function ProductFormModal({
       onClose()
     },
     onError: (err) => {
-      const apiErr = (err as AxiosError<ApiErrorPayload>).response?.data
-      setServerError(apiErr?.title ?? 'Unable to save this product. Please try again.')
+      setServerError(err instanceof ApiError ? err.message : 'Unable to save this product. Please try again.')
     },
   })
 
@@ -153,8 +150,7 @@ export function ProductFormModal({
       const { url } = await uploadProductImage(file)
       setImageUrl(url)
     } catch (err) {
-      const apiErr = (err as AxiosError<ApiErrorPayload>).response?.data
-      setServerError(apiErr?.title ?? 'Unable to upload that image. Please try again.')
+      setServerError(err instanceof ApiError ? err.message : 'Unable to upload that image. Please try again.')
     } finally {
       setIsUploadingImage(false)
     }

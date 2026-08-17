@@ -149,6 +149,9 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                         .HasMaxLength(3)
                         .HasColumnType("character varying(3)");
 
+                    b.Property<bool>("HasUnlimitedInventoryAddOn")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -172,6 +175,11 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("OnboardingStep")
                         .HasColumnType("integer");
+
+                    b.Property<string>("PlanTier")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("TimeZone")
                         .IsRequired()

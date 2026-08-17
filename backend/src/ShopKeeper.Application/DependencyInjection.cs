@@ -16,9 +16,11 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(assembly);
         services.AddTransient(typeof(MediatR.IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
         services.AddTransient(typeof(MediatR.IPipelineBehavior<,>), typeof(AuditLoggingBehavior<,>));
+        services.AddTransient(typeof(MediatR.IPipelineBehavior<,>), typeof(RequirePlanTierBehavior<,>));
 
         services.AddScoped<TokenIssuer>();
         services.AddScoped<NotificationDispatcher>();
+        services.AddScoped<PlanLimitService>();
 
         return services;
     }
