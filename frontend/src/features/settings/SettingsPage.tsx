@@ -7,6 +7,7 @@ import { TaxSettingsSection } from './TaxSettingsSection'
 import { TwoFactorSection } from './TwoFactorSection'
 import { SessionsSection } from './SessionsSection'
 import { PlanBillingSection } from './PlanBillingSection'
+import { RolesSection } from './RolesSection'
 
 type SectionId = 'business' | 'tax' | 'roles' | 'notifications' | 'security' | 'integrations' | 'subscription' | 'api'
 
@@ -20,7 +21,7 @@ interface SectionConfig {
 const SECTIONS: SectionConfig[] = [
   { id: 'business', label: 'Business', icon: Store },
   { id: 'tax', label: 'Tax & currency', icon: Percent },
-  { id: 'roles', label: 'Roles & permissions', icon: Users, comingSoonPhase: 'Phase 4' },
+  { id: 'roles', label: 'Roles & permissions', icon: Users },
   { id: 'notifications', label: 'Notifications', icon: Bell, comingSoonPhase: 'Phase 5' },
   { id: 'security', label: 'Security', icon: ShieldCheck },
   { id: 'integrations', label: 'Integrations', icon: Plug, comingSoonPhase: 'Phase 7' },
@@ -81,6 +82,8 @@ export function SettingsPage() {
             </div>
           ) : activeId === 'subscription' ? (
             <PlanBillingSection />
+          ) : activeId === 'roles' ? (
+            <RolesSection />
           ) : null}
         </div>
       </div>

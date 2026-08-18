@@ -15,6 +15,7 @@ public record GetInventoryReportQuery(DateOnly From, DateOnly To, Guid? BranchId
 {
     public bool RequiresReports => true;
     public bool RequiresAi => false;
+    public bool RequiresCustomRoles => false;
 }
 
 public class GetInventoryReportQueryValidator : AbstractValidator<GetInventoryReportQuery>

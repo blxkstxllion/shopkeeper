@@ -14,6 +14,7 @@ public record GetExpenseReportQuery(DateOnly From, DateOnly To, Guid? BranchId, 
 {
     public bool RequiresReports => true;
     public bool RequiresAi => false;
+    public bool RequiresCustomRoles => false;
 }
 
 public class GetExpenseReportQueryValidator : AbstractValidator<GetExpenseReportQuery>

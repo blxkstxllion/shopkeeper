@@ -15,6 +15,7 @@ public record GetAdvisorAnswerQuery(AdvisorQuestionId QuestionId, Guid? BranchId
 {
     public bool RequiresReports => false;
     public bool RequiresAi => true;
+    public bool RequiresCustomRoles => false;
 }
 
 /// <summary>
