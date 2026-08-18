@@ -11,6 +11,7 @@ using ShopKeeper.Application.Advisor.Queries;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Application.Reports.Queries;
+using ShopKeeper.Application.Roles.Commands;
 using ShopKeeper.Domain.Enums;
 using ShopKeeper.Infrastructure.Identity;
 
@@ -108,6 +109,33 @@ public class RequirePlanTierBehaviorTests : IDisposable
 
         await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
             sender.Send(new GetAdvisorQuestionsQuery(), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task CreateRole_OnBusinessTier_ThrowsForbidden()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        await SetTierAsync(_db, seeded, owner, PlanTier.Business);
+        var context = _db.CreateContext(owner);
+        var sender = BuildSender(context, owner);
+
+        var ex = await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
+            sender.Send(new CreateRoleCommand("Trainee", null, []), CancellationToken.None));
+        Assert.Contains("Custom roles", ex.Message);
+    }
+
+    [Fact]
+    public async Task CreateRole_OnEnterpriseTier_Succeeds()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        await SetTierAsync(_db, seeded, owner, PlanTier.Enterprise);
+        var context = _db.CreateContext(owner);
+        var sender = BuildSender(context, owner);
+
+        var roleId = await sender.Send(new CreateRoleCommand("Trainee", null, []), CancellationToken.None);
+        Assert.NotEqual(Guid.Empty, roleId);
     }
 
     public void Dispose() => _db.Dispose();
