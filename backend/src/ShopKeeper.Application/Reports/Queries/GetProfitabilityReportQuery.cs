@@ -15,6 +15,7 @@ public record GetProfitabilityReportQuery(DateOnly From, DateOnly To, Guid? Bran
 {
     public bool RequiresReports => true;
     public bool RequiresAi => false;
+    public bool RequiresCustomRoles => false;
 }
 
 public class GetProfitabilityReportQueryValidator : AbstractValidator<GetProfitabilityReportQuery>
