@@ -11,6 +11,7 @@ public record GetAdvisorQuestionsQuery : IRequest<IReadOnlyList<AdvisorQuestionD
 {
     public bool RequiresReports => false;
     public bool RequiresAi => true;
+    public bool RequiresCustomRoles => false;
 }
 
 /// <summary>The fixed label set behind the question cards on the Advisor page - backend-driven

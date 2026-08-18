@@ -15,6 +15,7 @@ public interface IRequirePlanFeature
 {
     bool RequiresReports { get; }
     bool RequiresAi { get; }
+    bool RequiresCustomRoles { get; }
 }
 
 /// <summary>
@@ -42,6 +43,10 @@ public class RequirePlanTierBehavior<TRequest, TResponse>(IAppDbContext db, ICur
             if (feature.RequiresAi && !limits.HasAi)
             {
                 throw new ForbiddenAccessException("The AI Advisor isn't available on your current plan. Upgrade to unlock it.");
+            }
+            if (feature.RequiresCustomRoles && !limits.HasCustomRoles)
+            {
+                throw new ForbiddenAccessException("Custom roles aren't available on your current plan. Upgrade to Enterprise to create them.");
             }
         }
 
