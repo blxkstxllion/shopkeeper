@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { StatTile } from '@/components/ui/StatTile'
+import { StatTileSkeleton, TableSkeleton } from '@/components/ui/Skeleton'
 import { formatMoney, resolveUploadUrl } from '@/lib/format'
 import type { Product } from '@/types/product'
 import { ProductFormModal } from './ProductFormModal'
@@ -80,20 +81,26 @@ export function InventoryPage() {
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTile label="Total products" icon={Package} value={stats ? String(stats.totalProducts) : '—'} />
-        <StatTile
-          label="Low stock"
-          icon={AlertTriangle}
-          value={stats ? String(stats.lowStockCount) : '—'}
-          tone={stats && stats.lowStockCount > 0 ? 'warning' : undefined}
-        />
-        <StatTile
-          label="Out of stock"
-          icon={PackageX}
-          value={stats ? String(stats.outOfStockCount) : '—'}
-          tone={stats && stats.outOfStockCount > 0 ? 'critical' : undefined}
-        />
-        <StatTile label="Inventory value" icon={Wallet} value={stats ? formatMoney(stats.inventoryValue) : '—'} />
+        {!stats ? (
+          Array.from({ length: 4 }).map((_, i) => <StatTileSkeleton key={i} />)
+        ) : (
+          <>
+            <StatTile label="Total products" icon={Package} value={String(stats.totalProducts)} />
+            <StatTile
+              label="Low stock"
+              icon={AlertTriangle}
+              value={String(stats.lowStockCount)}
+              tone={stats.lowStockCount > 0 ? 'warning' : undefined}
+            />
+            <StatTile
+              label="Out of stock"
+              icon={PackageX}
+              value={String(stats.outOfStockCount)}
+              tone={stats.outOfStockCount > 0 ? 'critical' : undefined}
+            />
+            <StatTile label="Inventory value" icon={Wallet} value={formatMoney(stats.inventoryValue)} />
+          </>
+        )}
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -122,7 +129,7 @@ export function InventoryPage() {
 
       <Card className="overflow-hidden">
         {isLoading ? (
-          <div className="p-6 text-sm text-slate-400">Loading…</div>
+          <TableSkeleton columns={5} leadingThumbnail rows={6} />
         ) : products.length === 0 ? (
           <EmptyState
             icon={Package}

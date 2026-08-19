@@ -20,11 +20,24 @@
   --color-primary-800: #065f46;
   --color-primary-900: #064e3b;
 
-  /* Supporting colors - used sparingly, only to communicate meaning */
-  --color-info-500: #3b82f6;
-  --color-warning-500: #f59e0b;
-  --color-danger-500: #ef4444;
-  --color-danger-600: #dc2626;
+  /* Status colors - reserved meaning (good/warning/serious/danger), always paired
+     with an icon or label, never color alone. Two steps per role: the base value
+     reads correctly as a dark-mode text color and as a background tint in either
+     mode; the plain name is a darker substitute used for that role's light-mode
+     text specifically, since the base value alone falls short of 4.5:1 (WCAG AA
+     for text) against a white surface for warning/serious/good. Values validated
+     with the dataviz skill's contrast() checker against this app's actual
+     surfaces (#ffffff light / #12151a dark) - --color-danger-dark in particular
+     fixes a real gap where dark-mode text reused the light-mode value and only
+     cleared 3.8:1, short of the 4.5:1 text threshold. */
+  --color-good: #006300;
+  --color-good-dark: #0ca30c;
+  --color-warning: #8a5a00;
+  --color-warning-dark: #fab219;
+  --color-serious: #b0431b;
+  --color-serious-dark: #ec835a;
+  --color-danger: #d03b3b;
+  --color-danger-dark: #f87171;
 }
 
 :root {

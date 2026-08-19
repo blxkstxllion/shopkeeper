@@ -4,6 +4,7 @@ import { getInventoryReport } from '@/api/reports'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { StatTile } from '@/components/ui/StatTile'
+import { StatTileSkeleton, ListSkeleton, TableSkeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { UpgradePrompt } from '@/components/ui/UpgradePrompt'
 import { ApiError } from '@/lib/api-client'
@@ -29,10 +30,23 @@ export function InventoryTab({ range, branchId }: { range: DateRange; branchId?:
 
   if (isLoading || !data) {
     return (
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i} className="h-24 animate-pulse p-4" />
-        ))}
+      <div className="flex flex-col gap-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <StatTileSkeleton key={i} />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Card className="p-4">
+            <ListSkeleton rows={4} />
+          </Card>
+          <Card className="p-4">
+            <ListSkeleton rows={4} />
+          </Card>
+        </div>
+        <Card className="p-4">
+          <TableSkeleton columns={4} rows={5} />
+        </Card>
       </div>
     )
   }
@@ -124,7 +138,7 @@ function StockAlertCard({
   products: StockAlertProduct[]
   tone: 'warning' | 'critical'
 }) {
-  const toneClass = tone === 'critical' ? 'text-[#d03b3b]' : 'text-[#8a5a00] dark:text-[#fab219]'
+  const toneClass = tone === 'critical' ? 'text-danger dark:text-danger-dark' : 'text-warning dark:text-warning-dark'
   return (
     <Card className="p-4">
       <h2 className="mb-4 text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</h2>

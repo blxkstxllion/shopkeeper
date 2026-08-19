@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 import { formatDateTime } from '@/lib/format'
 
 const PAGE_SIZE = 30
@@ -81,7 +82,7 @@ export function AuditLogsPage() {
 
       <Card className="overflow-hidden">
         {isLoading ? (
-          <div className="p-6 text-sm text-slate-400">Loading…</div>
+          <TableSkeleton columns={5} rows={8} />
         ) : logs.length === 0 ? (
           <EmptyState
             icon={History}

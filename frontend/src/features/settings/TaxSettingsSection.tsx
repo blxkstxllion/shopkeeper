@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input, FormField } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
+import { FormSkeleton } from '@/components/ui/Skeleton'
 import { ApiError } from '@/lib/api-client'
 
 const schema = z.object({
@@ -54,7 +55,7 @@ export function TaxSettingsSection() {
   if (isLoading) {
     return (
       <Card className="p-4">
-        <div className="h-32 animate-pulse" />
+        <FormSkeleton fields={3} />
       </Card>
     )
   }
