@@ -64,15 +64,17 @@ public class GetInventoryReportQueryHandler(IAppDbContext db, ICurrentUserServic
         var rangeStart = new DateTimeOffset(request.From.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
         var rangeEndExclusive = new DateTimeOffset(request.To.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero).AddDays(1);
 
-        var salesQuery = db.Sales.Include(s => s.Items).AsQueryable();
+        // Status/branch filtered server-side; date range filtered in memory afterward - see
+        // GetProfitabilityReportQuery's comment on why (a proven, not assumed, SQLite limitation).
+        var salesQuery = db.Sales.Include(s => s.Items).Where(s => s.Status != SaleStatus.Voided);
         if (branchId.HasValue)
         {
             salesQuery = salesQuery.Where(s => s.BranchId == branchId);
         }
-        var allSales = await salesQuery.ToListAsync(cancellationToken);
+        var allMatchingSales = await salesQuery.ToListAsync(cancellationToken);
+        var sales = allMatchingSales.Where(s => s.CreatedAt >= rangeStart && s.CreatedAt < rangeEndExclusive).ToList();
 
-        var unitsSoldByProduct = allSales
-            .Where(s => s.Status != SaleStatus.Voided && s.CreatedAt >= rangeStart && s.CreatedAt < rangeEndExclusive)
+        var unitsSoldByProduct = sales
             .SelectMany(s => s.Items)
             .GroupBy(i => i.ProductId)
             .ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity));
