@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Alert } from '@/components/ui/Alert'
+import { Skeleton } from '@/components/ui/Skeleton'
 import { ApiError } from '@/lib/api-client'
 import type { PlanTier } from '@/types/plans'
 
@@ -90,9 +91,33 @@ export function PlanBillingSection() {
 
   if (isLoading || !usage) {
     return (
-      <Card className="p-4">
-        <div className="h-32 animate-pulse" />
-      </Card>
+      <div className="flex flex-col gap-4">
+        <Card className="p-4">
+          <Skeleton className="mb-1 h-4 w-32" />
+          <Skeleton className="mb-4 h-3 w-64" />
+          <div className="flex flex-col gap-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i}>
+                <div className="mb-1 flex justify-between">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+                <Skeleton className="h-1.5 w-full" />
+              </div>
+            ))}
+          </div>
+        </Card>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Card key={i} className="p-4">
+              <Skeleton className="mb-2 h-4 w-24" />
+              <Skeleton className="mb-2 h-6 w-20" />
+              <Skeleton className="mb-4 h-3 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </Card>
+          ))}
+        </div>
+      </div>
     )
   }
 

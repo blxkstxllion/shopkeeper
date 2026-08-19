@@ -17,6 +17,7 @@ import { getDashboardSummary } from '@/api/dashboard'
 import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { StatTile } from '@/components/ui/StatTile'
+import { Skeleton, StatTileSkeleton, ChartSkeleton, ListSkeleton } from '@/components/ui/Skeleton'
 import { CategoryBreakdown } from '@/components/ui/CategoryBreakdown'
 import { formatMoney, formatDateTime } from '@/lib/format'
 import type { DashboardMetric, TopProduct, RecentTransaction } from '@/types/dashboard'
@@ -24,19 +25,19 @@ import type { DashboardMetric, TopProduct, RecentTransaction } from '@/types/das
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
   Completed: {
     label: 'Completed',
-    className: 'bg-[#0ca30c]/10 text-[#0ca30c] dark:bg-[#0ca30c]/15',
+    className: 'bg-good-dark/10 text-good-dark dark:bg-good-dark/15',
   },
   Voided: {
     label: 'Voided',
-    className: 'bg-[#d03b3b]/10 text-[#d03b3b] dark:bg-[#d03b3b]/15',
+    className: 'bg-danger/10 text-danger dark:bg-danger/15 dark:text-danger-dark',
   },
   PartiallyRefunded: {
     label: 'Partially refunded',
-    className: 'bg-[#fab219]/15 text-[#8a5a00] dark:bg-[#fab219]/15 dark:text-[#fab219]',
+    className: 'bg-warning-dark/15 text-warning dark:bg-warning-dark/15 dark:text-warning-dark',
   },
   Refunded: {
     label: 'Refunded',
-    className: 'bg-[#ec835a]/15 text-[#b0431b] dark:bg-[#ec835a]/20 dark:text-[#ec835a]',
+    className: 'bg-serious-dark/15 text-serious dark:bg-serious-dark/20 dark:text-serious-dark',
   },
 }
 
@@ -60,11 +61,38 @@ export function DashboardPage() {
       </div>
 
       {isLoading || !data ? (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="h-24 animate-pulse p-4" />
-          ))}
-        </div>
+        <>
+          <div className="mb-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <StatTileSkeleton key={i} />
+            ))}
+          </div>
+          <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <StatTileSkeleton key={i} />
+            ))}
+          </div>
+          <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-5">
+            <Card className="p-4 lg:col-span-3">
+              <Skeleton className="mb-4 h-4 w-48" />
+              <ChartSkeleton height={260} />
+            </Card>
+            <Card className="p-4 lg:col-span-2">
+              <Skeleton className="mb-4 h-4 w-40" />
+              <ChartSkeleton height={260} />
+            </Card>
+          </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <Card className="p-4">
+              <Skeleton className="mb-4 h-4 w-32" />
+              <ListSkeleton rows={4} />
+            </Card>
+            <Card className="p-4">
+              <Skeleton className="mb-4 h-4 w-36" />
+              <ListSkeleton rows={4} />
+            </Card>
+          </div>
+        </>
       ) : (
         <>
           <div className="mb-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -156,7 +184,7 @@ function MetricCard({
       {metric.changePercent !== null && (
         <p
           className={`mt-1 inline-flex items-center gap-1 text-xs font-medium ${
-            isUp ? 'text-[#006300] dark:text-[#0ca30c]' : 'text-[#d03b3b]'
+            isUp ? 'text-good dark:text-good-dark' : 'text-danger dark:text-danger-dark'
           }`}
         >
           {isUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}

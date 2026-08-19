@@ -4,6 +4,7 @@ import { Receipt } from 'lucide-react'
 import { getSales } from '@/api/sales'
 import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 import { formatMoney, formatDateTime } from '@/lib/format'
 import type { SaleStatus } from '@/types/sale'
 import { SaleDetailModal } from './SaleDetailModal'
@@ -56,7 +57,7 @@ export function SalesHistoryPage() {
 
       <Card className="overflow-hidden">
         {isLoading ? (
-          <div className="p-6 text-sm text-slate-400">Loading…</div>
+          <TableSkeleton columns={7} rows={8} />
         ) : sales.length === 0 ? (
           <EmptyState
             icon={Receipt}

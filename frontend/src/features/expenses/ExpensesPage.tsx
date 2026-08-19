@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 import { formatMoney } from '@/lib/format'
 import type { Expense } from '@/types/expense'
 import { ExpenseFormModal } from './ExpenseFormModal'
@@ -96,7 +97,7 @@ export function ExpensesPage() {
 
       <Card className="overflow-hidden">
         {isLoading ? (
-          <div className="p-6 text-sm text-slate-400">Loading…</div>
+          <TableSkeleton columns={5} rows={6} />
         ) : expenses.length === 0 ? (
           <EmptyState
             icon={Receipt}

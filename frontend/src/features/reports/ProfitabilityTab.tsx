@@ -6,6 +6,7 @@ import { getProfitabilityReport } from '@/api/reports'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { StatTile, type StatDelta } from '@/components/ui/StatTile'
+import { Skeleton, StatTileSkeleton, ChartSkeleton, ListSkeleton } from '@/components/ui/Skeleton'
 import { CategoryBreakdown } from '@/components/ui/CategoryBreakdown'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { UpgradePrompt } from '@/components/ui/UpgradePrompt'
@@ -44,10 +45,32 @@ export function ProfitabilityTab({ range, branchId }: { range: DateRange; branch
 
   if (isLoading || !data) {
     return (
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Card key={i} className="h-24 animate-pulse p-4" />
-        ))}
+      <div className="flex flex-col gap-6">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <StatTileSkeleton key={i} />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+          <Card className="p-4 lg:col-span-3">
+            <Skeleton className="mb-4 h-4 w-44" />
+            <ChartSkeleton height={280} />
+          </Card>
+          <Card className="p-4 lg:col-span-2">
+            <Skeleton className="mb-4 h-4 w-40" />
+            <ChartSkeleton height={280} />
+          </Card>
+        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Card className="p-4">
+            <Skeleton className="mb-4 h-4 w-32" />
+            <ListSkeleton rows={4} />
+          </Card>
+          <Card className="p-4">
+            <Skeleton className="mb-4 h-4 w-48" />
+            <ListSkeleton rows={4} />
+          </Card>
+        </div>
       </div>
     )
   }
@@ -299,7 +322,7 @@ function ProductRankList({
   products: ProductProfit[]
   tone: 'good' | 'critical'
 }) {
-  const toneClass = tone === 'good' ? 'text-[#006300] dark:text-[#0ca30c]' : 'text-[#d03b3b]'
+  const toneClass = tone === 'good' ? 'text-good dark:text-good-dark' : 'text-danger dark:text-danger-dark'
   return (
     <div>
       <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate-400">{title}</p>

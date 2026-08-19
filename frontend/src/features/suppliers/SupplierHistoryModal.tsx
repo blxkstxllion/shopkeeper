@@ -50,7 +50,7 @@ export function SupplierHistoryModal({
                 <tr key={h.id}>
                   <td className="px-3 py-2 font-medium text-slate-900 dark:text-slate-100">{h.productName}</td>
                   <td className="px-3 py-2 text-slate-500 dark:text-slate-400">{h.branchName}</td>
-                  <td className="px-3 py-2 text-[#006300] dark:text-[#0ca30c]">+{h.quantity}</td>
+                  <td className="px-3 py-2 text-good dark:text-good-dark">+{h.quantity}</td>
                   <td className="px-3 py-2 text-slate-500 dark:text-slate-400">{h.createdByName}</td>
                   <td className="px-3 py-2 text-slate-500 dark:text-slate-400">{formatDateTime(h.createdAt)}</td>
                 </tr>

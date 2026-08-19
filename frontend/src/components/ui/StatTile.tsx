@@ -18,7 +18,11 @@ function DeltaLine({ delta }: { delta: StatDelta }) {
 
   const isGood = delta.goodDirection === 'down' ? delta.percent < 0 : delta.percent > 0
   const isBad = delta.goodDirection === 'down' ? delta.percent > 0 : delta.percent < 0
-  const colorClass = isGood ? 'text-[#006300] dark:text-[#0ca30c]' : isBad ? 'text-[#d03b3b]' : 'text-slate-400'
+  const colorClass = isGood
+    ? 'text-good dark:text-good-dark'
+    : isBad
+      ? 'text-danger dark:text-danger-dark'
+      : 'text-slate-400'
   const sign = delta.percent > 0 ? '+' : ''
 
   return (
@@ -44,9 +48,9 @@ export function StatTile({
 }) {
   const toneClass =
     tone === 'critical'
-      ? 'text-[#d03b3b]'
+      ? 'text-danger dark:text-danger-dark'
       : tone === 'warning'
-        ? 'text-[#8a5a00] dark:text-[#fab219]'
+        ? 'text-warning dark:text-warning-dark'
         : 'text-slate-900 dark:text-slate-100'
   return (
     <Card className="flex items-center gap-3 p-4">
