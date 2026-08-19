@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Store, Percent, ShieldCheck, Users, Bell, Plug, CreditCard, Webhook, type LucideIcon } from 'lucide-react'
+import { Store, Percent, ShieldCheck, Users, Bell, Plug, CreditCard, type LucideIcon } from 'lucide-react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { BusinessProfileSection } from './BusinessProfileSection'
 import { TaxSettingsSection } from './TaxSettingsSection'
@@ -10,7 +10,7 @@ import { PlanBillingSection } from './PlanBillingSection'
 import { RolesSection } from './RolesSection'
 import { NotificationPreferencesSection } from './NotificationPreferencesSection'
 
-type SectionId = 'business' | 'tax' | 'roles' | 'notifications' | 'security' | 'integrations' | 'subscription' | 'api'
+type SectionId = 'business' | 'tax' | 'roles' | 'notifications' | 'security' | 'integrations' | 'subscription'
 
 interface SectionConfig {
   id: SectionId
@@ -27,7 +27,6 @@ const SECTIONS: SectionConfig[] = [
   { id: 'security', label: 'Security', icon: ShieldCheck },
   { id: 'integrations', label: 'Integrations', icon: Plug, comingSoonPhase: 'Phase 7' },
   { id: 'subscription', label: 'Subscription', icon: CreditCard },
-  { id: 'api', label: 'API & webhooks', icon: Webhook, comingSoonPhase: 'Phase 7' },
 ]
 
 export function SettingsPage() {
