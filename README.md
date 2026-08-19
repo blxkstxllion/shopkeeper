@@ -220,13 +220,18 @@ Once `STAGING_HOST`/`PRODUCTION_HOST` are set, the deploy jobs activate automati
 
 ## Status
 
-**Phases 1–2 complete**, including containerization and CI/CD. Phase 3 partially built (real Dashboard; Expenses and Reports still pending). Phases 4–8 not started. See the master build prompt for the full phase breakdown:
+**Phases 1–6 complete.** Phase 7 partially built. Phase 8 not started. See the master
+build prompt for the full phase breakdown:
 
-1. Project setup, design system, auth, onboarding, database, roles, navigation
-2. Products, inventory, POS, sales, payments, receipts
-3. Expenses, profitability engine, dashboard, reports, analytics
-4. Branches, employees, suppliers, customers
-5. Offline POS, synchronization, audit logs, notifications
-6. AI Business Consultant
-7. Subscriptions, enterprise permissions, advanced reporting, integrations
-8. Cross-platform distribution: PWA, iOS/Android app stores, macOS/Windows desktop installers
+1. Project setup, design system, auth, onboarding, database, roles, navigation — **done**
+2. Products, inventory, POS, sales, payments, receipts — **done**
+3. Expenses, profitability engine, dashboard, reports, analytics — **done**
+4. Branches, employees, suppliers, customers — **done**
+5. Offline POS, synchronization, audit logs, notifications — **done**
+6. AI Business Consultant — **done** (zero-cost, calculation-based; not LLM-backed yet)
+7. Subscriptions, enterprise permissions, advanced reporting, integrations — **partial**:
+   subscription plan tiers and custom roles for Enterprise are shipped; a
+   period-over-period comparison view for the Profitability report is in review;
+   real payment checkout (Paystack), third-party integrations, and a public API are
+   not started
+8. Cross-platform distribution: PWA, iOS/Android app stores, macOS/Windows desktop installers — not started
