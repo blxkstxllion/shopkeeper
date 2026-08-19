@@ -8,6 +8,7 @@ import { TwoFactorSection } from './TwoFactorSection'
 import { SessionsSection } from './SessionsSection'
 import { PlanBillingSection } from './PlanBillingSection'
 import { RolesSection } from './RolesSection'
+import { NotificationPreferencesSection } from './NotificationPreferencesSection'
 
 type SectionId = 'business' | 'tax' | 'roles' | 'notifications' | 'security' | 'integrations' | 'subscription' | 'api'
 
@@ -22,7 +23,7 @@ const SECTIONS: SectionConfig[] = [
   { id: 'business', label: 'Business', icon: Store },
   { id: 'tax', label: 'Tax & currency', icon: Percent },
   { id: 'roles', label: 'Roles & permissions', icon: Users },
-  { id: 'notifications', label: 'Notifications', icon: Bell, comingSoonPhase: 'Phase 5' },
+  { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'security', label: 'Security', icon: ShieldCheck },
   { id: 'integrations', label: 'Integrations', icon: Plug, comingSoonPhase: 'Phase 7' },
   { id: 'subscription', label: 'Subscription', icon: CreditCard },
@@ -84,6 +85,8 @@ export function SettingsPage() {
             <PlanBillingSection />
           ) : activeId === 'roles' ? (
             <RolesSection />
+          ) : activeId === 'notifications' ? (
+            <NotificationPreferencesSection />
           ) : null}
         </div>
       </div>

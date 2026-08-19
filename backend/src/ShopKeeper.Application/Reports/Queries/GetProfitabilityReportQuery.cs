@@ -27,10 +27,18 @@ public class GetProfitabilityReportQueryValidator : AbstractValidator<GetProfita
 }
 
 /// <summary>
-/// Follows GetDashboardSummaryQuery's pattern: one filtered Sales round trip, then all
-/// date-bucketing/grouping in memory - the SQLite provider (test suite only) can't translate
-/// DateTimeOffset comparisons. Expenses ARE net out of GrossProfit here (NetProfit = GrossProfit -
-/// Expenses), unlike the Dashboard which doesn't show expenses at all yet.
+/// Status and branch are filtered in the database query; the date range is filtered afterward in
+/// memory. This is not a stylistic choice: confirmed by direct testing (not assumption) that EF
+/// Core's SQLite provider (test suite only) cannot translate ANY WHERE-clause comparison on
+/// Sale.CreatedAt (a DateTimeOffset/timestamptz column) - not "only when combined with Include,"
+/// not "only with certain operators," it fails standalone, with no other filter present. Fixing
+/// that for real would mean either switching the test suite off SQLite for this query (against
+/// this repo's stated preference for a real SQLite database over mocking) or reaching for
+/// parameterized raw SQL as an explicit escape hatch - neither undertaken here without a decision
+/// from whoever owns that tradeoff. What IS filtered server-side now (status, branch) still cuts
+/// materially into what previously came back as "every sale this branch has ever made." Expenses
+/// ARE netted out of GrossProfit here (NetProfit = GrossProfit - Expenses), unlike the Dashboard
+/// which doesn't show expenses at all yet.
 /// Refunds are not netted out of revenue/profit, consistent with the Dashboard's existing
 /// behavior - both surfaces should agree, not silently diverge on how a refunded sale counts.
 /// </summary>
@@ -55,17 +63,15 @@ public class GetProfitabilityReportQueryHandler(IAppDbContext db, ICurrentUserSe
             .Include(s => s.CashierUser)
             .Include(s => s.Branch)
             .Include(s => s.Items).ThenInclude(i => i.Product).ThenInclude(p => p!.Category)
-            .AsQueryable();
+            .Where(s => s.Status != SaleStatus.Voided);
 
         if (branchId.HasValue)
         {
             salesQuery = salesQuery.Where(s => s.BranchId == branchId);
         }
 
-        var allSales = await salesQuery.ToListAsync(cancellationToken);
-        var sales = allSales
-            .Where(s => s.Status != SaleStatus.Voided && s.CreatedAt >= rangeStart && s.CreatedAt < rangeEndExclusive)
-            .ToList();
+        var allMatchingSales = await salesQuery.ToListAsync(cancellationToken);
+        var sales = allMatchingSales.Where(s => s.CreatedAt >= rangeStart && s.CreatedAt < rangeEndExclusive).ToList();
 
         var expensesQuery = db.Expenses.Where(e => e.IsActive && e.ExpenseDate >= request.From && e.ExpenseDate <= request.To);
         if (branchId.HasValue)

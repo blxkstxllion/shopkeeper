@@ -146,6 +146,7 @@ public class AuditLoggingBehaviorTests : IDisposable
         public DbSet<PendingInvitation> PendingInvitations => inner.PendingInvitations;
         public DbSet<JoinRequest> JoinRequests => inner.JoinRequests;
         public DbSet<Notification> Notifications => inner.Notifications;
+        public DbSet<NotificationPreference> NotificationPreferences => inner.NotificationPreferences;
 
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {

@@ -6,6 +6,7 @@ export interface PlanLimitInfo {
   maxStaff: number
   hasReports: boolean
   hasAi: boolean
+  hasCustomRoles: boolean
 }
 
 export interface PlanUsage {
