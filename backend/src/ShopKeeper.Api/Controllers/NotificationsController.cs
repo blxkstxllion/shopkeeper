@@ -35,4 +35,15 @@ public class NotificationsController(ISender mediator) : ControllerBase
         await mediator.Send(new MarkAllNotificationsReadCommand(), ct);
         return NoContent();
     }
+
+    [HttpGet("preferences")]
+    public async Task<ActionResult<NotificationPreferenceDto>> GetPreferences(CancellationToken ct) =>
+        Ok(await mediator.Send(new GetNotificationPreferencesQuery(), ct));
+
+    [HttpPut("preferences")]
+    public async Task<IActionResult> UpdatePreferences([FromBody] UpdateNotificationPreferencesCommand command, CancellationToken ct)
+    {
+        await mediator.Send(command, ct);
+        return NoContent();
+    }
 }

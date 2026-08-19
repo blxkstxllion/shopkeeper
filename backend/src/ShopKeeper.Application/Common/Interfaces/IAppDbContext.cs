@@ -37,6 +37,7 @@ public interface IAppDbContext
     DbSet<PendingInvitation> PendingInvitations { get; }
     DbSet<JoinRequest> JoinRequests { get; }
     DbSet<Notification> Notifications { get; }
+    DbSet<NotificationPreference> NotificationPreferences { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

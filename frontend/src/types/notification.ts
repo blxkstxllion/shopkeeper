@@ -7,3 +7,8 @@ export interface AppNotification {
   isRead: boolean
   createdAt: string
 }
+
+export interface NotificationPreferences {
+  notifyOnJoinRequest: boolean
+  notifyOnLowStock: boolean
+}
