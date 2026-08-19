@@ -88,6 +88,92 @@ public class NotificationsTests : IDisposable
     }
 
     [Fact]
+    public async Task GetNotificationPreferences_NoRowYet_DefaultsToAllEnabled()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var context = _db.CreateContext(owner);
+
+        var preferences = await new GetNotificationPreferencesQueryHandler(context, owner).Handle(
+            new GetNotificationPreferencesQuery(), CancellationToken.None);
+
+        Assert.True(preferences.NotifyOnJoinRequest);
+        Assert.True(preferences.NotifyOnLowStock);
+    }
+
+    [Fact]
+    public async Task UpdateNotificationPreferences_CreatesRowThenUpdatesItOnSubsequentCalls()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var context = _db.CreateContext(owner);
+
+        await new UpdateNotificationPreferencesCommandHandler(context, owner).Handle(
+            new UpdateNotificationPreferencesCommand(false, true), CancellationToken.None);
+
+        Assert.Single(await context.NotificationPreferences.ToListAsync());
+        var afterFirstUpdate = await new GetNotificationPreferencesQueryHandler(context, owner).Handle(
+            new GetNotificationPreferencesQuery(), CancellationToken.None);
+        Assert.False(afterFirstUpdate.NotifyOnJoinRequest);
+        Assert.True(afterFirstUpdate.NotifyOnLowStock);
+
+        // A second update must edit the same row, not add a duplicate.
+        await new UpdateNotificationPreferencesCommandHandler(context, owner).Handle(
+            new UpdateNotificationPreferencesCommand(false, false), CancellationToken.None);
+
+        Assert.Single(await context.NotificationPreferences.ToListAsync());
+        var afterSecondUpdate = await new GetNotificationPreferencesQueryHandler(context, owner).Handle(
+            new GetNotificationPreferencesQuery(), CancellationToken.None);
+        Assert.False(afterSecondUpdate.NotifyOnJoinRequest);
+        Assert.False(afterSecondUpdate.NotifyOnLowStock);
+    }
+
+    [Fact]
+    public async Task SubmitJoinRequest_WhenOwnerMutedJoinRequests_DoesNotNotify()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var context = _db.CreateContext(owner);
+
+        await new UpdateNotificationPreferencesCommandHandler(context, owner).Handle(
+            new UpdateNotificationPreferencesCommand(false, true), CancellationToken.None);
+
+        var code = await new RegenerateJoinCodeCommandHandler(context, owner).Handle(new RegenerateJoinCodeCommand(), CancellationToken.None);
+        await new SubmitJoinRequestCommandHandler(context, _hasher, new NotificationDispatcher(context)).Handle(
+            new SubmitJoinRequestCommand(code, "Kofi", "Mensah", "muted-join@shop.test", "0244000000", "Passw0rd!"),
+            CancellationToken.None);
+
+        Assert.Empty(await context.Notifications.Where(n => n.Type == "JoinRequestSubmitted").ToListAsync());
+    }
+
+    [Fact]
+    public async Task AdjustStock_WhenOwnerMutedLowStock_DoesNotNotify_ButOtherTypesStillFire()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var context = _db.CreateContext(owner);
+        var notifications = new NotificationDispatcher(context);
+
+        // Muting only LowStock must not affect JoinRequestSubmitted - the mute is per-type.
+        await new UpdateNotificationPreferencesCommandHandler(context, owner).Handle(
+            new UpdateNotificationPreferencesCommand(true, false), CancellationToken.None);
+
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
+            new CreateProductCommand("Widget", "SKU-MUTED-LOWSTOCK", null, null, null, null, 10m, 6m, 0, 5, true, 6, seeded.BranchId),
+            CancellationToken.None);
+
+        await new AdjustStockCommandHandler(context, owner, notifications).Handle(
+            new AdjustStockCommand(product.Id, seeded.BranchId, -2, "Sold"), CancellationToken.None);
+        Assert.Empty(await context.Notifications.Where(n => n.Type == "LowStock").ToListAsync());
+
+        var code = await new RegenerateJoinCodeCommandHandler(context, owner).Handle(new RegenerateJoinCodeCommand(), CancellationToken.None);
+        await new SubmitJoinRequestCommandHandler(context, _hasher, notifications).Handle(
+            new SubmitJoinRequestCommand(code, "Ama", "Boateng", "still-notified@shop.test", "0244000001", "Passw0rd!"),
+            CancellationToken.None);
+        Assert.Single(await context.Notifications.Where(n => n.Type == "JoinRequestSubmitted").ToListAsync());
+    }
+
+    [Fact]
     public async Task GetNotifications_ReturnsOnlyCurrentUsersOwnRows()
     {
         var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
