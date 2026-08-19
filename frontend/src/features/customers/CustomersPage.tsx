@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 import type { Customer } from '@/types/customer'
 import { CustomerFormModal } from './CustomerFormModal'
 import { CustomerDetailModal } from './CustomerDetailModal'
@@ -66,7 +67,7 @@ export function CustomersPage() {
 
       <Card className="overflow-hidden">
         {isLoading ? (
-          <div className="p-6 text-sm text-slate-400">Loading…</div>
+          <TableSkeleton columns={3} rows={6} />
         ) : customers.length === 0 ? (
           <EmptyState
             icon={UserCircle}

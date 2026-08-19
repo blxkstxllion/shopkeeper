@@ -5,6 +5,7 @@ import { getNotificationPreferences, updateNotificationPreferences } from '@/api
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Alert } from '@/components/ui/Alert'
+import { Skeleton } from '@/components/ui/Skeleton'
 import { ApiError } from '@/lib/api-client'
 import type { NotificationPreferences } from '@/types/notification'
 
@@ -35,7 +36,20 @@ export function NotificationPreferencesSection() {
   if (isLoading || !data) {
     return (
       <Card className="p-4">
-        <div className="h-32 animate-pulse" />
+        <div className="flex flex-col gap-4">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <Skeleton className="mt-0.5 h-4 w-4 shrink-0 rounded" />
+              <div className="flex-1">
+                <Skeleton className="mb-1.5 h-3.5 w-28" />
+                <Skeleton className="h-3 w-64" />
+              </div>
+            </div>
+          ))}
+          <div className="flex justify-end">
+            <Skeleton className="h-9 w-32" />
+          </div>
+        </div>
       </Card>
     )
   }

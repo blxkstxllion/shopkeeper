@@ -5,6 +5,7 @@ import { getExpenseReport } from '@/api/reports'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { StatTile } from '@/components/ui/StatTile'
+import { Skeleton, StatTileSkeleton, ChartSkeleton } from '@/components/ui/Skeleton'
 import { CategoryBreakdown } from '@/components/ui/CategoryBreakdown'
 import { UpgradePrompt } from '@/components/ui/UpgradePrompt'
 import { ApiError } from '@/lib/api-client'
@@ -29,10 +30,20 @@ export function ExpensesTab({ range, branchId }: { range: DateRange; branchId?: 
 
   if (isLoading || !data) {
     return (
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {Array.from({ length: 2 }).map((_, i) => (
-          <Card key={i} className="h-24 animate-pulse p-4" />
-        ))}
+      <div className="flex flex-col gap-6">
+        <div className="max-w-xs">
+          <StatTileSkeleton />
+        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+          <Card className="p-4 lg:col-span-3">
+            <Skeleton className="mb-4 h-4 w-32" />
+            <ChartSkeleton height={280} />
+          </Card>
+          <Card className="p-4 lg:col-span-2">
+            <Skeleton className="mb-4 h-4 w-28" />
+            <ChartSkeleton height={280} />
+          </Card>
+        </div>
       </div>
     )
   }

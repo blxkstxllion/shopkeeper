@@ -5,6 +5,7 @@ import { getSuppliers, deleteSupplier } from '@/api/suppliers'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 import type { Supplier } from '@/types/supplier'
 import { SupplierFormModal } from './SupplierFormModal'
 import { RestockModal } from './RestockModal'
@@ -40,7 +41,7 @@ export function SuppliersPage() {
 
       <Card className="overflow-hidden">
         {isLoading ? (
-          <div className="p-6 text-sm text-slate-400">Loading…</div>
+          <TableSkeleton columns={4} rows={6} />
         ) : !suppliers || suppliers.length === 0 ? (
           <EmptyState
             icon={Truck}
