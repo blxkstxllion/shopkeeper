@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Alert } from '@/components/ui/Alert'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 import { ApiError } from '@/lib/api-client'
 import { formatDateTime } from '@/lib/format'
 import { InviteEmployeeModal } from './InviteEmployeeModal'
@@ -56,7 +57,7 @@ export function EmployeesPage() {
 
       <Card className="mb-6 overflow-hidden">
         {isLoading ? (
-          <div className="p-6 text-sm text-slate-400">Loading…</div>
+          <TableSkeleton columns={5} rows={5} />
         ) : members.length === 0 ? (
           <EmptyState icon={Users} title="No team members yet" description="Invite someone to get started." />
         ) : (
@@ -93,9 +94,7 @@ export function EmployeesPage() {
                     <td className="px-4 py-3">
                       <span
                         className={
-                          m.status === 'Active'
-                            ? 'text-[#006300] dark:text-[#0ca30c]'
-                            : 'text-amber-600 dark:text-amber-400'
+                          m.status === 'Active' ? 'text-good dark:text-good-dark' : 'text-amber-600 dark:text-amber-400'
                         }
                       >
                         {m.status}

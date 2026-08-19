@@ -6,6 +6,7 @@ import { getBranches, deleteBranch } from '@/api/branches'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { TableSkeleton } from '@/components/ui/Skeleton'
 import type { Branch } from '@/types/business'
 import { BranchFormModal } from './BranchFormModal'
 
@@ -35,7 +36,7 @@ export function BranchesPage() {
 
       <Card className="overflow-hidden">
         {isLoading ? (
-          <div className="p-6 text-sm text-slate-400">Loading…</div>
+          <TableSkeleton columns={4} rows={4} />
         ) : !branches || branches.length === 0 ? (
           <EmptyState
             icon={Building2}
@@ -70,7 +71,7 @@ export function BranchesPage() {
                     <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{b.code}</td>
                     <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{b.city ?? '—'}</td>
                     <td className="px-4 py-3">
-                      <span className={b.isActive ? 'text-[#006300] dark:text-[#0ca30c]' : 'text-slate-400'}>
+                      <span className={b.isActive ? 'text-good dark:text-good-dark' : 'text-slate-400'}>
                         {b.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>

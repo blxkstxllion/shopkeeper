@@ -3,6 +3,7 @@ import { Laptop, LogOut } from 'lucide-react'
 import * as authApi from '@/api/auth'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { ListSkeleton } from '@/components/ui/Skeleton'
 import { formatDateTime } from '@/lib/format'
 
 function describeDevice(userAgent: string | null): string {
@@ -46,7 +47,7 @@ export function SessionsSection() {
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-slate-400">Loading…</p>
+        <ListSkeleton rows={3} withAvatar />
       ) : (
         <ul className="divide-y divide-slate-100 dark:divide-slate-800">
           {sessions?.map((s) => (

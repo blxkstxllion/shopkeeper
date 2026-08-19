@@ -6,6 +6,7 @@ import { getPlanUsage } from '@/api/plans'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Alert } from '@/components/ui/Alert'
+import { ListSkeleton } from '@/components/ui/Skeleton'
 import { useAuth } from '@/contexts/AuthContext'
 import { ApiError } from '@/lib/api-client'
 import { RoleFormModal } from './RoleFormModal'
@@ -48,7 +49,7 @@ export function RolesSection() {
   if (isLoading || !roles) {
     return (
       <Card className="p-4">
-        <div className="h-32 animate-pulse" />
+        <ListSkeleton rows={7} />
       </Card>
     )
   }
