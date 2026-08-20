@@ -83,7 +83,16 @@ export function SalesHistoryPage() {
                   <tr
                     key={sale.id}
                     onClick={() => setSelectedSaleId(sale.id)}
-                    className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setSelectedSaleId(sale.id)
+                      }
+                    }}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`View sale ${sale.saleNumber}`}
+                    className="cursor-pointer hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-2 focus-visible:outline-primary-500 focus-visible:-outline-offset-2 dark:hover:bg-slate-800/50 dark:focus-visible:bg-slate-800/50"
                   >
                     <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{sale.saleNumber}</td>
                     <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{sale.branchName}</td>

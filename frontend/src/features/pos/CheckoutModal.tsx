@@ -303,7 +303,12 @@ export function CheckoutModal({
                     onChange={(e) => updateReference(i, e.target.value)}
                   />
                 )}
-                <button type="button" onClick={() => removePayment(i)} className="text-slate-300 hover:text-red-500">
+                <button
+                  type="button"
+                  onClick={() => removePayment(i)}
+                  aria-label={`Remove ${methodConfig[p.method].label} payment`}
+                  className="text-slate-300 hover:text-red-500"
+                >
                   <Trash2 className="h-4 w-4" />
                 </button>
               </li>

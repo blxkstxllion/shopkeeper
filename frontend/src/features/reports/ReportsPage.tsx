@@ -71,11 +71,19 @@ export function ReportsPage() {
         )}
       </div>
 
-      <div className="mb-6 flex gap-1 border-b border-slate-200 dark:border-slate-800">
+      <div
+        role="tablist"
+        aria-label="Report type"
+        className="mb-6 flex gap-1 border-b border-slate-200 dark:border-slate-800"
+      >
         {TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
+            role="tab"
+            id={`reports-tab-${tab.id}`}
+            aria-selected={activeTab === tab.id}
+            aria-controls="reports-tabpanel"
             onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
               activeTab === tab.id
@@ -89,9 +97,11 @@ export function ReportsPage() {
         ))}
       </div>
 
-      {activeTab === 'profitability' && <ProfitabilityTab range={range} branchId={branchId} />}
-      {activeTab === 'expenses' && <ExpensesTab range={range} branchId={branchId} />}
-      {activeTab === 'inventory' && <InventoryTab range={range} branchId={branchId} />}
+      <div role="tabpanel" id="reports-tabpanel" aria-labelledby={`reports-tab-${activeTab}`} tabIndex={0}>
+        {activeTab === 'profitability' && <ProfitabilityTab range={range} branchId={branchId} />}
+        {activeTab === 'expenses' && <ExpensesTab range={range} branchId={branchId} />}
+        {activeTab === 'inventory' && <InventoryTab range={range} branchId={branchId} />}
+      </div>
     </div>
   )
 }
