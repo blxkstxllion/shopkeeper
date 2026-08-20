@@ -2,6 +2,7 @@ namespace ShopKeeper.Api.Controllers;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using MediatR;
 using ShopKeeper.Api.Extensions;
 using ShopKeeper.Application.Auth.Commands;
@@ -24,6 +25,7 @@ public class AuthController(ISender mediator, IWebHostEnvironment env, ICurrentU
     public record EnableTwoFactorRequest(string Code);
     public record DisableTwoFactorRequest(string Password);
 
+    [EnableRateLimiting("auth")]
     [HttpPost("register")]
     public async Task<ActionResult<AuthResultDto>> Register(RegisterRequest request, CancellationToken ct)
     {
@@ -35,6 +37,7 @@ public class AuthController(ISender mediator, IWebHostEnvironment env, ICurrentU
         return Ok(result with { RefreshToken = string.Empty });
     }
 
+    [EnableRateLimiting("auth")]
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginRequest request, CancellationToken ct)
     {
@@ -124,6 +127,7 @@ public class AuthController(ISender mediator, IWebHostEnvironment env, ICurrentU
         return NoContent();
     }
 
+    [EnableRateLimiting("auth")]
     [HttpPost("forgot-password")]
     public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request, CancellationToken ct)
     {
@@ -131,6 +135,7 @@ public class AuthController(ISender mediator, IWebHostEnvironment env, ICurrentU
         return Ok(new { message = "If an account with that email exists, a reset link has been sent." });
     }
 
+    [EnableRateLimiting("auth")]
     [HttpPost("reset-password")]
     public async Task<IActionResult> ResetPassword(ResetPasswordRequest request, CancellationToken ct)
     {
