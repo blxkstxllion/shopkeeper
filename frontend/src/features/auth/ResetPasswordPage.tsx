@@ -36,6 +36,9 @@ export function ResetPasswordPage() {
   if (!token) {
     return (
       <Card className="p-6">
+        <h1 className="mb-4 text-center text-lg font-semibold text-slate-900 dark:text-slate-100">
+          Reset your password
+        </h1>
         <Alert tone="error">This password reset link is missing its token. Please request a new one.</Alert>
         <Link
           to="/forgot-password"
@@ -59,6 +62,7 @@ export function ResetPasswordPage() {
 
   return (
     <Card className="p-6">
+      <h1 className="mb-4 text-center text-lg font-semibold text-slate-900 dark:text-slate-100">Reset your password</h1>
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         {serverError && <Alert tone="error">{serverError}</Alert>}
 

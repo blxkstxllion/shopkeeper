@@ -33,6 +33,9 @@ export function ForgotPasswordPage() {
   if (submitted) {
     return (
       <Card className="p-6">
+        <h1 className="mb-4 text-center text-lg font-semibold text-slate-900 dark:text-slate-100">
+          Forgot your password?
+        </h1>
         <Alert tone="success">
           If an account with that email exists, we&apos;ve sent a link to reset your password.
         </Alert>
@@ -48,6 +51,9 @@ export function ForgotPasswordPage() {
 
   return (
     <Card className="p-6">
+      <h1 className="mb-4 text-center text-lg font-semibold text-slate-900 dark:text-slate-100">
+        Forgot your password?
+      </h1>
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <p className="text-sm text-slate-500 dark:text-slate-400">
           Enter the email associated with your account and we&apos;ll send you a link to reset your password.
