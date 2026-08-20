@@ -1,5 +1,7 @@
 namespace ShopKeeper.Infrastructure;
 
+using Amazon;
+using Amazon.SimpleEmailV2;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,8 +28,25 @@ public static class DependencyInjection
         services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
         services.AddSingleton<ITotpService, TotpService>();
-        services.AddScoped<IEmailSender, LoggingEmailSender>();
         services.AddSingleton<IFileStorageService, LocalFileStorageService>();
+
+        // Real delivery (SES) only when an Email:FromAddress is configured - same "absence
+        // never breaks startup" pattern as Redis below. Local/CI dev has none configured, so
+        // it keeps using LoggingEmailSender; production must set Email:FromAddress (and
+        // Email:FrontendBaseUrl) for real mail to go out at all.
+        var emailFromAddress = configuration["Email:FromAddress"];
+        if (!string.IsNullOrWhiteSpace(emailFromAddress))
+        {
+            services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));
+            var region = configuration["Email:Region"] ?? "us-east-1";
+            services.AddSingleton<IAmazonSimpleEmailServiceV2>(
+                _ => new AmazonSimpleEmailServiceV2Client(RegionEndpoint.GetBySystemName(region)));
+            services.AddScoped<IEmailSender, SesEmailSender>();
+        }
+        else
+        {
+            services.AddScoped<IEmailSender, LoggingEmailSender>();
+        }
 
         // Redis is provisioned in every environment (see docker/docker-compose.yml) but nothing
         // reads from it yet - no feature currently needs caching, sessions, or a queue. Registered
