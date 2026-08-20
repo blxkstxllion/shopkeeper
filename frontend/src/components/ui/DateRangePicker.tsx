@@ -44,6 +44,7 @@ export function DateRangePicker({ value, onChange }: { value: DateRange; onChang
   const [customFrom, setCustomFrom] = useState(value.from)
   const [customTo, setCustomTo] = useState(value.to)
   const ref = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -54,6 +55,18 @@ export function DateRangePicker({ value, onChange }: { value: DateRange; onChang
   }, [])
 
   useEffect(() => {
+    if (!isOpen) return
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setIsOpen(false)
+        triggerRef.current?.focus()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen])
+
+  useEffect(() => {
     setCustomFrom(value.from)
     setCustomTo(value.to)
   }, [value])
@@ -61,8 +74,11 @@ export function DateRangePicker({ value, onChange }: { value: DateRange; onChang
   return (
     <div className="relative" ref={ref}>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setIsOpen((o) => !o)}
+        aria-haspopup="true"
+        aria-expanded={isOpen}
         className="flex h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
       >
         <Calendar className="h-4 w-4 text-slate-400" />

@@ -60,7 +60,7 @@ export function DigitCodeInput({ length = 6, value, onChange, error, autoFocus }
   }
 
   return (
-    <div className="flex justify-center gap-2">
+    <div className="flex justify-center gap-2" role="group" aria-label="Verification code">
       {digits.map((digit, i) => (
         <input
           key={i}
@@ -76,6 +76,7 @@ export function DigitCodeInput({ length = 6, value, onChange, error, autoFocus }
           onChange={(e) => handleChange(i, e.target.value)}
           onKeyDown={(e) => handleKeyDown(i, e)}
           onPaste={handlePaste}
+          aria-label={`Digit ${i + 1} of ${length}`}
           className={clsx(
             'h-12 w-10 rounded-lg border bg-white text-center text-lg font-semibold text-slate-900',
             'focus:outline-none focus:ring-2 focus:ring-primary-500/40 focus:border-primary-500',

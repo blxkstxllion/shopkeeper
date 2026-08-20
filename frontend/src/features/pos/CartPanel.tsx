@@ -44,6 +44,7 @@ export function CartPanel({
                   <button
                     type="button"
                     onClick={() => onUpdateQuantity(line.product.productId, line.quantity - 1)}
+                    aria-label={`Decrease quantity of ${line.product.name}`}
                     className="flex h-6 w-6 items-center justify-center rounded border border-slate-300 text-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800"
                   >
                     <Minus className="h-3 w-3" />
@@ -52,6 +53,7 @@ export function CartPanel({
                   <button
                     type="button"
                     onClick={() => onUpdateQuantity(line.product.productId, line.quantity + 1)}
+                    aria-label={`Increase quantity of ${line.product.name}`}
                     className="flex h-6 w-6 items-center justify-center rounded border border-slate-300 text-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800"
                   >
                     <Plus className="h-3 w-3" />
@@ -63,6 +65,7 @@ export function CartPanel({
                 <button
                   type="button"
                   onClick={() => onRemove(line.product.productId)}
+                  aria-label={`Remove ${line.product.name} from cart`}
                   className="text-slate-300 hover:text-red-500"
                 >
                   <Trash2 className="h-4 w-4" />
