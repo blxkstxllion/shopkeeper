@@ -1,0 +1,16 @@
+# TLS termination for production. Caddy automatically obtains and renews a
+# Let's Encrypt certificate for $DOMAIN with no manual certbot/cron/webroot
+# dance - deliberately chosen over Certbot+Nginx for this deployment shape,
+# since the frontend's Nginx is a pre-built, immutable image promoted unchanged
+# from staging (see README's "Where images live") - it isn't a natural place to
+# inject live-issued certs and renewal-reload logic. Caddy sits in front of it
+# as the sole public entry point instead; the frontend container's Nginx keeps
+# doing exactly what it already does (SPA + /api reverse proxy), just no longer
+# directly exposed on the host.
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	reverse_proxy frontend:8080
+}
