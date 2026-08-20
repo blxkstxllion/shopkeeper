@@ -29,4 +29,14 @@ public class PlansController(ISender mediator) : ControllerBase
         await mediator.Send(command, ct);
         return NoContent();
     }
+
+    [HttpPost("checkout")]
+    public async Task<ActionResult<CheckoutSessionDto>> InitiateCheckout(
+        [FromBody] InitiateCheckoutCommand command, CancellationToken ct) =>
+        Ok(await mediator.Send(command, ct));
+
+    [HttpPost("checkout/verify")]
+    public async Task<ActionResult<VerifyCheckoutResultDto>> VerifyCheckout(
+        [FromBody] VerifyCheckoutCommand command, CancellationToken ct) =>
+        Ok(await mediator.Send(command, ct));
 }

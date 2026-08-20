@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, Sparkles } from 'lucide-react'
-import { getPlanUsage, setInventoryAddOn, setPlanTier } from '@/api/plans'
+import { getPlanUsage, initiateCheckout, setInventoryAddOn, setPlanTier } from '@/api/plans'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -89,6 +89,17 @@ export function PlanBillingSection() {
       setServerError(err instanceof ApiError ? err.message : 'Unable to change plan. Please try again.'),
   })
 
+  const checkoutMutation = useMutation({
+    mutationFn: initiateCheckout,
+    onSuccess: (session) => {
+      // Full page navigation, not client-side routing - this leaves the SPA entirely for
+      // Paystack's hosted checkout page.
+      window.location.href = session.authorizationUrl
+    },
+    onError: (err) =>
+      setServerError(err instanceof ApiError ? err.message : 'Unable to start checkout. Please try again.'),
+  })
+
   if (isLoading || !usage) {
     return (
       <div className="flex flex-col gap-4">
@@ -126,8 +137,13 @@ export function PlanBillingSection() {
       <Card className="p-4">
         <h2 className="mb-1 text-sm font-semibold text-slate-900 dark:text-slate-100">Plan &amp; billing</h2>
         <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-          Self-serve for now - no card required yet. Changing your plan takes effect immediately.
+          {usage.billingEnabled
+            ? 'Paid plans are billed monthly via Paystack. Downgrading to Free takes effect immediately.'
+            : 'Self-serve for now - no card required yet. Changing your plan takes effect immediately.'}
           {!isOwner && ' Only the business owner can change plans.'}
+          {usage.billingEnabled && usage.currentPeriodEnd && (
+            <> Renews on {new Date(usage.currentPeriodEnd).toLocaleDateString()}.</>
+          )}
         </p>
 
         {serverError && <Alert tone="error">{serverError}</Alert>}
@@ -173,9 +189,22 @@ export function PlanBillingSection() {
                   variant="secondary"
                   size="sm"
                   className="w-full"
-                  isLoading={tierMutation.isPending && tierMutation.variables === tier.id}
-                  disabled={tierMutation.isPending}
-                  onClick={() => tierMutation.mutate(tier.id)}
+                  isLoading={
+                    (tierMutation.isPending && tierMutation.variables === tier.id) ||
+                    (checkoutMutation.isPending && checkoutMutation.variables === tier.id)
+                  }
+                  disabled={tierMutation.isPending || checkoutMutation.isPending}
+                  onClick={() => {
+                    // Free never needs checkout, whether or not billing is enabled - and once
+                    // billing is enabled, going through checkout for a paid tier is what keeps
+                    // SetPlanTierCommand's server-side restriction (paid tiers require a
+                    // completed purchase) satisfied instead of just erroring.
+                    if (tier.id === 'Free' || !usage.billingEnabled) {
+                      tierMutation.mutate(tier.id)
+                    } else {
+                      checkoutMutation.mutate(tier.id)
+                    }
+                  }}
                 >
                   Switch to this plan
                 </Button>

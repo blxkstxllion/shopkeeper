@@ -17,6 +17,11 @@ public class PlanManagementTests : IDisposable
     private readonly BcryptPasswordHasher _hasher = new();
     private readonly JwtTokenService _jwt = new(Options.Create(PosTestFixture.JwtTestSettings));
 
+    // IsConfigured = false everywhere in this file (unless a test explicitly overrides it) so
+    // these tests exercise exactly today's dev/CI behavior - see PaystackBillingTests.cs for the
+    // Paystack-configured behavior these handlers gain once IPaystackClient.IsConfigured is true.
+    private static TestPaystackClient UnconfiguredPaystack => new() { IsConfigured = false };
+
     [Fact]
     public async Task GetPlanUsage_NewBusiness_IsFreeTierWithCorrectCounts()
     {
@@ -24,7 +29,8 @@ public class PlanManagementTests : IDisposable
         var owner = seeded.AsOwner();
         var context = _db.CreateContext(owner);
 
-        var usage = await new GetPlanUsageQueryHandler(context, owner).Handle(new GetPlanUsageQuery(), CancellationToken.None);
+        var usage = await new GetPlanUsageQueryHandler(context, owner, UnconfiguredPaystack).Handle(
+            new GetPlanUsageQuery(), CancellationToken.None);
 
         Assert.Equal(PlanTier.Free, usage.CurrentTier);
         Assert.Equal(2, usage.Limits.MaxBranches);
@@ -41,7 +47,8 @@ public class PlanManagementTests : IDisposable
         var owner = seeded.AsOwner();
         var context = _db.CreateContext(owner);
 
-        await new SetPlanTierCommandHandler(context, owner).Handle(new SetPlanTierCommand(PlanTier.EnterpriseAi), CancellationToken.None);
+        await new SetPlanTierCommandHandler(context, owner, UnconfiguredPaystack).Handle(
+            new SetPlanTierCommand(PlanTier.EnterpriseAi), CancellationToken.None);
 
         var business = await context.Businesses.SingleAsync(b => b.Id == seeded.BusinessId);
         Assert.Equal(PlanTier.EnterpriseAi, business.PlanTier);
@@ -63,7 +70,8 @@ public class PlanManagementTests : IDisposable
         };
 
         await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
-            new SetPlanTierCommandHandler(context, nonOwner).Handle(new SetPlanTierCommand(PlanTier.Enterprise), CancellationToken.None));
+            new SetPlanTierCommandHandler(context, nonOwner, UnconfiguredPaystack).Handle(
+                new SetPlanTierCommand(PlanTier.Enterprise), CancellationToken.None));
 
         var business = await context.Businesses.SingleAsync(b => b.Id == seeded.BusinessId);
         Assert.Equal(PlanTier.Free, business.PlanTier); // unchanged
@@ -91,7 +99,8 @@ public class PlanManagementTests : IDisposable
         var context = _db.CreateContext(owner);
 
         // Start on Enterprise (unlimited branches) and create well above Business's 5-branch cap.
-        await new SetPlanTierCommandHandler(context, owner).Handle(new SetPlanTierCommand(PlanTier.Enterprise), CancellationToken.None);
+        await new SetPlanTierCommandHandler(context, owner, UnconfiguredPaystack).Handle(
+            new SetPlanTierCommand(PlanTier.Enterprise), CancellationToken.None);
         var branchHandler = new CreateBranchCommandHandler(context, owner, new PlanLimitService(context));
         for (var i = 0; i < 7; i++) // + the 1 seeded branch = 8 total, well above 5
         {
@@ -100,7 +109,8 @@ public class PlanManagementTests : IDisposable
         Assert.Equal(8, await context.Branches.CountAsync());
 
         // Downgrade to Business (5-branch cap) - nothing existing should be deleted or deactivated.
-        await new SetPlanTierCommandHandler(context, owner).Handle(new SetPlanTierCommand(PlanTier.Business), CancellationToken.None);
+        await new SetPlanTierCommandHandler(context, owner, UnconfiguredPaystack).Handle(
+            new SetPlanTierCommand(PlanTier.Business), CancellationToken.None);
         Assert.Equal(8, await context.Branches.CountAsync());
 
         // But creating a 9th is now blocked, since usage is already over the new limit.
@@ -116,14 +126,15 @@ public class PlanManagementTests : IDisposable
         var ownerA = businessA.AsOwner();
         var ownerB = businessB.AsOwner();
 
-        await new SetPlanTierCommandHandler(_db.CreateContext(ownerA), ownerA).Handle(
+        await new SetPlanTierCommandHandler(_db.CreateContext(ownerA), ownerA, UnconfiguredPaystack).Handle(
             new SetPlanTierCommand(PlanTier.EnterpriseAi), CancellationToken.None);
 
         var contextB = _db.CreateContext(ownerB);
         var businessBEntity = await contextB.Businesses.SingleAsync(b => b.Id == businessB.BusinessId);
         Assert.Equal(PlanTier.Free, businessBEntity.PlanTier); // untouched by Business A's change
 
-        var usageB = await new GetPlanUsageQueryHandler(contextB, ownerB).Handle(new GetPlanUsageQuery(), CancellationToken.None);
+        var usageB = await new GetPlanUsageQueryHandler(contextB, ownerB, UnconfiguredPaystack).Handle(
+            new GetPlanUsageQuery(), CancellationToken.None);
         Assert.Equal(PlanTier.Free, usageB.CurrentTier);
     }
 

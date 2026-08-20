@@ -44,6 +44,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUserSe
     public DbSet<JoinRequest> JoinRequests => Set<JoinRequest>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
+    public DbSet<PaystackWebhookEvent> PaystackWebhookEvents => Set<PaystackWebhookEvent>();
 
     /// <summary>
     /// Referenced as `this.TenantBusinessId` (implicitly, from inside an instance method) in the
