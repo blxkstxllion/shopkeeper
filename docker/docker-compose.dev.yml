@@ -23,6 +23,15 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       DOTNET_USE_POLLING_FILE_WATCHER: "1" # required for file-change detection across the Docker bind mount
+      # Unset by default, unlike prod - keeps SetPlanTierCommand's current fully self-serve
+      # behavior unless a developer's own .env opts in with real Paystack test keys to exercise
+      # the full checkout flow locally (see .env.example).
+      Paystack__SecretKey: ${PAYSTACK_SECRET_KEY:-}
+      Paystack__BusinessPlanCode: ${PAYSTACK_BUSINESS_PLAN_CODE:-}
+      Paystack__BusinessAiPlanCode: ${PAYSTACK_BUSINESS_AI_PLAN_CODE:-}
+      Paystack__EnterprisePlanCode: ${PAYSTACK_ENTERPRISE_PLAN_CODE:-}
+      Paystack__EnterpriseAiPlanCode: ${PAYSTACK_ENTERPRISE_AI_PLAN_CODE:-}
+      Paystack__FrontendBaseUrl: http://localhost:5173
     ports:
       - "8080:8080"
     volumes:

@@ -9,4 +9,11 @@ public record PlanUsageDto(
     int BranchCount,
     int ProductCount,
     int StaffCount,
-    bool HasUnlimitedInventoryAddOn);
+    bool HasUnlimitedInventoryAddOn,
+    bool BillingEnabled,
+    string? SubscriptionStatus,
+    DateTimeOffset? CurrentPeriodEnd);
+
+public record CheckoutSessionDto(string AuthorizationUrl);
+
+public record VerifyCheckoutResultDto(bool Success, PlanTier? NewTier);

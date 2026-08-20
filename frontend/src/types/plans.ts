@@ -16,4 +16,16 @@ export interface PlanUsage {
   productCount: number
   staffCount: number
   hasUnlimitedInventoryAddOn: boolean
+  billingEnabled: boolean
+  subscriptionStatus: string | null
+  currentPeriodEnd: string | null
+}
+
+export interface CheckoutSession {
+  authorizationUrl: string
+}
+
+export interface VerifyCheckoutResult {
+  success: boolean
+  newTier: PlanTier | null
 }

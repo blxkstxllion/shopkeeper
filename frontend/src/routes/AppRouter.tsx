@@ -20,6 +20,7 @@ import { EmployeesPage } from '@/features/employees/EmployeesPage'
 import { AcceptInvitePage } from '@/features/auth/AcceptInvitePage'
 import { JoinPage } from '@/features/auth/JoinPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
+import { BillingCallbackPage } from '@/features/settings/BillingCallbackPage'
 import { AuditLogsPage } from '@/features/audit-logs/AuditLogsPage'
 import { AdvisorPage } from '@/features/advisor/AdvisorPage'
 import { RequireActiveBusiness, RequireAuth, RedirectIfAuthed, RequirePermission } from './guards'
@@ -104,6 +105,7 @@ export function AppRouter() {
           }
         />
         <Route path="/app/settings" element={<SettingsPage />} />
+        <Route path="/app/billing/callback" element={<BillingCallbackPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
