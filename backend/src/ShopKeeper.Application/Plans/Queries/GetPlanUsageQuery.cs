@@ -13,7 +13,7 @@ public record GetPlanUsageQuery : IRequest<PlanUsageDto>;
 /// <summary>Viewing plan/usage is not itself a paid feature (unlike Reports/the AI Advisor) -
 /// any business member can see it, so the Settings page can render it read-only for non-owners.
 /// Only changing the plan (SetPlanTierCommand) is owner-only.</summary>
-public class GetPlanUsageQueryHandler(IAppDbContext db, ICurrentUserService currentUser)
+public class GetPlanUsageQueryHandler(IAppDbContext db, ICurrentUserService currentUser, IPaystackClient paystack)
     : IRequestHandler<GetPlanUsageQuery, PlanUsageDto>
 {
     public async Task<PlanUsageDto> Handle(GetPlanUsageQuery request, CancellationToken cancellationToken)
@@ -28,6 +28,15 @@ public class GetPlanUsageQueryHandler(IAppDbContext db, ICurrentUserService curr
         var staffCount = await db.BusinessUsers.CountAsync(
             bu => bu.BusinessId == businessId && bu.Status != BusinessUserStatus.Removed, cancellationToken);
 
-        return new PlanUsageDto(business.PlanTier, limits, branchCount, productCount, staffCount, business.HasUnlimitedInventoryAddOn);
+        return new PlanUsageDto(
+            business.PlanTier,
+            limits,
+            branchCount,
+            productCount,
+            staffCount,
+            business.HasUnlimitedInventoryAddOn,
+            paystack.IsConfigured,
+            business.PaystackSubscriptionStatus,
+            business.PaystackCurrentPeriodEnd);
     }
 }

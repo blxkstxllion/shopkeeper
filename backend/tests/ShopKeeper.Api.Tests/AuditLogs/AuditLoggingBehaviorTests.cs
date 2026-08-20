@@ -147,6 +147,7 @@ public class AuditLoggingBehaviorTests : IDisposable
         public DbSet<JoinRequest> JoinRequests => inner.JoinRequests;
         public DbSet<Notification> Notifications => inner.Notifications;
         public DbSet<NotificationPreference> NotificationPreferences => inner.NotificationPreferences;
+        public DbSet<PaystackWebhookEvent> PaystackWebhookEvents => inner.PaystackWebhookEvents;
 
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {

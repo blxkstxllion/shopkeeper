@@ -5,8 +5,10 @@ using Amazon.SimpleEmailV2;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using System.Net.Http.Headers;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Infrastructure.Identity;
+using ShopKeeper.Infrastructure.Payments;
 using ShopKeeper.Infrastructure.Persistence;
 using ShopKeeper.Infrastructure.Storage;
 using StackExchange.Redis;
@@ -46,6 +48,25 @@ public static class DependencyInjection
         else
         {
             services.AddScoped<IEmailSender, LoggingEmailSender>();
+        }
+
+        // Real Paystack calls only when Paystack:SecretKey is configured - same "absence never
+        // breaks startup" pattern as Email above. Local/CI dev has none configured by default, so
+        // SetPlanTierCommand stays fully self-serve/payment-free exactly as it is today; setting
+        // this switches it to the restricted, checkout-based flow.
+        var paystackSecretKey = configuration["Paystack:SecretKey"];
+        if (!string.IsNullOrWhiteSpace(paystackSecretKey))
+        {
+            services.Configure<PaystackSettings>(configuration.GetSection(PaystackSettings.SectionName));
+            services.AddHttpClient<IPaystackClient, PaystackClient>(client =>
+            {
+                client.BaseAddress = new Uri("https://api.paystack.co/");
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", paystackSecretKey);
+            });
+        }
+        else
+        {
+            services.AddScoped<IPaystackClient, DevPaystackClient>();
         }
 
         // Redis is provisioned in every environment (see docker/docker-compose.yml) but nothing
