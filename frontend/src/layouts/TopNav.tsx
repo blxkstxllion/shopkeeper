@@ -17,6 +17,9 @@ export function TopNav() {
   const menuRef = useRef<HTMLDivElement>(null)
   const branchMenuRef = useRef<HTMLDivElement>(null)
 
+  const branchTriggerRef = useRef<HTMLButtonElement>(null)
+  const accountTriggerRef = useRef<HTMLButtonElement>(null)
+
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
@@ -25,6 +28,23 @@ export function TopNav() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  useEffect(() => {
+    if (!menuOpen && !branchMenuOpen) return
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return
+      if (menuOpen) {
+        setMenuOpen(false)
+        accountTriggerRef.current?.focus()
+      }
+      if (branchMenuOpen) {
+        setBranchMenuOpen(false)
+        branchTriggerRef.current?.focus()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [menuOpen, branchMenuOpen])
 
   const handleLogout = async () => {
     await logout()
@@ -44,7 +64,11 @@ export function TopNav() {
             {canSwitchBranches ? (
               <div className="relative" ref={branchMenuRef}>
                 <button
+                  ref={branchTriggerRef}
+                  type="button"
                   onClick={() => setBranchMenuOpen((o) => !o)}
+                  aria-haspopup="true"
+                  aria-expanded={branchMenuOpen}
                   className="flex items-center gap-1 truncate rounded-md px-1.5 py-0.5 text-sm text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
                 >
                   {activeBranch.name}
@@ -55,6 +79,7 @@ export function TopNav() {
                     {branches.map((b) => (
                       <button
                         key={b.id}
+                        type="button"
                         onClick={() => {
                           setActiveBranchId(b.id)
                           setBranchMenuOpen(false)
@@ -84,6 +109,7 @@ export function TopNav() {
         <input
           type="search"
           placeholder="Search products, sales, customers…"
+          aria-label="Search products, sales, customers"
           className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:focus:bg-slate-900"
         />
       </div>
@@ -108,7 +134,12 @@ export function TopNav() {
 
         <div className="relative ml-1" ref={menuRef}>
           <button
+            ref={accountTriggerRef}
+            type="button"
             onClick={() => setMenuOpen((o) => !o)}
+            aria-haspopup="true"
+            aria-expanded={menuOpen}
+            aria-label="Account menu"
             className="flex items-center gap-2 rounded-lg py-1.5 pl-1.5 pr-2 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">
@@ -127,6 +158,7 @@ export function TopNav() {
                 <p className="truncate text-xs text-slate-500 dark:text-slate-400">{user?.email}</p>
               </div>
               <button
+                type="button"
                 onClick={handleLogout}
                 className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
               >

@@ -136,6 +136,7 @@ export function TwoFactorSection() {
                     setCopied(true)
                     setTimeout(() => setCopied(false), 1500)
                   }}
+                  aria-label={copied ? 'Secret copied' : 'Copy secret'}
                   className="shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 >
                   {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}

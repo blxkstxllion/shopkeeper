@@ -129,6 +129,7 @@ export function PosPage() {
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
               placeholder="Search products or scan a barcode…"
+              aria-label="Search products or scan a barcode"
               className="pl-9"
               value={search}
               onChange={(e) => setSearch(e.target.value)}

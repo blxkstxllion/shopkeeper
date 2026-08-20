@@ -47,6 +47,7 @@ export function RegisterPage() {
 
   return (
     <Card className="p-6">
+      <h1 className="mb-4 text-center text-lg font-semibold text-slate-900 dark:text-slate-100">Create your account</h1>
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         {serverError && <Alert tone="error">{serverError}</Alert>}
 

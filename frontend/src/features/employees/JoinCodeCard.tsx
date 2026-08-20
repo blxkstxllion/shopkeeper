@@ -75,6 +75,7 @@ export function JoinCodeCard() {
                   <button
                     type="button"
                     onClick={copyCode}
+                    aria-label={copied ? 'Join code copied' : 'Copy join code'}
                     className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                   >
                     {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}

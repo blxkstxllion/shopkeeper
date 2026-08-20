@@ -46,11 +46,19 @@ export function SettingsPage() {
       </div>
 
       <div className="flex flex-col gap-6 md:flex-row">
-        <nav className="flex shrink-0 gap-1 overflow-x-auto md:w-52 md:flex-col md:overflow-visible">
+        <div
+          role="tablist"
+          aria-label="Settings sections"
+          className="flex shrink-0 gap-1 overflow-x-auto md:w-52 md:flex-col md:overflow-visible"
+        >
           {SECTIONS.map((section) => (
             <button
               key={section.id}
               type="button"
+              role="tab"
+              id={`settings-tab-${section.id}`}
+              aria-selected={section.id === activeId}
+              aria-controls="settings-tabpanel"
               onClick={() => setActiveId(section.id)}
               className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors ${
                 section.id === activeId
@@ -62,9 +70,15 @@ export function SettingsPage() {
               {section.label}
             </button>
           ))}
-        </nav>
+        </div>
 
-        <div className="min-w-0 flex-1">
+        <div
+          role="tabpanel"
+          id="settings-tabpanel"
+          aria-labelledby={`settings-tab-${activeId}`}
+          tabIndex={0}
+          className="min-w-0 flex-1"
+        >
           {active.comingSoonPhase ? (
             <EmptyState
               icon={active.icon}
