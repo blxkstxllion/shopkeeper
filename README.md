@@ -196,18 +196,28 @@ main → production.yml → retag staging's exact image (no rebuild) → deploy 
 
 `staging.yml` and `production.yml` ship with working build/push logic but their `deploy` jobs intentionally **skip** (not fail) until you point them at a real host — there's no server to deploy to by default, and pretending otherwise would be worse than being explicit about it. To activate:
 
-1. Provision a host with Docker installed, and this repo (or at least `docker/` and `database/`) checked out at `/opt/shopkeeper`.
-2. GitHub repo → Settings → Environments → create `staging` and `production` environments.
-3. Per environment, add variables `STAGING_HOST`/`PRODUCTION_HOST` (hostname/IP) and `STAGING_SSH_USER`/`PRODUCTION_SSH_USER`, and secret `STAGING_SSH_KEY`/`PRODUCTION_SSH_KEY` (a private key whose public half is authorized on that host).
-4. On the host itself, create `/opt/shopkeeper/.env` with the production values from `.env.example` (`POSTGRES_PASSWORD`, `JWT_SECRET`, `IMAGE_OWNER`, etc.) — this file is never touched by CI/CD, only by whoever administers the host.
+1. Provision a host with Docker installed, and this repo (or at least `docker/` and `database/`) checked out at `/opt/shopkeeper`. A single small EC2 instance (or equivalent VPS) is sufficient — see the architecture assessment for why this app doesn't need ECS/Fargate/Kubernetes.
+2. **Attach an IAM instance role to the host** (EC2) rather than issuing a static access key, scoped to only:
+   - `ses:SendEmail`/`ses:SendRawEmail` (real transactional email — see `EMAIL_FROM_ADDRESS` below)
+   - `s3:PutObject` on your backup bucket only, write-only (see `database/backup-restore.md`)
 
-Once `STAGING_HOST`/`PRODUCTION_HOST` are set, the deploy jobs activate automatically on the next run.
+   Nothing in this app needs broader AWS permissions than that.
+3. **Point DNS** for your domain at the host's public IP, and **verify that domain as an SES sending identity** in the AWS region you'll use (SES starts in sandbox mode — request production access before relying on it for real users, or you'll only be able to send to your own verified addresses).
+4. GitHub repo → Settings → Environments → create `staging` and `production` environments.
+5. Per environment, add variables `STAGING_HOST`/`PRODUCTION_HOST` (hostname/IP) and `STAGING_SSH_USER`/`PRODUCTION_SSH_USER`, and secret `STAGING_SSH_KEY`/`PRODUCTION_SSH_KEY` (a private key whose public half is authorized on that host).
+6. On the host itself, create `/opt/shopkeeper/.env` with the production values from `.env.example` — `POSTGRES_PASSWORD`, `JWT_SECRET`, `IMAGE_OWNER`, `DOMAIN`, `ACME_EMAIL`, `EMAIL_FROM_ADDRESS`, `BACKUP_S3_BUCKET`, etc. This file is never touched by CI/CD, only by whoever administers the host.
+7. Set up the nightly backup cron job — see `database/backup-restore.md`.
+
+Once `STAGING_HOST`/`PRODUCTION_HOST` are set, the deploy jobs activate automatically on the next run. The first `docker compose ... up -d` on a fresh host will take a little longer than usual while `caddy` obtains its initial certificate from Let's Encrypt — this fails (and `caddy` will retry on its own) if DNS isn't pointed at the host yet, so do step 3 before the first deploy.
 
 ## Security notes
 
 - Containers run as a non-root user (both the API and Nginx images create and switch to an unprivileged user).
 - `.dockerignore` in both `backend/` and `frontend/` keeps `.env` files, `.git`, and build artifacts out of images.
-- Postgres and Redis are never published to the host in the production overlay — only reachable from other containers on `shopkeeper-network`. Only the frontend's Nginx (which reverse-proxies `/api/*` to the backend) is public.
+- Postgres and Redis are never published to the host in the production overlay — only reachable from other containers on `shopkeeper-network`.
+- **TLS**: `caddy` is the sole public entry point in production (ports 80/443), automatically obtaining and renewing a Let's Encrypt certificate for `DOMAIN` and terminating TLS in front of the frontend's Nginx — no manual certbot/renewal process to maintain. See `docker/Caddyfile`.
+- **Email**: real transactional email goes out via AWS SES (`SesEmailSender`), using the host's IAM instance role rather than a static AWS access key — there's no AWS secret to manage as an application secret at all. Local/CI dev has no `Email:FromAddress` configured and keeps using the logging-only stand-in.
+- **Backups**: `scripts/backup-db.sh` ships a full Postgres dump to S3 nightly via host cron — see `database/backup-restore.md` for setup, the IAM policy, and the restore procedure. Financial/inventory data with no backup mechanism was the highest-severity gap identified in this project's deployment-readiness assessment; this closes it.
 - CI runs Trivy (container vulnerability scanning, fails on CRITICAL) and gitleaks (secret scanning across the full diff) on every push/PR, in addition to the pre-commit secret scan.
 
 ## Troubleshooting

@@ -24,11 +24,51 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-    # Not published to the host directly - the frontend container's Nginx is the
-    # only public entry point and reverse-proxies /api/* to this service.
+      # Presence of Email__FromAddress is what switches DependencyInjection.AddInfrastructure
+      # from the dev-only LoggingEmailSender to the real SesEmailSender - see
+      # backend/src/ShopKeeper.Infrastructure/DependencyInjection.cs. AWS credentials are
+      # deliberately NOT set here - resolved via the EC2 instance role instead (see
+      # README's deployment section), so no AWS secret needs to be managed as a
+      # ShopKeeper secret at all.
+      Email__FromAddress: ${EMAIL_FROM_ADDRESS:?EMAIL_FROM_ADDRESS must be set - see .env.example}
+      Email__FromName: ${EMAIL_FROM_NAME:-The Shop Keeper}
+      Email__Region: ${AWS_REGION:-us-east-1}
+      Email__FrontendBaseUrl: https://${DOMAIN:?DOMAIN must be set - see .env.example}
+    volumes:
+      # The `final` Docker stage's WORKDIR is /app, so LocalFileStorageService's
+      # {ContentRoot}/App_Data/uploads resolves there. Without this volume, every
+      # redeploy recreates the container filesystem from scratch and silently
+      # deletes every uploaded product image - dev doesn't need this because its
+      # source (and App_Data) is bind-mounted from the host already.
+      - uploads-data:/app/App_Data/uploads
+    # Not published to the host directly - caddy (below) is the only public
+    # entry point; it reverse-proxies through the frontend's Nginx, which in
+    # turn reverse-proxies /api/* to this service.
 
   frontend:
     image: ghcr.io/${IMAGE_OWNER:?IMAGE_OWNER must be set}/shopkeeper-frontend:${FRONTEND_IMAGE_TAG:?FRONTEND_IMAGE_TAG must be an immutable version or commit SHA}
     restart: unless-stopped
+    # No host port published - caddy is the sole public entry point (below) and
+    # terminates TLS in front of this container's own Nginx.
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
     ports:
-      - "80:8080"
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN must be set - see .env.example}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL must be set - Let's Encrypt uses it for expiry/problem notices}
+    volumes:
+      - ../docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - frontend
+    networks: [shopkeeper-network]
+
+volumes:
+  uploads-data:
+  caddy-data:
+  caddy-config:
