@@ -1,6 +1,10 @@
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -93,6 +97,40 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+// Throttles the unauthenticated endpoints that are the actual brute-force/abuse targets
+// (credential stuffing on login, mass fake-account creation, join-code guessing) - not
+// applied API-wide, since every other endpoint already requires a valid JWT. Partitioned
+// by client IP; the 6th request within a minute from the same IP is rejected outright
+// (QueueLimit 0 - an attacker's request should fail fast, not eventually succeed once
+// queued capacity frees up).
+const string AuthRateLimitPolicy = "auth";
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.OnRejected = async (context, ct) =>
+    {
+        context.HttpContext.Response.ContentType = "application/json";
+        var payload = new
+        {
+            title = "Too many attempts. Please wait a moment and try again.",
+            status = StatusCodes.Status429TooManyRequests,
+            errors = (object?)null,
+        };
+        await context.HttpContext.Response.WriteAsync(
+            JsonSerializer.Serialize(payload, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }), ct);
+    };
+
+    options.AddPolicy(AuthRateLimitPolicy, httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+        }));
+});
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -104,6 +142,22 @@ if (app.Environment.IsDevelopment())
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseHttpsRedirection();
+
+// Trusts X-Forwarded-For unconditionally (KnownNetworks/KnownProxies cleared) so
+// RemoteIpAddress - and therefore the rate limiter's per-IP partitioning below - resolves
+// the real client IP, not the Nginx container's. Safe specifically because of this app's
+// deployment topology: per docker-compose.prod.yml, the api container is never published
+// to the host - Nginx (frontend container) is the only public ingress and is what sets
+// this header (frontend/nginx.conf) - so there's no path for an external client to spoof
+// it by talking to the API directly.
+var forwardedHeadersOptions = new ForwardedHeadersOptions { ForwardedHeaders = ForwardedHeaders.XForwardedFor };
+// ForwardedHeadersOptions ships pre-populated with loopback-only trusted entries;
+// clearing them is what actually makes the middleware trust the header from any hop,
+// not the property assignment above - see the comment on this middleware for why that's
+// safe in this specific deployment.
+forwardedHeadersOptions.KnownNetworks.Clear();
+forwardedHeadersOptions.KnownProxies.Clear();
+app.UseForwardedHeaders(forwardedHeadersOptions);
 
 // Uploaded files (product images, ...) are served back out as plain static files - viewing
 // one needs no Authorization header, matching how a public object-storage URL would behave.
@@ -117,6 +171,8 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 app.UseCors(FrontendCorsPolicy);
+
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
