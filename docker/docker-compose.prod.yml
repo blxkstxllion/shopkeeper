@@ -34,6 +34,16 @@ services:
       Email__FromName: ${EMAIL_FROM_NAME:-The Shop Keeper}
       Email__Region: ${AWS_REGION:-us-east-1}
       Email__FrontendBaseUrl: https://${DOMAIN:?DOMAIN must be set - see .env.example}
+      # Deliberately NOT :? required, unlike Email/JWT above - a fresh deployment must not
+      # hard-fail before the 4 Paystack Plans even exist in the dashboard yet. Presence of
+      # Paystack__SecretKey is what switches SetPlanTierCommand off today's fully self-serve
+      # behavior - see backend/src/ShopKeeper.Infrastructure/DependencyInjection.cs.
+      Paystack__SecretKey: ${PAYSTACK_SECRET_KEY:-}
+      Paystack__BusinessPlanCode: ${PAYSTACK_BUSINESS_PLAN_CODE:-}
+      Paystack__BusinessAiPlanCode: ${PAYSTACK_BUSINESS_AI_PLAN_CODE:-}
+      Paystack__EnterprisePlanCode: ${PAYSTACK_ENTERPRISE_PLAN_CODE:-}
+      Paystack__EnterpriseAiPlanCode: ${PAYSTACK_ENTERPRISE_AI_PLAN_CODE:-}
+      Paystack__FrontendBaseUrl: https://${DOMAIN:?DOMAIN must be set - see .env.example}
     volumes:
       # The `final` Docker stage's WORKDIR is /app, so LocalFileStorageService's
       # {ContentRoot}/App_Data/uploads resolves there. Without this volume, every

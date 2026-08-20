@@ -38,6 +38,7 @@ public interface IAppDbContext
     DbSet<JoinRequest> JoinRequests { get; }
     DbSet<Notification> Notifications { get; }
     DbSet<NotificationPreference> NotificationPreferences { get; }
+    DbSet<PaystackWebhookEvent> PaystackWebhookEvents { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
