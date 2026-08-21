@@ -26,12 +26,23 @@ public class PaystackClient(HttpClient httpClient, IOptions<PaystackSettings> op
     public async Task<PaystackCheckoutSession> InitializeSubscriptionCheckoutAsync(
         string customerEmail, PlanTier tier, string reference, CancellationToken ct = default)
     {
+        var planCode = PlanCodeFor(tier);
+
+        // Contrary to what secondary-source research assumed pre-launch (Paystack's own docs
+        // site 403'd every fetch attempt during planning), passing `plan` alone is NOT enough -
+        // live testing confirmed Initialize Transaction rejects the request with "Invalid Amount
+        // Sent" unless `amount` is also present. Fetching the plan's own amount here (rather than
+        // duplicating pricing into this app's config) keeps the checkout amount authoritative
+        // against whatever the plan is actually configured for in the Paystack dashboard.
+        var amount = await FetchPlanAmountAsync(planCode, ct);
+
         using var response = await httpClient.PostAsJsonAsync(
             "transaction/initialize",
             new
             {
                 email = customerEmail,
-                plan = PlanCodeFor(tier),
+                plan = planCode,
+                amount,
                 reference,
                 callback_url = $"{_settings.FrontendBaseUrl}/app/billing/callback",
             },
@@ -53,14 +64,53 @@ public class PaystackClient(HttpClient httpClient, IOptions<PaystackSettings> op
         string customerCode, PlanTier tier, CancellationToken ct = default)
     {
         var planCode = PlanCodeFor(tier);
-        using var response = await httpClient.GetAsync(
-            $"subscription?customer={Uri.EscapeDataString(customerCode)}&plan={Uri.EscapeDataString(planCode)}", ct);
-        var body = await ReadResponseAsync<ListSubscriptionsResponse>(response, ct);
-        var subscription = body.Data.FirstOrDefault();
-        return subscription is null
-            ? null
-            : new PaystackSubscriptionInfo(
-                subscription.SubscriptionCode, subscription.EmailToken, subscription.Status, subscription.NextPaymentDate);
+
+        // The `customer`/`plan` query filters on this endpoint take Paystack's internal numeric
+        // IDs, not the CUS_xxx/PLN_xxx codes this app tracks everywhere else (confirmed live -
+        // passing the codes silently returns an empty list rather than erroring) - since this app
+        // never captures those numeric IDs, filter client-side against the unfiltered list instead.
+        //
+        // Parsed via JsonDocument rather than a typed record: a 6-parameter record with two
+        // nested record-typed parameters (Customer, Plan) hit a genuine System.Text.Json
+        // limitation here ("Deserialization of types without a parameterless constructor, a
+        // singular parameterized constructor..." - reproduced consistently, not a hot-reload
+        // artifact) that a flatter/fewer-parameter shape doesn't run into elsewhere in this file.
+        using var response = await httpClient.GetAsync("subscription", ct);
+        await EnsureSuccessAsync(response, ct);
+        var body = await response.Content.ReadAsStringAsync(ct);
+        using var document = JsonDocument.Parse(body);
+
+        if (!document.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        foreach (var item in data.EnumerateArray())
+        {
+            var itemCustomerCode = item.TryGetProperty("customer", out var customer)
+                ? customer.GetProperty("customer_code").GetString()
+                : null;
+            var itemPlanCode = item.TryGetProperty("plan", out var plan) ? plan.GetProperty("plan_code").GetString() : null;
+
+            if (itemCustomerCode != customerCode || itemPlanCode != planCode)
+            {
+                continue;
+            }
+
+            var nextPaymentDate = item.TryGetProperty("next_payment_date", out var nextPaymentProp)
+                && nextPaymentProp.ValueKind == JsonValueKind.String
+                && nextPaymentProp.TryGetDateTimeOffset(out var parsed)
+                ? parsed
+                : (DateTimeOffset?)null;
+
+            return new PaystackSubscriptionInfo(
+                item.GetProperty("subscription_code").GetString()!,
+                item.GetProperty("email_token").GetString()!,
+                item.GetProperty("status").GetString()!,
+                nextPaymentDate);
+        }
+
+        return null;
     }
 
     public async Task DisableSubscriptionAsync(string subscriptionCode, string emailToken, CancellationToken ct = default)
@@ -95,6 +145,13 @@ public class PaystackClient(HttpClient httpClient, IOptions<PaystackSettings> op
         _ => throw new ArgumentOutOfRangeException(nameof(tier), tier, "Plan tier has no Paystack plan code."),
     };
 
+    private async Task<long> FetchPlanAmountAsync(string planCode, CancellationToken ct)
+    {
+        using var response = await httpClient.GetAsync($"plan/{Uri.EscapeDataString(planCode)}", ct);
+        var body = await ReadResponseAsync<FetchPlanResponse>(response, ct);
+        return body.Data.Amount;
+    }
+
     private async Task EnsureSuccessAsync(HttpResponseMessage response, CancellationToken ct)
     {
         if (response.IsSuccessStatusCode)
@@ -115,6 +172,10 @@ public class PaystackClient(HttpClient httpClient, IOptions<PaystackSettings> op
             ?? throw new PaystackApiException("Paystack API returned an empty response body.");
     }
 
+    private record FetchPlanResponse([property: JsonPropertyName("data")] FetchPlanData Data);
+
+    private record FetchPlanData([property: JsonPropertyName("amount")] long Amount);
+
     private record InitializeTransactionResponse([property: JsonPropertyName("data")] InitializeTransactionData Data);
 
     private record InitializeTransactionData(
@@ -131,11 +192,4 @@ public class PaystackClient(HttpClient httpClient, IOptions<PaystackSettings> op
         [property: JsonPropertyName("email")] string Email,
         [property: JsonPropertyName("customer_code")] string CustomerCode);
 
-    private record ListSubscriptionsResponse([property: JsonPropertyName("data")] List<SubscriptionListItem> Data);
-
-    private record SubscriptionListItem(
-        [property: JsonPropertyName("subscription_code")] string SubscriptionCode,
-        [property: JsonPropertyName("email_token")] string EmailToken,
-        [property: JsonPropertyName("status")] string Status,
-        [property: JsonPropertyName("next_payment_date")] DateTimeOffset? NextPaymentDate);
 }
