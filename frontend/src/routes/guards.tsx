@@ -20,7 +20,14 @@ export function RequireActiveBusiness({ children }: { children: ReactNode }) {
   if (isInitializing) return <FullScreenLoader />
   if (!user) return <Navigate to="/login" replace state={{ from: location }} />
   if (user.businesses.length === 0) return <Navigate to="/onboarding" replace />
-  if (!activeBusiness) return <Navigate to="/select-business" replace />
+  if (!activeBusiness) {
+    // Preserves the original destination (e.g. /app/billing/callback?reference=...) through the
+    // business picker - without this, any deep link that requires re-selecting a business (which
+    // every full-page navigation does, since activeBusiness is in-memory only) silently drops to
+    // the dashboard instead. Mirrors the ?redirect= pattern LoginPage already reads.
+    const redirectTo = `${location.pathname}${location.search}`
+    return <Navigate to={`/select-business?redirect=${encodeURIComponent(redirectTo)}`} replace />
+  }
 
   return <>{children}</>
 }
