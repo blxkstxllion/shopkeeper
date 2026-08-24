@@ -2,14 +2,19 @@ namespace ShopKeeper.Application.Suppliers.Commands;
 
 using FluentValidation;
 using MediatR;
+using ShopKeeper.Application.Common.Attributes;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Application.Suppliers.Dtos;
 using ShopKeeper.Domain.Constants;
 using ShopKeeper.Domain.Entities;
 
-public record CreateSupplierCommand(string Name, string? ContactName, string? Phone, string? Email, string? Address)
-    : IRequest<SupplierDto>;
+public record CreateSupplierCommand(
+    [property: SensitiveData] string Name,
+    [property: SensitiveData] string? ContactName,
+    [property: SensitiveData] string? Phone,
+    [property: SensitiveData] string? Email,
+    [property: SensitiveData] string? Address) : IRequest<SupplierDto>;
 
 public class CreateSupplierCommandValidator : AbstractValidator<CreateSupplierCommand>
 {

@@ -7,6 +7,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext'
 import { AppRouter } from '@/routes/AppRouter'
 import { UpdateAvailableBanner } from '@/offline/UpdateAvailableBanner'
 import { OfflineSyncProvider } from '@/offline/OfflineSyncContext'
+import { IdleLogoutGuard } from '@/components/IdleLogoutGuard'
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <AuthProvider>
+            <IdleLogoutGuard />
             <OfflineSyncProvider>
               <AppRouter />
             </OfflineSyncProvider>
