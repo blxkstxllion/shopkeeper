@@ -34,7 +34,7 @@ public class RaceConditionAndConsistencyTests
             var tokenIssuer = new TokenIssuer(context, _jwt);
             try
             {
-                await new RegisterCommandHandler(context, _hasher, tokenIssuer).Handle(
+                await new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender()).Handle(
                     new RegisterCommand("race@shop.test", "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
                 return true;
             }

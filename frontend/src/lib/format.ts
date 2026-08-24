@@ -1,8 +1,29 @@
-// Hardcoded to GHS for now - the business's currencyCode isn't in the session/JWT yet,
-// only in the one-time onboarding response. Swap for a real per-business lookup once
-// currency is threaded through auth state.
+// Module-level rather than threaded through every formatMoney call site (there are ~50 across
+// the app) - there's only ever one "active" currency per session, so AuthContext updates this
+// once whenever activeBusiness changes (see its useEffect), and every call site stays unchanged.
+let activeCurrencyCode = 'GHS'
+
+export function setActiveCurrencyCode(code: string): void {
+  activeCurrencyCode = code
+}
+
 export function formatMoney(amount: number): string {
-  return `GH₵${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  try {
+    // en-GH, not en-US: this app's primary/default currency is GHS, and Intl's en-US locale
+    // data has no dedicated GH₵ symbol for it (falls back to the bare "GHS" ISO code) - en-GH
+    // preserves the exact symbol this formatter always showed, while still handling any other
+    // currencyCode a business sets reasonably (e.g. USD renders "US$", unambiguous either way).
+    return new Intl.NumberFormat('en-GH', {
+      style: 'currency',
+      currency: activeCurrencyCode,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount)
+  } catch {
+    // Intl throws on a currency code Intl doesn't recognize (currencyCode is free text at
+    // onboarding, e.g. a typo) - fall back rather than crash the whole page.
+    return `${activeCurrencyCode} ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  }
 }
 
 export function formatDateTime(iso: string): string {

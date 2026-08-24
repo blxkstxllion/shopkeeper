@@ -31,7 +31,7 @@ public class RegisterCommandValidator : AbstractValidator<RegisterCommand>
     }
 }
 
-public class RegisterCommandHandler(IAppDbContext db, IPasswordHasher hasher, TokenIssuer tokenIssuer)
+public class RegisterCommandHandler(IAppDbContext db, IPasswordHasher hasher, TokenIssuer tokenIssuer, IEmailSender emailSender)
     : IRequestHandler<RegisterCommand, AuthResultDto>
 {
     public async Task<AuthResultDto> Handle(RegisterCommand request, CancellationToken cancellationToken)
@@ -76,7 +76,7 @@ public class RegisterCommandHandler(IAppDbContext db, IPasswordHasher hasher, To
             throw new ConflictException("An account with this email already exists.");
         }
 
-        // TODO: dispatch email-verification message once IEmailSender has a real provider (Phase 5+).
+        await emailSender.SendEmailVerificationAsync(user.Email, user.FirstName, user.EmailVerificationToken!, cancellationToken);
 
         return await tokenIssuer.IssueAsync(user, activeBusinessId: null, request.IpAddress, request.UserAgent, cancellationToken);
     }

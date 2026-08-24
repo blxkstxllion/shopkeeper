@@ -19,6 +19,7 @@ import { CustomersPage } from '@/features/customers/CustomersPage'
 import { EmployeesPage } from '@/features/employees/EmployeesPage'
 import { AcceptInvitePage } from '@/features/auth/AcceptInvitePage'
 import { JoinPage } from '@/features/auth/JoinPage'
+import { VerifyEmailPage } from '@/features/auth/VerifyEmailPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { BillingCallbackPage } from '@/features/settings/BillingCallbackPage'
 import { AuditLogsPage } from '@/features/audit-logs/AuditLogsPage'
@@ -41,6 +42,7 @@ export function AppRouter() {
 
       <Route path="/accept-invite" element={<AcceptInvitePage />} />
       <Route path="/join" element={<JoinPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
 
       <Route
         element={

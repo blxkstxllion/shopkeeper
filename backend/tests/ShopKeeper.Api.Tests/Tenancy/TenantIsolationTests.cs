@@ -33,7 +33,7 @@ public class TenantIsolationTests : IDisposable
         var setupContext = _db.CreateContext(setupUser);
         var tokenIssuer = new TokenIssuer(setupContext, _jwt);
 
-        var registerResult = await new RegisterCommandHandler(setupContext, _hasher, tokenIssuer).Handle(
+        var registerResult = await new RegisterCommandHandler(setupContext, _hasher, tokenIssuer, new TestEmailSender()).Handle(
             new RegisterCommand(ownerEmail, "Passw0rd!", "Owner", businessName, null), CancellationToken.None);
 
         var business = await new CompleteOnboardingCommandHandler(setupContext, tokenIssuer).Handle(
