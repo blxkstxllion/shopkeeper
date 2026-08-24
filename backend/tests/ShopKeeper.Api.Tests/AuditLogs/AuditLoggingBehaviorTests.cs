@@ -35,6 +35,7 @@ public class AuditLoggingBehaviorTests : IDisposable
         services.AddSingleton(currentUser);
         services.AddSingleton<IPasswordHasher>(_hasher);
         services.AddSingleton<IJwtTokenService>(_jwt);
+        services.AddSingleton<IEmailSender>(new TestEmailSender());
         return services.BuildServiceProvider().GetRequiredService<ISender>();
     }
 
