@@ -8,8 +8,13 @@ public class TestEmailSender : IEmailSender
 {
     public (string ToEmail, string BusinessName, string InviterName, string InviteToken)? LastInvite { get; private set; }
 
-    public Task SendEmailVerificationAsync(string toEmail, string firstName, string verificationToken, CancellationToken ct = default) =>
-        Task.CompletedTask;
+    public (string ToEmail, string FirstName, string VerificationToken)? LastVerification { get; private set; }
+
+    public Task SendEmailVerificationAsync(string toEmail, string firstName, string verificationToken, CancellationToken ct = default)
+    {
+        LastVerification = (toEmail, firstName, verificationToken);
+        return Task.CompletedTask;
+    }
 
     public Task SendPasswordResetAsync(string toEmail, string firstName, string resetToken, CancellationToken ct = default) =>
         Task.CompletedTask;

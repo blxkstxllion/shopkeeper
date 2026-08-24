@@ -4,6 +4,7 @@ export interface UserBusiness {
   roleName: string
   isOwner: boolean
   onboardingCompleted: boolean
+  currencyCode: string
 }
 
 export interface User {

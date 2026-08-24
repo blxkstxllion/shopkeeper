@@ -3,6 +3,7 @@ import * as authApi from '@/api/auth'
 import { dedupedRefresh } from '@/lib/api-client'
 import { setAccessToken, onAccessTokenChange } from '@/lib/token-store'
 import { clearOfflineDb } from '@/offline/db'
+import { setActiveCurrencyCode } from '@/lib/format'
 import type { AuthResult, User, UserBusiness } from '@/types/auth'
 import type { Business } from '@/types/business'
 
@@ -141,6 +142,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => user?.businesses.find((b) => b.businessId === activeBusinessId) ?? null,
     [user, activeBusinessId],
   )
+
+  useEffect(() => {
+    setActiveCurrencyCode(activeBusiness?.currencyCode ?? 'GHS')
+  }, [activeBusiness])
 
   const value = useMemo<AuthContextValue>(
     () => ({
