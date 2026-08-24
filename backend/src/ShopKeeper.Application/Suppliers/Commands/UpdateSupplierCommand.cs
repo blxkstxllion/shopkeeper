@@ -3,14 +3,21 @@ namespace ShopKeeper.Application.Suppliers.Commands;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using ShopKeeper.Application.Common.Attributes;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Domain.Constants;
 using ShopKeeper.Domain.Entities;
 
-public record UpdateSupplierCommand(Guid Id, string Name, string? ContactName, string? Phone, string? Email, string? Address, bool IsActive)
-    : IRequest;
+public record UpdateSupplierCommand(
+    Guid Id,
+    [property: SensitiveData] string Name,
+    [property: SensitiveData] string? ContactName,
+    [property: SensitiveData] string? Phone,
+    [property: SensitiveData] string? Email,
+    [property: SensitiveData] string? Address,
+    bool IsActive) : IRequest;
 
 public class UpdateSupplierCommandValidator : AbstractValidator<UpdateSupplierCommand>
 {
