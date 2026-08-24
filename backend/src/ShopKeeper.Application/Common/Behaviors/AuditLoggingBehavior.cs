@@ -1,8 +1,10 @@
 namespace ShopKeeper.Application.Common.Behaviors;
 
+using System.Reflection;
 using System.Text.Json;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using ShopKeeper.Application.Common.Attributes;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Domain.Entities;
 
@@ -93,9 +95,9 @@ public class AuditLoggingBehavior<TRequest, TResponse>(
         var redacted = new Dictionary<string, object?>();
         foreach (var property in typeof(TRequest).GetProperties())
         {
-            redacted[property.Name] = RedactedPropertyNameFragments.Any(f => property.Name.Contains(f, StringComparison.OrdinalIgnoreCase))
-                ? "[REDACTED]"
-                : property.GetValue(request);
+            var isSensitive = RedactedPropertyNameFragments.Any(f => property.Name.Contains(f, StringComparison.OrdinalIgnoreCase))
+                || property.GetCustomAttribute<SensitiveDataAttribute>() is not null;
+            redacted[property.Name] = isSensitive ? "[REDACTED]" : property.GetValue(request);
         }
 
         return JsonSerializer.Serialize(redacted);

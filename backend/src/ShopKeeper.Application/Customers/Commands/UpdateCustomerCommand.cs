@@ -3,14 +3,20 @@ namespace ShopKeeper.Application.Customers.Commands;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using ShopKeeper.Application.Common.Attributes;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Domain.Constants;
 using ShopKeeper.Domain.Entities;
 
-public record UpdateCustomerCommand(Guid Id, string Name, string? Phone, string? Email, string? Address, bool IsActive)
-    : IRequest;
+public record UpdateCustomerCommand(
+    Guid Id,
+    [property: SensitiveData] string Name,
+    [property: SensitiveData] string? Phone,
+    [property: SensitiveData] string? Email,
+    [property: SensitiveData] string? Address,
+    bool IsActive) : IRequest;
 
 public class UpdateCustomerCommandValidator : AbstractValidator<UpdateCustomerCommand>
 {
