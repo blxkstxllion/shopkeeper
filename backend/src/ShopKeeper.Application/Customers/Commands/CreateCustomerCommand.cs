@@ -2,13 +2,18 @@ namespace ShopKeeper.Application.Customers.Commands;
 
 using FluentValidation;
 using MediatR;
+using ShopKeeper.Application.Common.Attributes;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Application.Customers.Dtos;
 using ShopKeeper.Domain.Constants;
 using ShopKeeper.Domain.Entities;
 
-public record CreateCustomerCommand(string Name, string? Phone, string? Email, string? Address) : IRequest<CustomerDto>;
+public record CreateCustomerCommand(
+    [property: SensitiveData] string Name,
+    [property: SensitiveData] string? Phone,
+    [property: SensitiveData] string? Email,
+    [property: SensitiveData] string? Address) : IRequest<CustomerDto>;
 
 public class CreateCustomerCommandValidator : AbstractValidator<CreateCustomerCommand>
 {
