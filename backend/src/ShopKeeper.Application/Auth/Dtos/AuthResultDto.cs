@@ -19,4 +19,5 @@ public record UserBusinessDto(
     string BusinessName,
     string RoleName,
     bool IsOwner,
-    bool OnboardingCompleted);
+    bool OnboardingCompleted,
+    string CurrencyCode);

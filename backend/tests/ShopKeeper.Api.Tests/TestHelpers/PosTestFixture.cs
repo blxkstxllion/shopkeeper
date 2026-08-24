@@ -30,7 +30,7 @@ public static class PosTestFixture
         var context = db.CreateContext(setupUser);
         var tokenIssuer = new TokenIssuer(context, jwt);
 
-        var registerResult = await new RegisterCommandHandler(context, hasher, tokenIssuer).Handle(
+        var registerResult = await new RegisterCommandHandler(context, hasher, tokenIssuer, new TestEmailSender()).Handle(
             new RegisterCommand(ownerEmail, "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
 
         var business = await new CompleteOnboardingCommandHandler(context, tokenIssuer).Handle(

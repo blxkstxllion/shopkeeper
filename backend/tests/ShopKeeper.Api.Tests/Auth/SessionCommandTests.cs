@@ -21,7 +21,7 @@ public class SessionCommandTests : IDisposable
         var context = _db.CreateContext(currentUser);
         var tokenIssuer = new TokenIssuer(context, _jwt);
 
-        var first = await new RegisterCommandHandler(context, _hasher, tokenIssuer).Handle(
+        var first = await new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender()).Handle(
             new RegisterCommand("sessions@shop.test", "Passw0rd!", "Ama", "Owusu", "127.0.0.1", "Chrome/Windows"), CancellationToken.None);
         currentUser.UserId = first.User.Id;
 
@@ -44,7 +44,7 @@ public class SessionCommandTests : IDisposable
         var context = _db.CreateContext(currentUser);
         var tokenIssuer = new TokenIssuer(context, _jwt);
 
-        var registerResult = await new RegisterCommandHandler(context, _hasher, tokenIssuer).Handle(
+        var registerResult = await new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender()).Handle(
             new RegisterCommand("revoke@shop.test", "Passw0rd!", "Ama", "Owusu", null, "Device A"), CancellationToken.None);
         currentUser.UserId = registerResult.User.Id;
 
@@ -71,7 +71,7 @@ public class SessionCommandTests : IDisposable
         var context = _db.CreateContext(currentUser);
         var tokenIssuer = new TokenIssuer(context, _jwt);
 
-        var userA = await new RegisterCommandHandler(context, _hasher, tokenIssuer).Handle(
+        var userA = await new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender()).Handle(
             new RegisterCommand("usera@shop.test", "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
 
         currentUser.UserId = userA.User.Id;
@@ -79,7 +79,7 @@ public class SessionCommandTests : IDisposable
             new GetActiveSessionsQuery(null), CancellationToken.None);
         var userASessionId = userASessions.Single().Id;
 
-        var userB = await new RegisterCommandHandler(context, _hasher, tokenIssuer).Handle(
+        var userB = await new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender()).Handle(
             new RegisterCommand("userb@shop.test", "Passw0rd!", "Kofi", "Mensah", null), CancellationToken.None);
         currentUser.UserId = userB.User.Id; // now acting as user B
 
@@ -94,7 +94,7 @@ public class SessionCommandTests : IDisposable
         var context = _db.CreateContext(currentUser);
         var tokenIssuer = new TokenIssuer(context, _jwt);
 
-        var registerResult = await new RegisterCommandHandler(context, _hasher, tokenIssuer).Handle(
+        var registerResult = await new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender()).Handle(
             new RegisterCommand("revokeall@shop.test", "Passw0rd!", "Ama", "Owusu", null, "Device A"), CancellationToken.None);
         currentUser.UserId = registerResult.User.Id;
 

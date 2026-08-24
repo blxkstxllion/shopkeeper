@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Store, Percent, ShieldCheck, Users, Bell, Plug, CreditCard, type LucideIcon } from 'lucide-react'
-import { EmptyState } from '@/components/ui/EmptyState'
+import { Store, Percent, ShieldCheck, Users, Bell, CreditCard, type LucideIcon } from 'lucide-react'
 import { BusinessProfileSection } from './BusinessProfileSection'
 import { TaxSettingsSection } from './TaxSettingsSection'
 import { TwoFactorSection } from './TwoFactorSection'
@@ -10,13 +9,12 @@ import { PlanBillingSection } from './PlanBillingSection'
 import { RolesSection } from './RolesSection'
 import { NotificationPreferencesSection } from './NotificationPreferencesSection'
 
-type SectionId = 'business' | 'tax' | 'roles' | 'notifications' | 'security' | 'integrations' | 'subscription'
+type SectionId = 'business' | 'tax' | 'roles' | 'notifications' | 'security' | 'subscription'
 
 interface SectionConfig {
   id: SectionId
   label: string
   icon: LucideIcon
-  comingSoonPhase?: string
 }
 
 const SECTIONS: SectionConfig[] = [
@@ -25,7 +23,6 @@ const SECTIONS: SectionConfig[] = [
   { id: 'roles', label: 'Roles & permissions', icon: Users },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'security', label: 'Security', icon: ShieldCheck },
-  { id: 'integrations', label: 'Integrations', icon: Plug, comingSoonPhase: 'Phase 7' },
   { id: 'subscription', label: 'Subscription', icon: CreditCard },
 ]
 
@@ -34,7 +31,6 @@ export function SettingsPage() {
   const requestedSection = searchParams.get('section')
   const initialSection = SECTIONS.some((s) => s.id === requestedSection) ? (requestedSection as SectionId) : 'business'
   const [activeId, setActiveId] = useState<SectionId>(initialSection)
-  const active = SECTIONS.find((s) => s.id === activeId)!
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -79,13 +75,7 @@ export function SettingsPage() {
           tabIndex={0}
           className="min-w-0 flex-1"
         >
-          {active.comingSoonPhase ? (
-            <EmptyState
-              icon={active.icon}
-              title={`${active.label} is coming in ${active.comingSoonPhase}`}
-              description="This area of The Shop Keeper hasn't been built yet. Check back as development continues through the phases."
-            />
-          ) : activeId === 'business' ? (
+          {activeId === 'business' ? (
             <BusinessProfileSection />
           ) : activeId === 'tax' ? (
             <TaxSettingsSection />

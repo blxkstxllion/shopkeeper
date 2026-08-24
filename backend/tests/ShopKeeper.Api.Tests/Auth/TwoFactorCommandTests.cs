@@ -25,7 +25,7 @@ public class TwoFactorCommandTests : IDisposable
         var context = _db.CreateContext(currentUser);
         var tokenIssuer = new TokenIssuer(context, _jwt);
 
-        var result = await new RegisterCommandHandler(context, _hasher, tokenIssuer).Handle(
+        var result = await new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender()).Handle(
             new RegisterCommand(email, "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
         currentUser.UserId = result.User.Id;
 
