@@ -14,6 +14,8 @@ import * as onboardingApi from '@/api/onboarding'
 import type { BusinessGoal, BusinessType } from '@/types/business'
 import {
   businessTypes,
+  countries,
+  currencies,
   goalOptions,
   onboardingDefaults,
   onboardingSchema,
@@ -141,20 +143,30 @@ export function OnboardingPage() {
                 </FormField>
                 <div className="grid grid-cols-2 gap-3">
                   <FormField label="Country" htmlFor="country" error={errors.country?.message}>
-                    <Input id="country" {...register('country')} error={errors.country?.message} />
+                    <select
+                      id="country"
+                      {...register('country')}
+                      className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                    >
+                      {countries.map((c) => (
+                        <option key={c.value} value={c.value}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
                   </FormField>
-                  <FormField
-                    label="Currency code"
-                    htmlFor="currencyCode"
-                    error={errors.currencyCode?.message}
-                    hint="e.g. GHS, USD"
-                  >
-                    <Input
+                  <FormField label="Currency" htmlFor="currencyCode" error={errors.currencyCode?.message}>
+                    <select
                       id="currencyCode"
-                      maxLength={3}
                       {...register('currencyCode')}
-                      error={errors.currencyCode?.message}
-                    />
+                      className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                    >
+                      {currencies.map((c) => (
+                        <option key={c.value} value={c.value}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
                   </FormField>
                 </div>
               </>
