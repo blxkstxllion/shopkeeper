@@ -22,12 +22,14 @@ public record GetAdvisorAnswerQuery(AdvisorQuestionId QuestionId, Guid? BranchId
 /// Answers a fixed set of business questions by calling the same MediatR queries
 /// Dashboard/Reports already use and formatting their DTOs into a sentence - no separate
 /// aggregation logic, so the advisor's numbers can never disagree with what those pages show.
-/// This is deliberately not an LLM: the question set is closed (AdvisorQuestionId), so "answering"
-/// means routing to a known calculation, not interpreting free text. If a real conversational
-/// layer is added later, these same calculations become the tools an LLM would call - this
-/// handler is the foundation for that, not a placeholder to be thrown away.
+/// The question set is closed (AdvisorQuestionId), so "answering" means routing to a known
+/// calculation, not interpreting free text - an LLM (via IAdvisorNarrator) only rephrases the
+/// resulting, already-correct string in natural language; it never computes or invents a number
+/// itself. If a real free-text conversational layer is added later, these same calculations
+/// become the tools an LLM would call - this handler is the foundation for that.
 /// </summary>
-public class GetAdvisorAnswerQueryHandler(ISender mediator, IAppDbContext db, ICurrentUserService currentUser)
+public class GetAdvisorAnswerQueryHandler(
+    ISender mediator, IAppDbContext db, ICurrentUserService currentUser, IAdvisorNarrator narrator)
     : IRequestHandler<GetAdvisorAnswerQuery, AdvisorAnswerDto>
 {
     public async Task<AdvisorAnswerDto> Handle(GetAdvisorAnswerQuery request, CancellationToken cancellationToken)
@@ -52,6 +54,17 @@ public class GetAdvisorAnswerQueryHandler(ISender mediator, IAppDbContext db, IC
             AdvisorQuestionId.AmIProfitable => await AnswerAmIProfitable(request.BranchId, monthStart, today, currencyCode, cancellationToken),
             _ => throw new ArgumentOutOfRangeException(nameof(request), $"Unknown question id '{request.QuestionId}'."),
         };
+
+        try
+        {
+            answer = await narrator.NarrateAsync(request.QuestionId.ToString(), answer, cancellationToken);
+        }
+        catch (Exception)
+        {
+            // Best-effort enhancement only - the grounded answer above is already correct and
+            // complete, so a Claude outage/error degrades phrasing, never the feature itself.
+            // ClaudeAdvisorNarrator already logs the underlying failure before rethrowing.
+        }
 
         return new AdvisorAnswerDto(answer, DateTimeOffset.UtcNow);
     }

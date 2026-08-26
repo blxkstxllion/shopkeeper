@@ -32,6 +32,10 @@ services:
       Paystack__EnterprisePlanCode: ${PAYSTACK_ENTERPRISE_PLAN_CODE:-}
       Paystack__EnterpriseAiPlanCode: ${PAYSTACK_ENTERPRISE_AI_PLAN_CODE:-}
       Paystack__FrontendBaseUrl: http://localhost:5173
+      # Unset by default - keeps the Advisor's current plain-template answers unless a developer's
+      # own .env opts in with a real Anthropic key to exercise Claude narration locally (see
+      # .env.example).
+      Anthropic__ApiKey: ${ANTHROPIC_API_KEY:-}
     ports:
       - "8080:8080"
     volumes:
