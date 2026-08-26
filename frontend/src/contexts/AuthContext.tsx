@@ -4,6 +4,7 @@ import { dedupedRefresh } from '@/lib/api-client'
 import { setAccessToken, onAccessTokenChange } from '@/lib/token-store'
 import { clearOfflineDb } from '@/offline/db'
 import { setActiveCurrencyCode } from '@/lib/format'
+import { applyColorTheme } from '@/lib/colorTheme'
 import type { AuthResult, User, UserBusiness } from '@/types/auth'
 import type { Business } from '@/types/business'
 
@@ -145,6 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setActiveCurrencyCode(activeBusiness?.currencyCode ?? 'GHS')
+    applyColorTheme(activeBusiness?.colorTheme ?? 'green')
   }, [activeBusiness])
 
   const value = useMemo<AuthContextValue>(

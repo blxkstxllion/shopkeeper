@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Sparkles, ChevronDown, LogOut, Building2, Sun, Moon } from 'lucide-react'
+import { Search, Sparkles, ChevronDown, LogOut, Building2, Sun, Moon, Info } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useBranchContext } from '@/contexts/BranchContext'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -161,6 +161,17 @@ export function TopNav() {
                 </p>
                 <p className="truncate text-xs text-slate-500 dark:text-slate-400">{user?.email}</p>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false)
+                  navigate('/app/about')
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                <Info className="h-4 w-4" />
+                About
+              </button>
               <button
                 type="button"
                 onClick={handleLogout}
