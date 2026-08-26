@@ -30,6 +30,6 @@ public class GetCurrentUserQueryHandler(IAppDbContext db) : IRequestHandler<GetC
             user.IsEmailVerified,
             memberships.Select(m => new UserBusinessDto(
                 m.BusinessId, m.Business.Name, m.Role.Name, m.IsOwner, m.Business.OnboardingCompleted,
-                m.Business.CurrencyCode)).ToList());
+                m.Business.CurrencyCode, m.Business.ColorTheme)).ToList());
     }
 }

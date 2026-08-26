@@ -14,7 +14,7 @@ using ShopKeeper.Domain.Entities;
 /// choices made at onboarding that historical financial records (sales, prices) already
 /// depend on, so this endpoint never lets them silently drift after the fact.
 /// </summary>
-public record UpdateBusinessProfileCommand(string Name, string? LegalName, string TimeZone) : IRequest;
+public record UpdateBusinessProfileCommand(string Name, string? LegalName, string TimeZone, string ColorTheme) : IRequest;
 
 public class UpdateBusinessProfileCommandValidator : AbstractValidator<UpdateBusinessProfileCommand>
 {
@@ -23,6 +23,8 @@ public class UpdateBusinessProfileCommandValidator : AbstractValidator<UpdateBus
         RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
         RuleFor(x => x.LegalName).MaximumLength(200);
         RuleFor(x => x.TimeZone).NotEmpty().MaximumLength(100);
+        RuleFor(x => x.ColorTheme).Must(BusinessColorThemes.All.Contains)
+            .WithMessage($"Color theme must be one of: {string.Join(", ", BusinessColorThemes.All)}.");
     }
 }
 
@@ -39,6 +41,7 @@ public class UpdateBusinessProfileCommandHandler(IAppDbContext db, ICurrentUserS
         business.Name = request.Name.Trim();
         business.LegalName = string.IsNullOrWhiteSpace(request.LegalName) ? null : request.LegalName.Trim();
         business.TimeZone = request.TimeZone.Trim();
+        business.ColorTheme = request.ColorTheme;
 
         await db.SaveChangesAsync(cancellationToken);
     }

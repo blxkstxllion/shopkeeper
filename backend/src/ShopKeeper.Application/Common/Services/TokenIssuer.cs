@@ -93,7 +93,7 @@ public class TokenIssuer(IAppDbContext db, IJwtTokenService jwt)
             user.IsEmailVerified,
             memberships.Select(m => new UserBusinessDto(
                 m.BusinessId, m.Business.Name, m.Role.Name, m.IsOwner, m.Business.OnboardingCompleted,
-                m.Business.CurrencyCode)).ToList());
+                m.Business.CurrencyCode, m.Business.ColorTheme)).ToList());
 
         return (accessToken, userDto, active?.BusinessId);
     }

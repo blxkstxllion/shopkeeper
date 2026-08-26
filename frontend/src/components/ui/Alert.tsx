@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { AlertTriangle, CheckCircle2, Info } from 'lucide-react'
 import { clsx } from 'clsx'
 
@@ -18,12 +19,12 @@ const toneStyles: Record<Tone, { wrap: string; icon: typeof Info }> = {
   },
 }
 
-export function Alert({ tone = 'info', children }: { tone?: Tone; children: string }) {
+export function Alert({ tone = 'info', children }: { tone?: Tone; children: ReactNode }) {
   const { wrap, icon: Icon } = toneStyles[tone]
   return (
     <div className={clsx('flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm', wrap)}>
       <Icon className="mt-0.5 h-4 w-4 shrink-0" />
-      <span>{children}</span>
+      <div className="min-w-0 flex-1">{children}</div>
     </div>
   )
 }

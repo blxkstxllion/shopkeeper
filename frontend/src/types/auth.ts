@@ -5,6 +5,7 @@ export interface UserBusiness {
   isOwner: boolean
   onboardingCompleted: boolean
   currencyCode: string
+  colorTheme: string
 }
 
 export interface User {

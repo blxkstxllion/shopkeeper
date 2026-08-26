@@ -26,7 +26,7 @@ public class GetBusinessSettingsQueryHandler(IAppDbContext db, ICurrentUserServi
 
         return new BusinessSettingsDto(
             business.Id, business.Name, business.LegalName, business.BusinessType.ToString(), business.Country,
-            business.CurrencyCode, business.TimeZone, business.LogoUrl,
+            business.CurrencyCode, business.TimeZone, business.LogoUrl, business.ColorTheme,
             setting.TaxEnabled, setting.TaxIdNumber, setting.TaxRatePercent, setting.TaxInclusivePricing);
     }
 }
