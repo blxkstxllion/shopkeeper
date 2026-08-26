@@ -12,7 +12,15 @@ describe('formatMoney', () => {
 
   it('switches currency after setActiveCurrencyCode', () => {
     setActiveCurrencyCode('USD')
-    expect(formatMoney(80)).toBe('US$80.00')
+    // Not "US$80.00" - that was en-GH's disambiguated rendering from before formatMoney mapped
+    // each currency to its own locale. USD now uses en-US, which renders the plain "$" a US
+    // business actually expects.
+    expect(formatMoney(80)).toBe('$80.00')
+  })
+
+  it('formats GBP under its own locale, not GHS conventions', () => {
+    setActiveCurrencyCode('GBP')
+    expect(formatMoney(80)).toBe('£80.00')
   })
 
   it('falls back to a plain "CODE amount" format for a currency code Intl does not recognize, instead of throwing', () => {
