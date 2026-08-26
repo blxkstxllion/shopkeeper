@@ -16,6 +16,7 @@ export interface Business {
   country: string
   currencyCode: string
   logoUrl: string | null
+  colorTheme: string
   onboardingCompleted: boolean
   firstBranchId: string
 }
@@ -58,4 +59,5 @@ export interface CompleteOnboardingRequest {
   firstBranchName: string
   firstBranchAddress?: string | null
   firstBranchCity?: string | null
+  colorTheme?: string
 }

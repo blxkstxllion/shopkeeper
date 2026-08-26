@@ -17,6 +17,17 @@ public class Business : BaseEntity
     public string? LogoUrl { get; set; }
     public string TimeZone { get; set; } = "Africa/Accra";
 
+    /// <summary>One of "blue"/"red"/"green" (validated in UpdateBusinessProfileCommand) - drives
+    /// the frontend's data-color-theme attribute. A plain validated string rather than an enum,
+    /// same reasoning as CurrencyCode: it's a small, UI-owned allow-list, not a domain concept.</summary>
+    public string ColorTheme { get; set; } = "green";
+
+    /// <summary>Free text for the About page - what the shop does, shown to every employee.</summary>
+    public string? Description { get; set; }
+
+    /// <summary>Free text for the About page - who runs the shop, shown to every employee.</summary>
+    public string? OwnerBio { get; set; }
+
     public bool IsActive { get; set; } = true;
 
     /// <summary>Self-serve when Paystack isn't configured (see PlanLimits) - once it is, only

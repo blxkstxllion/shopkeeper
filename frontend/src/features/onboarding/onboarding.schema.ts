@@ -12,6 +12,20 @@ export const businessTypes = [
   'Other',
 ] as const
 
+// Suggested brand color per business type, offered (not forced) as a prompt when the user picks
+// a type - researched real color-convention precedent (retail pharmacy chains, food/appetite
+// branding, general retail/tech trust) rather than guessed. Types not listed here, or mapped to
+// 'green', get no suggestion prompt since 'green' is already the baseline default.
+export const suggestedColorThemeByBusinessType: Partial<Record<(typeof businessTypes)[number], 'blue' | 'red'>> = {
+  Pharmacy: 'red',
+  Restaurant: 'blue',
+  Retail: 'blue',
+  Electronics: 'blue',
+  Fashion: 'blue',
+  Wholesale: 'blue',
+  Services: 'blue',
+}
+
 export const goalOptions: { value: string; label: string }[] = [
   { value: 'IncreaseProfit', label: 'Increase profit' },
   { value: 'ReduceStockLosses', label: 'Reduce stock losses' },
@@ -37,6 +51,7 @@ export const onboardingSchema = z.object({
   firstBranchName: z.string().min(1, 'Branch name is required').max(200),
   firstBranchAddress: z.string().optional(),
   firstBranchCity: z.string().optional(),
+  colorTheme: z.enum(['blue', 'red', 'green']),
 })
 
 export type OnboardingFormValues = z.infer<typeof onboardingSchema>
@@ -53,6 +68,7 @@ export const onboardingDefaults: OnboardingFormValues = {
   firstBranchName: '',
   firstBranchAddress: '',
   firstBranchCity: '',
+  colorTheme: 'green',
 }
 
 export const stepFields: Record<number, (keyof OnboardingFormValues)[]> = {

@@ -26,7 +26,8 @@ public class OnboardingController(ISender mediator, ICurrentUserService currentU
         IReadOnlyList<BusinessGoal> Goals,
         string FirstBranchName,
         string? FirstBranchAddress,
-        string? FirstBranchCity);
+        string? FirstBranchCity,
+        string ColorTheme = "green");
 
     [HttpPost("complete")]
     public async Task<ActionResult<BusinessDto>> Complete(CompleteOnboardingRequest request, CancellationToken ct)
@@ -46,7 +47,8 @@ public class OnboardingController(ISender mediator, ICurrentUserService currentU
             request.FirstBranchAddress,
             request.FirstBranchCity,
             HttpContext.Connection.RemoteIpAddress?.ToString(),
-            Request.Headers.UserAgent.ToString()), ct);
+            Request.Headers.UserAgent.ToString(),
+            request.ColorTheme), ct);
 
         Response.SetRefreshTokenCookie(result.RefreshToken, env);
         return Ok(result with { RefreshToken = string.Empty });

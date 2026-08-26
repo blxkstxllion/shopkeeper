@@ -21,6 +21,7 @@ import { AcceptInvitePage } from '@/features/auth/AcceptInvitePage'
 import { JoinPage } from '@/features/auth/JoinPage'
 import { VerifyEmailPage } from '@/features/auth/VerifyEmailPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
+import { AboutPage } from '@/features/about/AboutPage'
 import { BillingCallbackPage } from '@/features/settings/BillingCallbackPage'
 import { AuditLogsPage } from '@/features/audit-logs/AuditLogsPage'
 import { AdvisorPage } from '@/features/advisor/AdvisorPage'
@@ -107,6 +108,7 @@ export function AppRouter() {
           }
         />
         <Route path="/app/settings" element={<SettingsPage />} />
+        <Route path="/app/about" element={<AboutPage />} />
         <Route path="/app/billing/callback" element={<BillingCallbackPage />} />
       </Route>
 

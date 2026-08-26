@@ -18,8 +18,11 @@ import {
   onboardingDefaults,
   onboardingSchema,
   stepFields,
+  suggestedColorThemeByBusinessType,
   type OnboardingFormValues,
 } from './onboarding.schema'
+
+const COLOR_THEME_LABELS: Record<'blue' | 'red', string> = { blue: 'Blue', red: 'Red' }
 
 const steps = ['Business', 'First branch', 'Tax settings', 'Goals', 'Review']
 
@@ -29,6 +32,10 @@ export function OnboardingPage() {
   const [step, setStep] = useState(0)
   const [serverError, setServerError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // Which businessType the color-theme suggestion banner was already answered for - prevents it
+  // re-appearing every render while the same type stays selected, but shows again if the user
+  // changes to a different suggested type.
+  const [respondedColorSuggestionFor, setRespondedColorSuggestionFor] = useState<string | null>(null)
 
   const {
     register,
@@ -44,6 +51,14 @@ export function OnboardingPage() {
   })
 
   const values = watch()
+
+  const colorSuggestion = suggestedColorThemeByBusinessType[values.businessType]
+  const showColorSuggestion = Boolean(colorSuggestion) && respondedColorSuggestionFor !== values.businessType
+
+  const respondToColorSuggestion = (accept: boolean) => {
+    setValue('colorTheme', accept && colorSuggestion ? colorSuggestion : 'green', { shouldDirty: true })
+    setRespondedColorSuggestionFor(values.businessType)
+  }
 
   const goNext = async () => {
     const fields = stepFields[step]
@@ -76,6 +91,7 @@ export function OnboardingPage() {
         firstBranchName: data.firstBranchName,
         firstBranchAddress: data.firstBranchAddress || null,
         firstBranchCity: data.firstBranchCity || null,
+        colorTheme: data.colorTheme,
       })
 
       completeOnboarding(result, result.user)
@@ -139,6 +155,28 @@ export function OnboardingPage() {
                     ))}
                   </select>
                 </FormField>
+                {showColorSuggestion && colorSuggestion && (
+                  <Alert tone="info">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span>
+                        Businesses like yours often use the {COLOR_THEME_LABELS[colorSuggestion]} theme. Use it?
+                      </span>
+                      <div className="flex gap-2">
+                        <Button type="button" size="sm" onClick={() => respondToColorSuggestion(true)}>
+                          Use it
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => respondToColorSuggestion(false)}
+                        >
+                          Keep green
+                        </Button>
+                      </div>
+                    </div>
+                  </Alert>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <FormField label="Country" htmlFor="country" error={errors.country?.message}>
                     <Input id="country" {...register('country')} error={errors.country?.message} />

@@ -28,22 +28,35 @@ public class BusinessSettingsTests : IDisposable
         Assert.Equal("Ama's Shop", settings.Name);
         Assert.Equal("GHS", settings.CurrencyCode);
         Assert.Equal("Ghana", settings.Country);
+        Assert.Equal("green", settings.ColorTheme);
     }
 
     [Fact]
-    public async Task UpdateBusinessProfile_PersistsNameLegalNameAndTimeZone()
+    public async Task UpdateBusinessProfile_PersistsNameLegalNameTimeZoneAndColorTheme()
     {
         var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
         var owner = seeded.AsOwner();
         var context = _db.CreateContext(owner);
 
         await new UpdateBusinessProfileCommandHandler(context, owner).Handle(
-            new UpdateBusinessProfileCommand("Ama's Superstore", "Ama Owusu Enterprises", "Africa/Lagos"), CancellationToken.None);
+            new UpdateBusinessProfileCommand("Ama's Superstore", "Ama Owusu Enterprises", "Africa/Lagos", "blue"), CancellationToken.None);
 
         var business = await context.Businesses.SingleAsync(b => b.Id == seeded.BusinessId);
         Assert.Equal("Ama's Superstore", business.Name);
         Assert.Equal("Ama Owusu Enterprises", business.LegalName);
         Assert.Equal("Africa/Lagos", business.TimeZone);
+        Assert.Equal("blue", business.ColorTheme);
+    }
+
+    [Fact]
+    public async Task UpdateBusinessProfileValidator_RejectsUnknownColorTheme()
+    {
+        var validator = new UpdateBusinessProfileCommandValidator();
+
+        var result = await validator.ValidateAsync(new UpdateBusinessProfileCommand("Shop", null, "Africa/Accra", "purple"));
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.PropertyName == nameof(UpdateBusinessProfileCommand.ColorTheme));
     }
 
     [Fact]
@@ -79,7 +92,7 @@ public class BusinessSettingsTests : IDisposable
         };
 
         await Assert.ThrowsAsync<ForbiddenAccessException>(() => new UpdateBusinessProfileCommandHandler(context, cashier).Handle(
-            new UpdateBusinessProfileCommand("Hacked Name", null, "Africa/Accra"), CancellationToken.None));
+            new UpdateBusinessProfileCommand("Hacked Name", null, "Africa/Accra", "green"), CancellationToken.None));
     }
 
     public void Dispose() => _db.Dispose();

@@ -9,6 +9,7 @@ public record BusinessSettingsDto(
     string CurrencyCode,
     string TimeZone,
     string? LogoUrl,
+    string ColorTheme,
     bool TaxEnabled,
     string? TaxIdNumber,
     decimal TaxRatePercent,
