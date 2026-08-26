@@ -13,6 +13,7 @@ using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Application.Reports.Queries;
 using ShopKeeper.Application.Roles.Commands;
 using ShopKeeper.Domain.Enums;
+using ShopKeeper.Infrastructure.Ai;
 using ShopKeeper.Infrastructure.Identity;
 
 /// <summary>
@@ -33,6 +34,7 @@ public class RequirePlanTierBehaviorTests : IDisposable
         services.AddApplication();
         services.AddSingleton(context);
         services.AddSingleton(currentUser);
+        services.AddSingleton<IAdvisorNarrator>(new PassthroughAdvisorNarrator());
         return services.BuildServiceProvider().GetRequiredService<ISender>();
     }
 

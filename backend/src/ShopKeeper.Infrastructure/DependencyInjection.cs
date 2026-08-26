@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net.Http.Headers;
 using ShopKeeper.Application.Common.Interfaces;
+using ShopKeeper.Infrastructure.Ai;
 using ShopKeeper.Infrastructure.Identity;
 using ShopKeeper.Infrastructure.Payments;
 using ShopKeeper.Infrastructure.Persistence;
@@ -67,6 +68,26 @@ public static class DependencyInjection
         else
         {
             services.AddScoped<IPaystackClient, DevPaystackClient>();
+        }
+
+        // Real Claude narration only when Anthropic:ApiKey is configured - same "absence never
+        // breaks startup" pattern as Email/Paystack above. Local/CI dev has none configured by
+        // default, so the Advisor keeps returning its plain, deterministic template answers
+        // unchanged (see PassthroughAdvisorNarrator and GetAdvisorAnswerQueryHandler).
+        var anthropicApiKey = configuration["Anthropic:ApiKey"];
+        if (!string.IsNullOrWhiteSpace(anthropicApiKey))
+        {
+            services.Configure<AnthropicSettings>(configuration.GetSection(AnthropicSettings.SectionName));
+            services.AddHttpClient<IAdvisorNarrator, ClaudeAdvisorNarrator>(client =>
+            {
+                client.BaseAddress = new Uri("https://api.anthropic.com/");
+                client.DefaultRequestHeaders.Add("x-api-key", anthropicApiKey);
+                client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+            });
+        }
+        else
+        {
+            services.AddScoped<IAdvisorNarrator, PassthroughAdvisorNarrator>();
         }
 
         // Redis is provisioned in every environment (see docker/docker-compose.yml) but nothing

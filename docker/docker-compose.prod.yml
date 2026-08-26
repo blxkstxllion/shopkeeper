@@ -44,6 +44,9 @@ services:
       Paystack__EnterprisePlanCode: ${PAYSTACK_ENTERPRISE_PLAN_CODE:-}
       Paystack__EnterpriseAiPlanCode: ${PAYSTACK_ENTERPRISE_AI_PLAN_CODE:-}
       Paystack__FrontendBaseUrl: https://${DOMAIN:?DOMAIN must be set - see .env.example}
+      # Deliberately NOT :? required, same reasoning as Paystack above - presence of
+      # Anthropic__ApiKey is what switches the AI Advisor off today's plain-template answers.
+      Anthropic__ApiKey: ${ANTHROPIC_API_KEY:-}
     volumes:
       # The `final` Docker stage's WORKDIR is /app, so LocalFileStorageService's
       # {ContentRoot}/App_Data/uploads resolves there. Without this volume, every
