@@ -10,14 +10,22 @@ import { Input, FormField } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
 import { FormSkeleton } from '@/components/ui/Skeleton'
 import { ApiError } from '@/lib/api-client'
+import { applyColorTheme } from '@/lib/colorTheme'
 
 const schema = z.object({
   name: z.string().min(1, 'Business name is required').max(200),
   legalName: z.string().max(200).optional().or(z.literal('')),
   timeZone: z.string().min(1, 'Time zone is required').max(100),
+  colorTheme: z.enum(['blue', 'red', 'green']),
 })
 
 type FormValues = z.infer<typeof schema>
+
+const COLOR_THEME_OPTIONS: { value: FormValues['colorTheme']; label: string; swatchClass: string }[] = [
+  { value: 'blue', label: 'Blue', swatchClass: 'bg-blue-600' },
+  { value: 'red', label: 'Red', swatchClass: 'bg-red-600' },
+  { value: 'green', label: 'Green', swatchClass: 'bg-emerald-600' },
+]
 
 export function BusinessProfileSection() {
   const queryClient = useQueryClient()
@@ -25,19 +33,32 @@ export function BusinessProfileSection() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
 
-  const { register, handleSubmit, reset, formState } = useForm<FormValues>({ resolver: zodResolver(schema) })
+  const { register, handleSubmit, reset, watch, setValue, formState } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+  })
 
   useEffect(() => {
     if (data) {
-      reset({ name: data.name, legalName: data.legalName ?? '', timeZone: data.timeZone })
+      reset({
+        name: data.name,
+        legalName: data.legalName ?? '',
+        timeZone: data.timeZone,
+        colorTheme: data.colorTheme as FormValues['colorTheme'],
+      })
     }
   }, [data, reset])
 
+  const colorTheme = watch('colorTheme')
+
   const mutation = useMutation({
     mutationFn: (values: FormValues) => updateBusinessProfile({ ...values, legalName: values.legalName || null }),
-    onSuccess: () => {
+    onSuccess: (_, values) => {
       setServerError(null)
       setSuccessMessage('Business profile updated.')
+      // AuthContext only re-applies the color theme when activeBusiness changes (login/business
+      // switch) - a Settings save doesn't refetch that snapshot, so apply it directly here too,
+      // otherwise "saved" would be true but the page wouldn't visibly reflect it until next login.
+      applyColorTheme(values.colorTheme)
       queryClient.invalidateQueries({ queryKey: ['business-settings'] })
       setTimeout(() => setSuccessMessage(null), 3000)
     },
@@ -84,6 +105,29 @@ export function BusinessProfileSection() {
         <FormField label="Time zone" htmlFor="timeZone" error={formState.errors.timeZone?.message}>
           <Input id="timeZone" {...register('timeZone')} error={formState.errors.timeZone?.message} />
         </FormField>
+
+        <div>
+          <p className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">Brand color</p>
+          <div className="flex gap-3" role="radiogroup" aria-label="Brand color">
+            {COLOR_THEME_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={colorTheme === option.value}
+                onClick={() => setValue('colorTheme', option.value, { shouldDirty: true })}
+                className={`flex flex-col items-center gap-1.5 rounded-lg border-2 px-3 py-2 text-xs font-medium transition-colors ${
+                  colorTheme === option.value
+                    ? 'border-primary-600 text-slate-900 dark:text-slate-100'
+                    : 'border-transparent text-slate-500 hover:border-slate-200 dark:text-slate-400 dark:hover:border-slate-700'
+                }`}
+              >
+                <span className={`h-6 w-6 rounded-full ${option.swatchClass}`} />
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="grid grid-cols-2 gap-4 rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-800">
           <div>

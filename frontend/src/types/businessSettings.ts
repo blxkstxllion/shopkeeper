@@ -7,6 +7,7 @@ export interface BusinessSettings {
   currencyCode: string
   timeZone: string
   logoUrl: string | null
+  colorTheme: string
   taxEnabled: boolean
   taxIdNumber: string | null
   taxRatePercent: number
@@ -17,6 +18,7 @@ export interface UpdateBusinessProfilePayload {
   name: string
   legalName?: string | null
   timeZone: string
+  colorTheme: string
 }
 
 export interface UpdateTaxSettingsPayload {

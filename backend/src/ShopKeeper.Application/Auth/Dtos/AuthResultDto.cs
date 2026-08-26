@@ -20,4 +20,5 @@ public record UserBusinessDto(
     string RoleName,
     bool IsOwner,
     bool OnboardingCompleted,
-    string CurrencyCode);
+    string CurrencyCode,
+    string ColorTheme);

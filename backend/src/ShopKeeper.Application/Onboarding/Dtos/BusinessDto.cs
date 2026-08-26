@@ -9,6 +9,7 @@ public record BusinessDto(
     string Country,
     string CurrencyCode,
     string? LogoUrl,
+    string ColorTheme,
     bool OnboardingCompleted,
     Guid FirstBranchId,
     string AccessToken,

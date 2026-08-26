@@ -26,7 +26,11 @@ public record CompleteOnboardingCommand(
     string? FirstBranchAddress,
     string? FirstBranchCity,
     string? IpAddress,
-    string? UserAgent = null) : IRequest<BusinessDto>;
+    string? UserAgent = null,
+    /// <summary>Frontend computes the businessType-based suggestion and whether the user
+    /// accepted it (see onboarding.schema.ts) - this handler just validates and stores
+    /// whatever comes in, defaulting to the baseline "green" if omitted.</summary>
+    string ColorTheme = "green") : IRequest<BusinessDto>;
 
 public class CompleteOnboardingCommandValidator : AbstractValidator<CompleteOnboardingCommand>
 {
@@ -37,6 +41,8 @@ public class CompleteOnboardingCommandValidator : AbstractValidator<CompleteOnbo
         RuleFor(x => x.CurrencyCode).NotEmpty().Length(3);
         RuleFor(x => x.TaxRatePercent).InclusiveBetween(0, 100);
         RuleFor(x => x.FirstBranchName).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.ColorTheme).Must(BusinessColorThemes.All.Contains)
+            .WithMessage($"Color theme must be one of: {string.Join(", ", BusinessColorThemes.All)}.");
     }
 }
 
@@ -55,6 +61,7 @@ public class CompleteOnboardingCommandHandler(IAppDbContext db, TokenIssuer toke
             Country = request.Country.Trim(),
             CurrencyCode = request.CurrencyCode.Trim().ToUpperInvariant(),
             LogoUrl = request.LogoUrl,
+            ColorTheme = request.ColorTheme,
             OnboardingCompleted = true,
             OnboardingStep = 100,
             OnboardingCompletedAt = DateTimeOffset.UtcNow,
@@ -141,6 +148,7 @@ public class CompleteOnboardingCommandHandler(IAppDbContext db, TokenIssuer toke
             business.Country,
             business.CurrencyCode,
             business.LogoUrl,
+            business.ColorTheme,
             business.OnboardingCompleted,
             branch.Id,
             tokens.AccessToken,
