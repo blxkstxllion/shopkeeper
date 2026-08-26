@@ -150,7 +150,11 @@ export function TopNav() {
           </button>
 
           {menuOpen && (
-            <div className="absolute right-0 top-full mt-1 w-56 rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+            <div
+              className="fixed inset-x-4 top-16 z-20 rounded-lg border border-slate-200 bg-white py-1 shadow-lg
+                sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:z-auto sm:mt-1 sm:w-56
+                dark:border-slate-700 dark:bg-slate-900"
+            >
               <div className="border-b border-slate-100 px-3 py-2 dark:border-slate-800">
                 <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
                   {user?.firstName} {user?.lastName}
