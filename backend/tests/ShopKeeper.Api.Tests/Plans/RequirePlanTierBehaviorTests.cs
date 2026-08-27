@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using ShopKeeper.Api.Tests.TestHelpers;
 using ShopKeeper.Application;
 using ShopKeeper.Application.Advisor;
+using ShopKeeper.Application.Advisor.Commands;
 using ShopKeeper.Application.Advisor.Queries;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Interfaces;
@@ -35,6 +36,7 @@ public class RequirePlanTierBehaviorTests : IDisposable
         services.AddSingleton(context);
         services.AddSingleton(currentUser);
         services.AddSingleton<IAdvisorNarrator>(new PassthroughAdvisorNarrator());
+        services.AddSingleton<IAdvisorConversationClient>(new UnavailableAdvisorConversationClient());
         return services.BuildServiceProvider().GetRequiredService<ISender>();
     }
 
@@ -99,6 +101,33 @@ public class RequirePlanTierBehaviorTests : IDisposable
 
         var answer = await sender.Send(new GetAdvisorAnswerQuery(AdvisorQuestionId.AmIProfitable, null), CancellationToken.None);
         Assert.NotNull(answer.Answer);
+    }
+
+    [Fact]
+    public async Task AskAdvisor_OnBusinessTierWithoutAi_ThrowsForbidden()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        await SetTierAsync(_db, seeded, owner, PlanTier.Business); // Reports yes, AI no
+        var context = _db.CreateContext(owner);
+        var sender = BuildSender(context, owner);
+
+        var ex = await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
+            sender.Send(new AskAdvisorCommand("How's my revenue?", null), CancellationToken.None));
+        Assert.Contains("Advisor", ex.Message);
+    }
+
+    [Fact]
+    public async Task AskAdvisor_OnBusinessAiTier_Succeeds()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        await SetTierAsync(_db, seeded, owner, PlanTier.BusinessAi);
+        var context = _db.CreateContext(owner);
+        var sender = BuildSender(context, owner);
+
+        var answer = await sender.Send(new AskAdvisorCommand("How's my revenue?", null), CancellationToken.None);
+        Assert.NotNull(answer.Answer); // UnavailableAdvisorConversationClient -> caught -> fallback text, not a thrown exception.
     }
 
     [Fact]
