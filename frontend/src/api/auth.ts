@@ -95,3 +95,16 @@ export async function getCurrentUser(): Promise<User> {
   const { data } = await apiClient.get<User>('/users/me')
   return data
 }
+
+export async function uploadProfilePhoto(file: File): Promise<{ url: string }> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const { data } = await apiClient.post<{ url: string }>('/uploads/profile-photo', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return data
+}
+
+export async function updateProfilePhoto(photoUrl: string): Promise<void> {
+  await apiClient.put('/users/me/photo', { photoUrl })
+}

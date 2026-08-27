@@ -11,9 +11,9 @@ import {
   LayoutGrid,
 } from 'lucide-react'
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend } from 'recharts'
-import { useAuth } from '@/contexts/AuthContext'
 import { useActiveBranch } from '@/hooks/useActiveBranch'
 import { getDashboardSummary } from '@/api/dashboard'
+import { DashboardHeader } from './DashboardHeader'
 import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { StatTile } from '@/components/ui/StatTile'
@@ -42,7 +42,6 @@ const STATUS_STYLES: Record<string, { label: string; className: string }> = {
 }
 
 export function DashboardPage() {
-  const { user, activeBusiness } = useAuth()
   const { branch } = useActiveBranch()
 
   const { data, isLoading } = useQuery({
@@ -52,13 +51,7 @@ export function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-6xl [--cat-0:#2a78d6] [--cat-1:#1baf7a] [--cat-2:#eda100] [--cat-3:#008300] [--cat-4:#4a3aa7] [--cat-5:#e34948] [--cat-6:#e87ba4] [--cat-7:#eb6834] dark:[--cat-0:#3987e5] dark:[--cat-1:#199e70] dark:[--cat-2:#c98500] dark:[--cat-4:#9085e9] dark:[--cat-5:#e66767] dark:[--cat-6:#d55181] dark:[--cat-7:#d95926] [--chart-revenue:#2a78d6] dark:[--chart-revenue:#3987e5] [--chart-profit:#1baf7a] dark:[--chart-profit:#199e70] [--chart-grid:#e1e0d9] dark:[--chart-grid:#2c2c2a] [--chart-axis:#898781]">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Welcome back, {user?.firstName}</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          Here&apos;s what&apos;s happening at {activeBusiness?.businessName}
-          {branch ? ` · ${branch.name}` : ''}.
-        </p>
-      </div>
+      <DashboardHeader />
 
       {isLoading || !data ? (
         <>

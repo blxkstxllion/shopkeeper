@@ -4,6 +4,7 @@ import { Search, Sparkles, ChevronDown, LogOut, Building2, Sun, Moon, Info } fro
 import { useAuth } from '@/contexts/AuthContext'
 import { useBranchContext } from '@/contexts/BranchContext'
 import { useTheme } from '@/contexts/ThemeContext'
+import { Avatar } from '@/components/ui/Avatar'
 import { NotificationBell } from './NotificationBell'
 import { OfflineStatusIndicator } from '@/offline/OfflineStatusIndicator'
 
@@ -142,10 +143,7 @@ export function TopNav() {
             aria-label="Account menu"
             className="flex items-center gap-2 rounded-lg py-1.5 pl-1.5 pr-2 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">
-              {user?.firstName?.[0]}
-              {user?.lastName?.[0]}
-            </div>
+            <Avatar firstName={user?.firstName} lastName={user?.lastName} photoUrl={user?.photoUrl} size="sm" />
             <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
           </button>
 

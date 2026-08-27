@@ -14,6 +14,7 @@ export interface User {
   firstName: string
   lastName: string
   isEmailVerified: boolean
+  photoUrl: string | null
   businesses: UserBusiness[]
 }
 

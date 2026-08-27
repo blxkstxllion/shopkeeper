@@ -12,6 +12,7 @@ public record UserDto(
     string FirstName,
     string LastName,
     bool IsEmailVerified,
+    string? PhotoUrl,
     IReadOnlyList<UserBusinessDto> Businesses);
 
 public record UserBusinessDto(
