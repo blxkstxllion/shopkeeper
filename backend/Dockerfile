@@ -20,10 +20,12 @@ FROM base AS development
 # also requiring the EF Core tool on the host. curl is for the HEALTHCHECK below - the
 # dev overlay's `frontend` service depends on `api: condition: service_healthy`, which
 # hangs forever if this stage has no HEALTHCHECK at all (Docker reports status "none",
-# which never satisfies "healthy").
+# which never satisfies "healthy"). libfontconfig1 is QuestPDF's documented Linux
+# requirement for headless text-metrics - without it, PDF generation throws at runtime
+# on this Debian-slim base, which has no desktop font stack by default.
 RUN dotnet tool install --global dotnet-ef --version 8.* \
     && apt-get update \
-    && apt-get install -y --no-install-recommends curl \
+    && apt-get install -y --no-install-recommends curl libfontconfig1 \
     && rm -rf /var/lib/apt/lists/*
 ENV PATH="${PATH}:/root/.dotnet/tools"
 WORKDIR /src/src/ShopKeeper.Api
@@ -46,7 +48,7 @@ WORKDIR /app
 RUN addgroup --system --gid 1000 shopkeeper \
     && adduser --system --uid 1000 --ingroup shopkeeper --shell /bin/false shopkeeper \
     && apt-get update \
-    && apt-get install -y --no-install-recommends curl \
+    && apt-get install -y --no-install-recommends curl libfontconfig1 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build --chown=shopkeeper:shopkeeper /app/publish .

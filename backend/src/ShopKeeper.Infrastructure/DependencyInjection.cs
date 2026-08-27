@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Net.Http.Headers;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Infrastructure.Ai;
+using ShopKeeper.Infrastructure.Documents;
 using ShopKeeper.Infrastructure.Identity;
 using ShopKeeper.Infrastructure.Payments;
 using ShopKeeper.Infrastructure.Persistence;
@@ -70,10 +71,11 @@ public static class DependencyInjection
             services.AddScoped<IPaystackClient, DevPaystackClient>();
         }
 
-        // Real Claude narration only when Anthropic:ApiKey is configured - same "absence never
-        // breaks startup" pattern as Email/Paystack above. Local/CI dev has none configured by
-        // default, so the Advisor keeps returning its plain, deterministic template answers
-        // unchanged (see PassthroughAdvisorNarrator and GetAdvisorAnswerQueryHandler).
+        // Real Claude narration/summarization only when Anthropic:ApiKey is configured - same
+        // "absence never breaks startup" pattern as Email/Paystack above. Local/CI dev has none
+        // configured by default, so the Advisor keeps its plain, deterministic template answers
+        // and exported reports keep a deterministic template summary, both unchanged (see
+        // PassthroughAdvisorNarrator/PassthroughReportSummarizer).
         var anthropicApiKey = configuration["Anthropic:ApiKey"];
         if (!string.IsNullOrWhiteSpace(anthropicApiKey))
         {
@@ -84,11 +86,23 @@ public static class DependencyInjection
                 client.DefaultRequestHeaders.Add("x-api-key", anthropicApiKey);
                 client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
             });
+            services.AddHttpClient<IReportSummarizer, ClaudeReportSummarizer>(client =>
+            {
+                client.BaseAddress = new Uri("https://api.anthropic.com/");
+                client.DefaultRequestHeaders.Add("x-api-key", anthropicApiKey);
+                client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+            });
         }
         else
         {
             services.AddScoped<IAdvisorNarrator, PassthroughAdvisorNarrator>();
+            services.AddScoped<IReportSummarizer, PassthroughReportSummarizer>();
         }
+
+        // Report document rendering (PDF/Word) never depends on Anthropic - always registered,
+        // unlike the narrator/summarizer above, since QuestPdfReportRenderer has no AI dependency
+        // of its own (the AI-or-template summary text is already baked into the model it receives).
+        services.AddScoped<IReportDocumentRenderer, QuestPdfReportRenderer>();
 
         // Redis is provisioned in every environment (see docker/docker-compose.yml) but nothing
         // reads from it yet - no feature currently needs caching, sessions, or a queue. Registered
