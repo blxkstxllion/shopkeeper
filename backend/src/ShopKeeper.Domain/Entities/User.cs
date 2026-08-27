@@ -14,6 +14,7 @@ public class User : BaseEntity
     public string FirstName { get; set; } = default!;
     public string LastName { get; set; } = default!;
     public string? PhoneNumber { get; set; }
+    public string? PhotoUrl { get; set; }
 
     public bool IsEmailVerified { get; set; }
     public string? EmailVerificationToken { get; set; }

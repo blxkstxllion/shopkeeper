@@ -11,7 +11,7 @@ import type { Business } from '@/types/business'
 /** Either a completed login, or a signal that the caller must now collect a 2FA code. */
 type LoginOutcome = { requiresTwoFactor: true; challengeToken: string } | { requiresTwoFactor: false; user: User }
 
-interface AuthContextValue {
+export interface AuthContextValue {
   user: User | null
   /** The business the current access token is scoped to, or null if the user hasn't picked one yet (e.g. multi-business login). */
   activeBusiness: UserBusiness | null
@@ -26,6 +26,10 @@ interface AuthContextValue {
    * session-setting logic as login/selectBusiness, exposed for flows that get their tokens
    * from a different endpoint but should land in the app exactly the same way. */
   applyAuthResult: (result: AuthResult, businessId?: string) => void
+  /** Re-pulls the current user (GET /users/me) into context without a full token refresh -
+   * for flows that change a User field in place (e.g. profile photo) and need every consumer
+   * of useAuth().user to see it immediately, not just after the next login/business switch. */
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -139,6 +143,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setActiveBusinessId(business.id)
   }, [])
 
+  const refreshUser = useCallback(async () => {
+    const freshUser = await authApi.getCurrentUser()
+    setUser(freshUser)
+  }, [])
+
   const activeBusiness = useMemo(
     () => user?.businesses.find((b) => b.businessId === activeBusinessId) ?? null,
     [user, activeBusinessId],
@@ -161,6 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       selectBusiness,
       completeOnboarding,
       applyAuthResult,
+      refreshUser,
     }),
     [
       user,
@@ -173,6 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       selectBusiness,
       completeOnboarding,
       applyAuthResult,
+      refreshUser,
     ],
   )
 
