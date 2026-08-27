@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { type FormEvent, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Sparkles, Loader2 } from 'lucide-react'
-import { getAdvisorAnswer, getAdvisorQuestions } from '@/api/advisor'
+import { Sparkles, Loader2, Send } from 'lucide-react'
+import { askAdvisor, getAdvisorAnswer, getAdvisorCapabilities, getAdvisorQuestions } from '@/api/advisor'
+import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { Input } from '@/components/ui/Input'
 import { UpgradePrompt } from '@/components/ui/UpgradePrompt'
 import { ApiError } from '@/lib/api-client'
 import { formatDateTime } from '@/lib/format'
@@ -19,6 +21,7 @@ interface TranscriptEntry {
 
 export function AdvisorPage() {
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([])
+  const [freeTextQuestion, setFreeTextQuestion] = useState('')
 
   const {
     data: questions,
@@ -27,6 +30,11 @@ export function AdvisorPage() {
   } = useQuery({
     queryKey: ['advisor-questions'],
     queryFn: getAdvisorQuestions,
+  })
+
+  const { data: capabilities } = useQuery({
+    queryKey: ['advisor-capabilities'],
+    queryFn: getAdvisorCapabilities,
   })
 
   const mutation = useMutation({
@@ -58,9 +66,41 @@ export function AdvisorPage() {
     },
   })
 
+  const freeTextMutation = useMutation({
+    mutationFn: askAdvisor,
+    onSuccess: (result, question) => {
+      setTranscript((prev) => [
+        ...prev,
+        { id: `free-${result.generatedAt}`, question, answer: result.answer, askedAt: result.generatedAt },
+      ])
+    },
+    onError: (_err, question) => {
+      setTranscript((prev) => [
+        ...prev,
+        {
+          id: `free-${Date.now()}`,
+          question,
+          answer: "Couldn't get an answer for that just now. Please try again.",
+          askedAt: new Date().toISOString(),
+          isError: true,
+        },
+      ])
+    },
+  })
+
   function handleAsk(question: AdvisorQuestion) {
     mutation.mutate(question.id)
   }
+
+  function handleAskFreeText(e: FormEvent) {
+    e.preventDefault()
+    const trimmed = freeTextQuestion.trim()
+    if (!trimmed) return
+    freeTextMutation.mutate(trimmed)
+    setFreeTextQuestion('')
+  }
+
+  const isPending = mutation.isPending || freeTextMutation.isPending
 
   if (questionsError instanceof ApiError && questionsError.status === 403) {
     return (
@@ -92,13 +132,33 @@ export function AdvisorPage() {
               key={q.id}
               type="button"
               onClick={() => handleAsk(q)}
-              disabled={mutation.isPending}
+              disabled={isPending}
               className="rounded-full border border-slate-200 px-3 py-1.5 text-sm text-slate-700 transition-colors hover:border-primary-400 hover:text-primary-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:border-primary-500 dark:hover:text-primary-400"
             >
               {q.label}
             </button>
           ))}
         </div>
+
+        {capabilities?.freeTextEnabled && (
+          <form
+            onSubmit={handleAskFreeText}
+            className="mt-3 flex gap-2 border-t border-slate-100 pt-3 dark:border-slate-800"
+          >
+            <Input
+              type="text"
+              value={freeTextQuestion}
+              onChange={(e) => setFreeTextQuestion(e.target.value)}
+              placeholder="Or type your own question…"
+              maxLength={300}
+              disabled={isPending}
+              className="flex-1"
+            />
+            <Button type="submit" size="md" disabled={isPending || !freeTextQuestion.trim()}>
+              <Send className="h-4 w-4" />
+            </Button>
+          </form>
+        )}
       </Card>
 
       {transcript.length === 0 ? (
@@ -126,7 +186,7 @@ export function AdvisorPage() {
               </div>
             </div>
           ))}
-          {mutation.isPending && (
+          {isPending && (
             <div className="mr-auto flex items-center gap-2 rounded-2xl rounded-tl-sm bg-slate-100 px-4 py-2 text-sm text-slate-500 dark:bg-slate-800 dark:text-slate-400">
               <Loader2 className="h-4 w-4 animate-spin" />
               Calculating…

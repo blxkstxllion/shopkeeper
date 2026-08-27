@@ -3,6 +3,7 @@ namespace ShopKeeper.Application;
 using System.Reflection;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using ShopKeeper.Application.Advisor;
 using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Services;
 
@@ -21,6 +22,7 @@ public static class DependencyInjection
         services.AddScoped<TokenIssuer>();
         services.AddScoped<NotificationDispatcher>();
         services.AddScoped<PlanLimitService>();
+        services.AddScoped<AdvisorCalculations>();
 
         return services;
     }
