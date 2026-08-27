@@ -4,6 +4,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ShopKeeper.Application.Advisor;
+using ShopKeeper.Application.Advisor.Commands;
 using ShopKeeper.Application.Advisor.Dtos;
 using ShopKeeper.Application.Advisor.Queries;
 
@@ -20,4 +21,12 @@ public class AdvisorController(ISender mediator) : ControllerBase
     public async Task<ActionResult<AdvisorAnswerDto>> GetAnswer(
         [FromQuery] AdvisorQuestionId questionId, [FromQuery] Guid? branchId, CancellationToken ct) =>
         Ok(await mediator.Send(new GetAdvisorAnswerQuery(questionId, branchId), ct));
+
+    [HttpGet("capabilities")]
+    public async Task<ActionResult<AdvisorCapabilitiesDto>> GetCapabilities(CancellationToken ct) =>
+        Ok(await mediator.Send(new GetAdvisorCapabilitiesQuery(), ct));
+
+    [HttpPost("ask")]
+    public async Task<ActionResult<AdvisorAnswerDto>> Ask([FromBody] AskAdvisorCommand command, CancellationToken ct) =>
+        Ok(await mediator.Send(command, ct));
 }

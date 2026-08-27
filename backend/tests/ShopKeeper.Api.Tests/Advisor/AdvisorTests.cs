@@ -35,7 +35,7 @@ public class AdvisorTests : IDisposable
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(product.Id, 5, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 50m, null)]),
             CancellationToken.None);
 
-        var handler = new GetAdvisorAnswerQueryHandler(new TestSender(context, owner), context, owner, new PassthroughAdvisorNarrator());
+        var handler = new GetAdvisorAnswerQueryHandler(new AdvisorCalculations(new TestSender(context, owner), context, owner), owner, new PassthroughAdvisorNarrator());
         var answer = await handler.Handle(new GetAdvisorAnswerQuery(AdvisorQuestionId.RevenueThisMonth, null), CancellationToken.None);
 
         Assert.Contains("GHS 50.00", answer.Answer);
@@ -55,7 +55,7 @@ public class AdvisorTests : IDisposable
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(product.Id, 2, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 20m, null)]),
             CancellationToken.None);
 
-        var handler = new GetAdvisorAnswerQueryHandler(new TestSender(context, owner), context, owner, new PassthroughAdvisorNarrator());
+        var handler = new GetAdvisorAnswerQueryHandler(new AdvisorCalculations(new TestSender(context, owner), context, owner), owner, new PassthroughAdvisorNarrator());
         var answer = await handler.Handle(new GetAdvisorAnswerQuery(AdvisorQuestionId.ProfitMargin, null), CancellationToken.None);
 
         Assert.Contains("50", answer.Answer); // (10-5)/10 = 50% gross margin
@@ -68,7 +68,7 @@ public class AdvisorTests : IDisposable
         var owner = seeded.AsOwner();
         var context = _db.CreateContext(owner);
 
-        var handler = new GetAdvisorAnswerQueryHandler(new TestSender(context, owner), context, owner, new PassthroughAdvisorNarrator());
+        var handler = new GetAdvisorAnswerQueryHandler(new AdvisorCalculations(new TestSender(context, owner), context, owner), owner, new PassthroughAdvisorNarrator());
         var answer = await handler.Handle(new GetAdvisorAnswerQuery(AdvisorQuestionId.ProfitMargin, null), CancellationToken.None);
 
         Assert.Contains("no revenue", answer.Answer, StringComparison.OrdinalIgnoreCase);
@@ -88,7 +88,7 @@ public class AdvisorTests : IDisposable
             new CreateProductCommand("All Gone", "SKU-ADV-4", null, null, null, null, 10m, 5m, 5, 10, true, 0, seeded.BranchId),
             CancellationToken.None);
 
-        var handler = new GetAdvisorAnswerQueryHandler(new TestSender(context, owner), context, owner, new PassthroughAdvisorNarrator());
+        var handler = new GetAdvisorAnswerQueryHandler(new AdvisorCalculations(new TestSender(context, owner), context, owner), owner, new PassthroughAdvisorNarrator());
         var answer = await handler.Handle(new GetAdvisorAnswerQuery(AdvisorQuestionId.LowStock, null), CancellationToken.None);
 
         Assert.Contains("Almost Gone", answer.Answer);
@@ -106,7 +106,7 @@ public class AdvisorTests : IDisposable
             new CreateProductCommand("Plenty", "SKU-ADV-5", null, null, null, null, 10m, 5m, 5, 10, true, 100, seeded.BranchId),
             CancellationToken.None);
 
-        var handler = new GetAdvisorAnswerQueryHandler(new TestSender(context, owner), context, owner, new PassthroughAdvisorNarrator());
+        var handler = new GetAdvisorAnswerQueryHandler(new AdvisorCalculations(new TestSender(context, owner), context, owner), owner, new PassthroughAdvisorNarrator());
         var answer = await handler.Handle(new GetAdvisorAnswerQuery(AdvisorQuestionId.LowStock, null), CancellationToken.None);
 
         Assert.Contains("healthy", answer.Answer, StringComparison.OrdinalIgnoreCase);
@@ -131,7 +131,7 @@ public class AdvisorTests : IDisposable
                 [new SalePaymentInput(PaymentMethod.Cash, 110m, null)]),
             CancellationToken.None);
 
-        var handler = new GetAdvisorAnswerQueryHandler(new TestSender(context, owner), context, owner, new PassthroughAdvisorNarrator());
+        var handler = new GetAdvisorAnswerQueryHandler(new AdvisorCalculations(new TestSender(context, owner), context, owner), owner, new PassthroughAdvisorNarrator());
         var answer = await handler.Handle(new GetAdvisorAnswerQuery(AdvisorQuestionId.BestSellingProduct, null), CancellationToken.None);
 
         Assert.Contains("Popular", answer.Answer);
@@ -156,7 +156,7 @@ public class AdvisorTests : IDisposable
                 [new SalePaymentInput(PaymentMethod.Cash, 60m, null)]),
             CancellationToken.None);
 
-        var handler = new GetAdvisorAnswerQueryHandler(new TestSender(context, owner), context, owner, new PassthroughAdvisorNarrator());
+        var handler = new GetAdvisorAnswerQueryHandler(new AdvisorCalculations(new TestSender(context, owner), context, owner), owner, new PassthroughAdvisorNarrator());
         var answer = await handler.Handle(new GetAdvisorAnswerQuery(AdvisorQuestionId.WorstPerformingProduct, null), CancellationToken.None);
 
         Assert.Contains("Low Margin", answer.Answer);
@@ -176,7 +176,7 @@ public class AdvisorTests : IDisposable
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(product.Id, 2, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 20m, null)]),
             CancellationToken.None);
 
-        var handler = new GetAdvisorAnswerQueryHandler(new TestSender(context, owner), context, owner, new PassthroughAdvisorNarrator());
+        var handler = new GetAdvisorAnswerQueryHandler(new AdvisorCalculations(new TestSender(context, owner), context, owner), owner, new PassthroughAdvisorNarrator());
         var answer = await handler.Handle(new GetAdvisorAnswerQuery(AdvisorQuestionId.BranchComparison, null), CancellationToken.None);
 
         Assert.Contains("Main Store", answer.Answer);
@@ -189,7 +189,7 @@ public class AdvisorTests : IDisposable
         var owner = seeded.AsOwner();
         var context = _db.CreateContext(owner);
 
-        var handler = new GetAdvisorAnswerQueryHandler(new TestSender(context, owner), context, owner, new PassthroughAdvisorNarrator());
+        var handler = new GetAdvisorAnswerQueryHandler(new AdvisorCalculations(new TestSender(context, owner), context, owner), owner, new PassthroughAdvisorNarrator());
         var answer = await handler.Handle(new GetAdvisorAnswerQuery(AdvisorQuestionId.BranchComparison, null), CancellationToken.None);
 
         Assert.Contains("No branch", answer.Answer);
@@ -210,7 +210,7 @@ public class AdvisorTests : IDisposable
             PermissionsList = ["ai_consultant:use", "reports:view", "sales:view"],
         };
 
-        var handler = new GetAdvisorAnswerQueryHandler(new TestSender(context, branchManager), context, branchManager, new PassthroughAdvisorNarrator());
+        var handler = new GetAdvisorAnswerQueryHandler(new AdvisorCalculations(new TestSender(context, branchManager), context, branchManager), branchManager, new PassthroughAdvisorNarrator());
         var answer = await handler.Handle(new GetAdvisorAnswerQuery(AdvisorQuestionId.BranchComparison, null), CancellationToken.None);
 
         Assert.Contains("scoped to a single branch", answer.Answer);
@@ -240,7 +240,7 @@ public class AdvisorTests : IDisposable
             new CreateSaleCommand(branchB.Id, [new SaleLineInput(product.Id, 1, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 10m, null)]),
             CancellationToken.None);
 
-        var handler = new GetAdvisorAnswerQueryHandler(new TestSender(context, owner), context, owner, new PassthroughAdvisorNarrator());
+        var handler = new GetAdvisorAnswerQueryHandler(new AdvisorCalculations(new TestSender(context, owner), context, owner), owner, new PassthroughAdvisorNarrator());
         var answer = await handler.Handle(new GetAdvisorAnswerQuery(AdvisorQuestionId.BranchComparison, null), CancellationToken.None);
 
         Assert.Contains("Main Store", answer.Answer);
@@ -259,7 +259,7 @@ public class AdvisorTests : IDisposable
         await new CreateExpenseCommandHandler(context, owner).Handle(
             new CreateExpenseCommand(seeded.BranchId, rent.Id, 800m, DateOnly.FromDateTime(DateTime.UtcNow), null), CancellationToken.None);
 
-        var handler = new GetAdvisorAnswerQueryHandler(new TestSender(context, owner), context, owner, new PassthroughAdvisorNarrator());
+        var handler = new GetAdvisorAnswerQueryHandler(new AdvisorCalculations(new TestSender(context, owner), context, owner), owner, new PassthroughAdvisorNarrator());
         var answer = await handler.Handle(new GetAdvisorAnswerQuery(AdvisorQuestionId.TopExpenseCategories, null), CancellationToken.None);
 
         Assert.Contains("Rent", answer.Answer);
@@ -273,7 +273,7 @@ public class AdvisorTests : IDisposable
         var owner = seeded.AsOwner();
         var context = _db.CreateContext(owner);
 
-        var handler = new GetAdvisorAnswerQueryHandler(new TestSender(context, owner), context, owner, new PassthroughAdvisorNarrator());
+        var handler = new GetAdvisorAnswerQueryHandler(new AdvisorCalculations(new TestSender(context, owner), context, owner), owner, new PassthroughAdvisorNarrator());
         var answer = await handler.Handle(new GetAdvisorAnswerQuery(AdvisorQuestionId.TopExpenseCategories, null), CancellationToken.None);
 
         Assert.Contains("No expenses", answer.Answer);
@@ -293,7 +293,7 @@ public class AdvisorTests : IDisposable
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(product.Id, 5, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 50m, null)]),
             CancellationToken.None);
 
-        var handler = new GetAdvisorAnswerQueryHandler(new TestSender(context, owner), context, owner, new PassthroughAdvisorNarrator());
+        var handler = new GetAdvisorAnswerQueryHandler(new AdvisorCalculations(new TestSender(context, owner), context, owner), owner, new PassthroughAdvisorNarrator());
         var answer = await handler.Handle(new GetAdvisorAnswerQuery(AdvisorQuestionId.AmIProfitable, null), CancellationToken.None);
 
         Assert.StartsWith("Yes", answer.Answer);
@@ -318,7 +318,7 @@ public class AdvisorTests : IDisposable
         await new CreateExpenseCommandHandler(context, owner).Handle(
             new CreateExpenseCommand(seeded.BranchId, rent.Id, 500m, DateOnly.FromDateTime(DateTime.UtcNow), null), CancellationToken.None);
 
-        var handler = new GetAdvisorAnswerQueryHandler(new TestSender(context, owner), context, owner, new PassthroughAdvisorNarrator());
+        var handler = new GetAdvisorAnswerQueryHandler(new AdvisorCalculations(new TestSender(context, owner), context, owner), owner, new PassthroughAdvisorNarrator());
         var answer = await handler.Handle(new GetAdvisorAnswerQuery(AdvisorQuestionId.AmIProfitable, null), CancellationToken.None);
 
         Assert.StartsWith("Not yet", answer.Answer);
@@ -358,7 +358,7 @@ public class AdvisorTests : IDisposable
             new GetAdvisorQuestionsQueryHandler(cashier).Handle(new GetAdvisorQuestionsQuery(), CancellationToken.None));
 
         await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
-            new GetAdvisorAnswerQueryHandler(new TestSender(context, cashier), context, cashier, new PassthroughAdvisorNarrator()).Handle(
+            new GetAdvisorAnswerQueryHandler(new AdvisorCalculations(new TestSender(context, cashier), context, cashier), cashier, new PassthroughAdvisorNarrator()).Handle(
                 new GetAdvisorAnswerQuery(AdvisorQuestionId.RevenueThisMonth, null), CancellationToken.None));
     }
 
@@ -379,7 +379,7 @@ public class AdvisorTests : IDisposable
             CancellationToken.None);
 
         var contextA = _db.CreateContext(ownerA);
-        var handler = new GetAdvisorAnswerQueryHandler(new TestSender(contextA, ownerA), contextA, ownerA, new PassthroughAdvisorNarrator());
+        var handler = new GetAdvisorAnswerQueryHandler(new AdvisorCalculations(new TestSender(contextA, ownerA), contextA, ownerA), ownerA, new PassthroughAdvisorNarrator());
         var answer = await handler.Handle(new GetAdvisorAnswerQuery(AdvisorQuestionId.RevenueThisMonth, null), CancellationToken.None);
 
         Assert.Contains("GHS 0.00", answer.Answer);
@@ -409,7 +409,7 @@ public class AdvisorTests : IDisposable
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(product.Id, 5, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 50m, null)]),
             CancellationToken.None);
 
-        var handler = new GetAdvisorAnswerQueryHandler(new TestSender(context, owner), context, owner, new ThrowingAdvisorNarrator());
+        var handler = new GetAdvisorAnswerQueryHandler(new AdvisorCalculations(new TestSender(context, owner), context, owner), owner, new ThrowingAdvisorNarrator());
         var answer = await handler.Handle(new GetAdvisorAnswerQuery(AdvisorQuestionId.RevenueThisMonth, null), CancellationToken.None);
 
         Assert.Contains("GHS 50.00", answer.Answer);

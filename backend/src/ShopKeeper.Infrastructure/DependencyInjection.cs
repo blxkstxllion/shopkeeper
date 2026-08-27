@@ -92,11 +92,18 @@ public static class DependencyInjection
                 client.DefaultRequestHeaders.Add("x-api-key", anthropicApiKey);
                 client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
             });
+            services.AddHttpClient<IAdvisorConversationClient, ClaudeAdvisorConversationClient>(client =>
+            {
+                client.BaseAddress = new Uri("https://api.anthropic.com/");
+                client.DefaultRequestHeaders.Add("x-api-key", anthropicApiKey);
+                client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+            });
         }
         else
         {
             services.AddScoped<IAdvisorNarrator, PassthroughAdvisorNarrator>();
             services.AddScoped<IReportSummarizer, PassthroughReportSummarizer>();
+            services.AddScoped<IAdvisorConversationClient, UnavailableAdvisorConversationClient>();
         }
 
         // Report document rendering (PDF/Word) never depends on Anthropic - always registered,

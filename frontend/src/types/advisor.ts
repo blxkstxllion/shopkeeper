@@ -17,3 +17,7 @@ export interface AdvisorAnswer {
   answer: string
   generatedAt: string
 }
+
+export interface AdvisorCapabilities {
+  freeTextEnabled: boolean
+}
