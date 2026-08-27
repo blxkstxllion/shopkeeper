@@ -23,10 +23,14 @@ public interface IRequirePlanFeature
 /// rejection should never let the handler's own work start. No-op for any request that doesn't
 /// implement IRequirePlanFeature, so this is safe to register globally alongside the other
 /// pipeline behaviors.
+///
+/// `where TRequest : notnull`, not `where TRequest : IRequest{TResponse}` - see the comment on
+/// ValidationBehavior for why the more-specific-looking constraint silently breaks this behavior
+/// for every void IRequest command.
 /// </summary>
 public class RequirePlanTierBehavior<TRequest, TResponse>(IAppDbContext db, ICurrentUserService currentUser)
     : IPipelineBehavior<TRequest, TResponse>
-    where TRequest : IRequest<TResponse>
+    where TRequest : notnull
 {
     public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
     {

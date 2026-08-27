@@ -14,10 +14,15 @@ using ShopKeeper.Domain.Entities;
 /// committed, as a separate save, so a failure here can never roll back or block the real
 /// operation - audit logging is deliberately best-effort and swallow-on-error.
 /// </summary>
+/// <summary>
+/// `where TRequest : notnull`, not `where TRequest : IRequest{TResponse}` - see the comment on
+/// ValidationBehavior for why the more-specific-looking constraint silently breaks this behavior
+/// for every void IRequest command.
+/// </summary>
 public class AuditLoggingBehavior<TRequest, TResponse>(
     IAppDbContext db, ICurrentUserService currentUser, ILogger<AuditLoggingBehavior<TRequest, TResponse>> logger)
     : IPipelineBehavior<TRequest, TResponse>
-    where TRequest : IRequest<TResponse>
+    where TRequest : notnull
 {
     private static readonly HashSet<string> RedactedPropertyNameFragments = new(StringComparer.OrdinalIgnoreCase)
     {

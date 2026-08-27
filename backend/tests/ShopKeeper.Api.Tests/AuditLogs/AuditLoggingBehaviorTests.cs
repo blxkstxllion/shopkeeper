@@ -58,6 +58,28 @@ public class AuditLoggingBehaviorTests : IDisposable
     }
 
     [Fact]
+    public async Task VoidCommand_ThroughPipeline_IsStillAudited()
+    {
+        // Regression test for a real bug (see ValidationBehavior's comment): every pipeline
+        // behavior silently never ran for a plain (void) IRequest command - every other test in
+        // this file happens to use a typed IRequest{T} command, which is exactly why it went
+        // uncaught. ChangePasswordCommand is void.
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var context = _db.CreateContext(owner);
+        var sender = BuildSender(context, owner);
+
+        var user = await context.Users.SingleAsync(u => u.Id == owner.UserId);
+        await sender.Send(new ChangePasswordCommand(owner.UserId!.Value, "Passw0rd!", "NewPassw0rd!"), CancellationToken.None);
+
+        var log = await context.AuditLogs.IgnoreQueryFilters().SingleAsync(l => l.Action == "ChangePassword");
+        Assert.Equal(user.Id, log.UserId);
+        Assert.NotNull(log.NewValue);
+        Assert.DoesNotContain("NewPassw0rd!", log.NewValue);
+        Assert.Contains("[REDACTED]", log.NewValue);
+    }
+
+    [Fact]
     public async Task Command_ThroughPipeline_DoesNotAuditQueries()
     {
         var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
