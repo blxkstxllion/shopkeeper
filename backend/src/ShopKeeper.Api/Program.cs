@@ -15,6 +15,10 @@ using ShopKeeper.Infrastructure;
 using ShopKeeper.Infrastructure.Identity;
 using ShopKeeper.Infrastructure.Persistence;
 
+// Required one-time global setting for QuestPDF (report export PDF rendering) - Community
+// license is free for organizations under $1M USD annual gross revenue, true here.
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
 var builder = WebApplication.CreateBuilder(args);
 
 const string FrontendCorsPolicy = "FrontendCorsPolicy";
@@ -64,7 +68,11 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(frontendOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials();
+            .AllowCredentials()
+            // Response headers are hidden from JS by default unless explicitly exposed - needed
+            // so the report export's real filename (Content-Disposition) reaches the frontend
+            // instead of silently falling back to a client-generated one.
+            .WithExposedHeaders("Content-Disposition");
     });
 });
 
