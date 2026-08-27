@@ -30,4 +30,23 @@ public class UploadsController(ISender mediator) : ControllerBase
         var url = await mediator.Send(new UploadProductImageCommand(stream, file.ContentType), ct);
         return Ok(new { url });
     }
+
+    [HttpPost("profile-photo")]
+    [RequestSizeLimit(MaxFileSizeBytes)]
+    public async Task<ActionResult<object>> UploadProfilePhoto(IFormFile? file, CancellationToken ct)
+    {
+        if (file is null || file.Length == 0)
+        {
+            return BadRequest(new { title = "No file was provided." });
+        }
+
+        if (file.Length > MaxFileSizeBytes)
+        {
+            return BadRequest(new { title = "Images must be 5MB or smaller." });
+        }
+
+        await using var stream = file.OpenReadStream();
+        var url = await mediator.Send(new UploadProfilePhotoCommand(stream, file.ContentType), ct);
+        return Ok(new { url });
+    }
 }
