@@ -5,6 +5,7 @@ import { useBranchContext } from '@/contexts/BranchContext'
 import { ProfitabilityTab } from './ProfitabilityTab'
 import { ExpensesTab } from './ExpensesTab'
 import { InventoryTab } from './InventoryTab'
+import { GenerateReportButton } from './GenerateReportButton'
 import { DateRangePicker, type DateRange } from '@/components/ui/DateRangePicker'
 
 type TabId = 'profitability' | 'expenses' | 'inventory'
@@ -53,22 +54,25 @@ export function ReportsPage() {
         </p>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <DateRangePicker value={range} onChange={setRange} />
-        {canSwitchBranches && (
-          <select
-            value={branchFilter}
-            onChange={(e) => setBranchFilter(e.target.value)}
-            className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
-          >
-            <option value="all">All branches</option>
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
-        )}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <DateRangePicker value={range} onChange={setRange} />
+          {canSwitchBranches && (
+            <select
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
+              className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            >
+              <option value="all">All branches</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+        <GenerateReportButton range={range} branchId={branchId} />
       </div>
 
       <div
