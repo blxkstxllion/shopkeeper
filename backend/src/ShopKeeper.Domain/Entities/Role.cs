@@ -16,6 +16,7 @@ public class Role : BaseEntity, ITenantEntity
     public string Name { get; set; } = default!;
     public string? Description { get; set; }
     public bool IsSystemRole { get; set; }
+    public bool IsActive { get; set; } = true;
 
     public ICollection<RolePermission> RolePermissions { get; set; } = new List<RolePermission>();
     public ICollection<BusinessUser> BusinessUsers { get; set; } = new List<BusinessUser>();

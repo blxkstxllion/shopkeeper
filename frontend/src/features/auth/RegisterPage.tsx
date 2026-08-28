@@ -47,15 +47,26 @@ export function RegisterPage() {
 
   return (
     <Card className="p-6">
+      <h1 className="mb-4 text-center text-lg font-semibold text-slate-900 dark:text-slate-100">Create your account</h1>
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         {serverError && <Alert tone="error">{serverError}</Alert>}
 
         <div className="grid grid-cols-2 gap-3">
           <FormField label="First name" htmlFor="firstName" error={errors.firstName?.message}>
-            <Input id="firstName" autoComplete="given-name" {...register('firstName')} error={errors.firstName?.message} />
+            <Input
+              id="firstName"
+              autoComplete="given-name"
+              {...register('firstName')}
+              error={errors.firstName?.message}
+            />
           </FormField>
           <FormField label="Last name" htmlFor="lastName" error={errors.lastName?.message}>
-            <Input id="lastName" autoComplete="family-name" {...register('lastName')} error={errors.lastName?.message} />
+            <Input
+              id="lastName"
+              autoComplete="family-name"
+              {...register('lastName')}
+              error={errors.lastName?.message}
+            />
           </FormField>
         </div>
 

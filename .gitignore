@@ -8,6 +8,7 @@ frontend/.vite/
 .env.*
 !.env.example
 !frontend/.env.development
+!frontend/.env.tauri
 
 # --- .NET / Backend ---
 backend/**/bin/
@@ -30,3 +31,6 @@ Thumbs.db
 
 # --- Uploaded / local storage ---
 backend/**/App_Data/uploads/
+
+# --- Playwright MCP (screenshots/snapshots dropped in the repo root during manual QA) ---
+.playwright-mcp/

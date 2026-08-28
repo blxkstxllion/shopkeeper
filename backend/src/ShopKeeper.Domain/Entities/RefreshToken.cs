@@ -19,6 +19,7 @@ public class RefreshToken : BaseEntity
     public DateTimeOffset ExpiresAt { get; set; }
 
     public string? CreatedByIp { get; set; }
+    public string? UserAgent { get; set; }
     public DateTimeOffset? RevokedAt { get; set; }
     public string? RevokedByIp { get; set; }
     public Guid? ReplacedByTokenId { get; set; }

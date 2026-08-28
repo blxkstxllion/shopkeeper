@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Building2, ChevronRight } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/Card'
@@ -9,6 +9,8 @@ import { ApiError } from '@/lib/api-client'
 export function SelectBusinessPage() {
   const { user, selectBusiness } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const redirectTo = searchParams.get('redirect')
   const [error, setError] = useState<string | null>(null)
   const [pendingId, setPendingId] = useState<string | null>(null)
 
@@ -19,7 +21,7 @@ export function SelectBusinessPage() {
     setPendingId(businessId)
     try {
       await selectBusiness(businessId)
-      navigate('/app', { replace: true })
+      navigate(redirectTo || '/app', { replace: true })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Unable to switch businesses. Please try again.')
     } finally {

@@ -14,6 +14,7 @@ public class RoleConfiguration : IEntityTypeConfiguration<Role>
         builder.HasIndex(r => new { r.BusinessId, r.Name }).IsUnique();
         builder.Property(r => r.Name).HasMaxLength(100).IsRequired();
         builder.Property(r => r.Description).HasMaxLength(500);
+        builder.Property(r => r.IsActive).HasDefaultValue(true);
     }
 }
 

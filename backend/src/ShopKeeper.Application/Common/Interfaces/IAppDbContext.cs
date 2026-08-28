@@ -21,5 +21,24 @@ public interface IAppDbContext
     DbSet<AuditLog> AuditLogs { get; }
     DbSet<BusinessSetting> BusinessSettings { get; }
 
+    DbSet<ProductCategory> ProductCategories { get; }
+    DbSet<Supplier> Suppliers { get; }
+    DbSet<Customer> Customers { get; }
+    DbSet<Product> Products { get; }
+    DbSet<ProductStock> ProductStocks { get; }
+    DbSet<InventoryTransaction> InventoryTransactions { get; }
+    DbSet<Sale> Sales { get; }
+    DbSet<SaleItem> SaleItems { get; }
+    DbSet<Payment> Payments { get; }
+    DbSet<Refund> Refunds { get; }
+    DbSet<RefundItem> RefundItems { get; }
+    DbSet<ExpenseCategory> ExpenseCategories { get; }
+    DbSet<Expense> Expenses { get; }
+    DbSet<PendingInvitation> PendingInvitations { get; }
+    DbSet<JoinRequest> JoinRequests { get; }
+    DbSet<Notification> Notifications { get; }
+    DbSet<NotificationPreference> NotificationPreferences { get; }
+    DbSet<PaystackWebhookEvent> PaystackWebhookEvents { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

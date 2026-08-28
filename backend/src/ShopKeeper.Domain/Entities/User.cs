@@ -14,6 +14,7 @@ public class User : BaseEntity
     public string FirstName { get; set; } = default!;
     public string LastName { get; set; } = default!;
     public string? PhoneNumber { get; set; }
+    public string? PhotoUrl { get; set; }
 
     public bool IsEmailVerified { get; set; }
     public string? EmailVerificationToken { get; set; }
@@ -24,6 +25,17 @@ public class User : BaseEntity
 
     public bool IsActive { get; set; } = true;
     public DateTimeOffset? LastLoginAt { get; set; }
+
+    public bool TwoFactorEnabled { get; set; }
+
+    /// <summary>Base32 TOTP secret. Set as soon as setup starts (even before confirmation) - an
+    /// unconfirmed secret is harmless since TwoFactorEnabled stays false until /2fa/enable
+    /// verifies a real code against it. Overwritten if setup is restarted or abandoned.</summary>
+    public string? TwoFactorSecret { get; set; }
+
+    /// <summary>JSON array of bcrypt-hashed one-time recovery codes (never stored in plaintext) -
+    /// each is removed from this list the moment it's redeemed.</summary>
+    public string? TwoFactorRecoveryCodesJson { get; set; }
 
     public ICollection<BusinessUser> BusinessUsers { get; set; } = new List<BusinessUser>();
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
