@@ -8,6 +8,7 @@ frontend/.vite/
 .env.*
 !.env.example
 !frontend/.env.development
+!frontend/.env.tauri
 
 # --- .NET / Backend ---
 backend/**/bin/

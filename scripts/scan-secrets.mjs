@@ -18,6 +18,8 @@ const patterns = [
 
 const allowlistPathFragments = [
   '.env.example',
+  'frontend/.env.development', // no secret - just a localhost API URL, mirrors .env.example's role
+  'frontend/.env.tauri', // no secret - just the production API's public URL for the desktop build
   'scan-secrets.mjs', // this file necessarily contains the pattern text above
 ];
 
