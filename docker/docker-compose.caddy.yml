@@ -33,6 +33,9 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
+      # Testing-phase APK/Windows-installer downloads - a plain host directory, not a
+      # named volume, so files can be scp'd in directly without touching the container.
+      - ./downloads:/srv/downloads:ro
     networks: [public-web]
 
 networks:

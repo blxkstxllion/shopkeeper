@@ -20,5 +20,16 @@
 }
 
 app.{$ROOT_DOMAIN} {
-	reverse_proxy shopkeeper-frontend:8080
+	# Testing-phase APK/installer distribution - static files, not baked into the
+	# versioned frontend image, so shipping a new test build never needs a CI rebuild.
+	# No directory browsing (explicit file_server, no `browse`) - only exact, known
+	# file paths are servable. Range requests work out of the box (Caddy's file_server
+	# default), which matters on unreliable mobile connections.
+	handle_path /downloads/* {
+		root * /srv/downloads
+		file_server
+	}
+	handle {
+		reverse_proxy shopkeeper-frontend:8080
+	}
 }

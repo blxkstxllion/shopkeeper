@@ -50,6 +50,10 @@ services:
       Jwt__Audience: ${JWT_AUDIENCE:-ShopKeeperClient}
       Jwt__Secret: ${JWT_SECRET:?JWT_SECRET must be set - see .env.example}
       Cors__AllowedOrigins__0: ${CORS_ALLOWED_ORIGIN:-http://localhost:5173}
+      # Optional second allowed origin - e.g. the Tauri desktop app's fixed webview origin
+      # (https://tauri.localhost as of Tauri v2). Empty is a harmless no-op entry - no real
+      # browser ever sends an empty Origin header, so nothing matches it accidentally.
+      Cors__AllowedOrigins__1: ${CORS_ALLOWED_ORIGIN_2:-}
     depends_on:
       postgres:
         condition: service_healthy
