@@ -1,0 +1,97 @@
+# Production overlay: runs the exact, already-tested images promoted from
+# staging - never rebuilds application code on the server.
+#
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.prod.yml up -d
+#
+# Requires IMAGE_OWNER (your GHCR namespace, i.e. the GitHub org/user - see
+# .env.example) and API_IMAGE_TAG / FRONTEND_IMAGE_TAG (an immutable version or
+# commit SHA, never "latest") to be set. The `build:` keys are intentionally
+# left inherited from the base file so `docker compose build` still works for
+# local prod-image testing, but normal `up`/`pull` here uses `image:` and never
+# rebuilds from source.
+
+services:
+  postgres:
+    restart: unless-stopped
+    # No host port published: only other containers on shopkeeper-network can reach it.
+
+  redis:
+    restart: unless-stopped
+    # No host port published, same reasoning as postgres.
+
+  api:
+    image: ghcr.io/${IMAGE_OWNER:?IMAGE_OWNER must be set}/shopkeeper-api:${API_IMAGE_TAG:?API_IMAGE_TAG must be an immutable version or commit SHA}
+    restart: unless-stopped
+    # List style (not the KEY: value map style used elsewhere in this repo) specifically so
+    # AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY below can use bare-name passthrough - Compose's
+    # map-style `${VAR:-}` always sets the container's env var to an empty string when VAR is
+    # unset, which is NOT the same as the var being absent. The AWS SDK's default credential
+    # chain does not reliably skip a present-but-empty AWS_ACCESS_KEY_ID the way it skips a
+    # fully absent one, so on a real EC2 host (where these are meant to stay unset so the SDK
+    # falls through to the instance role) the map style would silently break that fallback.
+    # Bare-name list entries (no `=value`) are the one Compose syntax that actually omits the
+    # variable from the container when it isn't set in .env - verified locally before relying
+    # on it here (`docker compose run` + `env | grep`, present-but-empty vs. truly absent).
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      # Presence of Email__FromAddress is what switches DependencyInjection.AddInfrastructure
+      # from the dev-only LoggingEmailSender to the real SesEmailSender - see
+      # backend/src/ShopKeeper.Infrastructure/DependencyInjection.cs. The AWS SDK client is
+      # constructed with no explicit credentials, so it uses the default credential chain:
+      # these two env vars first if set, otherwise (on a real EC2 host) the instance role -
+      # see README's deployment section. Leave both unset in .env on EC2 so no AWS secret
+      # needs to be managed as a ShopKeeper secret at all; set them on any non-AWS host (e.g.
+      # a Hetzner/DigitalOcean VPS), since there's no instance metadata service to fall back to.
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
+      - Email__FromAddress=${EMAIL_FROM_ADDRESS:?EMAIL_FROM_ADDRESS must be set - see .env.example}
+      - Email__FromName=${EMAIL_FROM_NAME:-The Shop Keeper}
+      - Email__Region=${AWS_REGION:-us-east-1}
+      - Email__FrontendBaseUrl=https://${DOMAIN:?DOMAIN must be set - see .env.example}
+      # Deliberately NOT :? required, unlike Email/JWT above - a fresh deployment must not
+      # hard-fail before the 4 Paystack Plans even exist in the dashboard yet. Presence of
+      # Paystack__SecretKey is what switches SetPlanTierCommand off today's fully self-serve
+      # behavior - see backend/src/ShopKeeper.Infrastructure/DependencyInjection.cs.
+      - Paystack__SecretKey=${PAYSTACK_SECRET_KEY:-}
+      - Paystack__BusinessPlanCode=${PAYSTACK_BUSINESS_PLAN_CODE:-}
+      - Paystack__BusinessAiPlanCode=${PAYSTACK_BUSINESS_AI_PLAN_CODE:-}
+      - Paystack__EnterprisePlanCode=${PAYSTACK_ENTERPRISE_PLAN_CODE:-}
+      - Paystack__EnterpriseAiPlanCode=${PAYSTACK_ENTERPRISE_AI_PLAN_CODE:-}
+      - Paystack__FrontendBaseUrl=https://${DOMAIN:?DOMAIN must be set - see .env.example}
+      # Deliberately NOT :? required, same reasoning as Paystack above - presence of
+      # Anthropic__ApiKey is what switches the AI Advisor off today's plain-template answers.
+      - Anthropic__ApiKey=${ANTHROPIC_API_KEY:-}
+    volumes:
+      # The `final` Docker stage's WORKDIR is /app, so LocalFileStorageService's
+      # {ContentRoot}/App_Data/uploads resolves there. Without this volume, every
+      # redeploy recreates the container filesystem from scratch and silently
+      # deletes every uploaded product image - dev doesn't need this because its
+      # source (and App_Data) is bind-mounted from the host already.
+      - uploads-data:/app/App_Data/uploads
+    # Not published to the host directly - the shared Caddy instance
+    # (docker-compose.caddy.yml) is the only public entry point; it reverse-proxies
+    # through the frontend's Nginx, which in turn reverse-proxies /api/* to this service.
+
+  frontend:
+    image: ghcr.io/${IMAGE_OWNER:?IMAGE_OWNER must be set}/shopkeeper-frontend:${FRONTEND_IMAGE_TAG:?FRONTEND_IMAGE_TAG must be an immutable version or commit SHA}
+    restart: unless-stopped
+    # No host port published - the shared Caddy instance (docker-compose.caddy.yml, its
+    # own compose project) is the sole public entry point and terminates TLS in front of
+    # this container's own Nginx. Joins the external `public-web` network (created once
+    # with `docker network create public-web`) in addition to shopkeeper-network, so Caddy
+    # can reach it - see docker/Caddyfile. The explicit alias matters: Omni Fix Labs' own
+    # frontend service is also just named "frontend" in its own compose project, so without
+    # an alias here, both containers would register the same "frontend" DNS name on the
+    # shared network - which one Caddy actually reached would be undefined.
+    networks:
+      shopkeeper-network:
+      public-web:
+        aliases:
+          - shopkeeper-frontend
+
+networks:
+  public-web:
+    external: true
+
+volumes:
+  uploads-data:

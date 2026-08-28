@@ -1,0 +1,47 @@
+# The single, shared TLS-terminating entry point for every app on this host - only one
+# process can bind ports 80/443, so Caddy lives in its own compose project here rather
+# than inside any one app's stack. Both Shop Keeper's frontend (docker-compose.prod.yml)
+# and Omni Fix Labs' frontend join the external `public-web` network so Caddy can reach
+# them by service/container name; this project touches nothing else about either app.
+#
+# One-time setup on a fresh host, before the first `up`:
+#   docker network create public-web
+#
+#   docker compose -f docker/docker-compose.caddy.yml --env-file .env up -d
+#
+# ROOT_DOMAIN is deliberately a different variable from Shop Keeper's own DOMAIN (used
+# in docker-compose.prod.yml for Email__FrontendBaseUrl, Paystack callback URLs, etc.) -
+# even when both projects' .env files are the same file on disk, they need different
+# values here: ROOT_DOMAIN is the bare domain (e.g. omnifixlabs.com, what Omni Fix Labs'
+# site block serves), while Shop Keeper's own DOMAIN is its actual public hostname, the
+# app. subdomain (e.g. app.omnifixlabs.com). Reusing one variable for both would silently
+# point Shop Keeper's emails/webhooks at the wrong host.
+
+name: caddy
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      ROOT_DOMAIN: ${ROOT_DOMAIN:?ROOT_DOMAIN must be set - see .env.example}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL must be set - Let's Encrypt uses it for expiry/problem notices}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+      # Testing-phase APK/Windows-installer downloads - a plain host directory, not a
+      # named volume, so files can be scp'd in directly without touching the container.
+      - ./downloads:/srv/downloads:ro
+    networks: [public-web]
+
+networks:
+  public-web:
+    external: true
+
+volumes:
+  caddy-data:
+  caddy-config:

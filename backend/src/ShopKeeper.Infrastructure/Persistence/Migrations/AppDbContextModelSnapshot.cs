@@ -17,7 +17,7 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.10")
+                .HasAnnotation("ProductVersion", "8.0.30")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -136,6 +136,10 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<string>("ColorTheme")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("Country")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -148,6 +152,12 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(3)
                         .HasColumnType("character varying(3)");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("HasUnlimitedInventoryAddOn")
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
@@ -172,6 +182,37 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("OnboardingStep")
                         .HasColumnType("integer");
+
+                    b.Property<string>("OwnerBio")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("PaystackCurrentPeriodEnd")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PaystackCustomerCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("PaystackSubscriptionCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("PaystackSubscriptionEmailToken")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("PaystackSubscriptionPlanCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("PaystackSubscriptionStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("PlanTier")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("TimeZone")
                         .IsRequired()
@@ -203,6 +244,17 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                     b.Property<string>("Goals")
                         .HasColumnType("text");
 
+                    b.Property<string>("JoinCode")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<int>("NextSaleNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
                     b.Property<bool>("TaxEnabled")
                         .HasColumnType("boolean");
 
@@ -222,6 +274,9 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("BusinessId")
+                        .IsUnique();
+
+                    b.HasIndex("JoinCode")
                         .IsUnique();
 
                     b.ToTable("BusinessSettings", (string)null);
@@ -277,6 +332,442 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("BusinessUsers", (string)null);
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.Customer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Address")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("BusinessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Phone")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessId", "Name");
+
+                    b.ToTable("Customers", (string)null);
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.Expense", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid?>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BusinessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("ExpenseCategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("ExpenseDate")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("ExpenseCategoryId");
+
+                    b.HasIndex("BusinessId", "ExpenseDate");
+
+                    b.ToTable("Expenses", (string)null);
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.ExpenseCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BusinessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessId", "Name");
+
+                    b.ToTable("ExpenseCategories", (string)null);
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.InventoryTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BusinessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("QuantityAfter")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("QuantityChange")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid?>("ReferenceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ReferenceType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("BusinessId", "ProductId", "BranchId", "CreatedAt");
+
+                    b.ToTable("InventoryTransactions", (string)null);
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.JoinRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BusinessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReviewedByUserId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("BusinessId", "Status");
+
+                    b.HasIndex("BusinessId", "UserId")
+                        .IsUnique()
+                        .HasFilter("\"Status\" = 'Pending'");
+
+                    b.ToTable("JoinRequests", (string)null);
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BusinessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Link")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessId");
+
+                    b.HasIndex("UserId", "ReadAt", "CreatedAt");
+
+                    b.ToTable("Notifications", (string)null);
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.NotificationPreference", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BusinessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("NotifyOnJoinRequest")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("NotifyOnLowStock")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("BusinessId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("NotificationPreferences", (string)null);
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.Payment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("BusinessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("ReferenceNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("SaleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessId");
+
+                    b.HasIndex("SaleId");
+
+                    b.ToTable("Payments", (string)null);
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.PaystackWebhookEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("RawPayloadHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RawPayloadHash")
+                        .IsUnique();
+
+                    b.ToTable("PaystackWebhookEvents", (string)null);
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.PendingInvitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("AcceptedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BusinessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("InvitedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("InvitedByUserId");
+
+                    b.HasIndex("RoleId");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("BusinessId", "Email")
+                        .IsUnique()
+                        .HasFilter("\"AcceptedAt\" IS NULL");
+
+                    b.ToTable("PendingInvitations", (string)null);
                 });
 
             modelBuilder.Entity("ShopKeeper.Domain.Entities.Permission", b =>
@@ -490,6 +981,156 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.Product", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Barcode")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("BusinessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("CostPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("MinStock")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("ReorderLevel")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("SellingPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Sku")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid?>("SupplierId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("TrackInventory")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("SupplierId");
+
+                    b.HasIndex("BusinessId", "Barcode");
+
+                    b.HasIndex("BusinessId", "Name");
+
+                    b.HasIndex("BusinessId", "Sku")
+                        .IsUnique();
+
+                    b.ToTable("Products", (string)null);
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.ProductCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BusinessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessId", "Name");
+
+                    b.ToTable("ProductCategories", (string)null);
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.ProductStock", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BusinessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("QuantityOnHand")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("BusinessId");
+
+                    b.HasIndex("ProductId", "BranchId")
+                        .IsUnique();
+
+                    b.ToTable("ProductStocks", (string)null);
+                });
+
             modelBuilder.Entity("ShopKeeper.Domain.Entities.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -527,6 +1168,9 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("UserAgent")
+                        .HasColumnType("text");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
@@ -538,6 +1182,90 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("RefreshTokens", (string)null);
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.Refund", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BusinessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ProcessedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("RefundNumber")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Guid>("SaleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("SaleId");
+
+                    b.HasIndex("BusinessId", "RefundNumber")
+                        .IsUnique();
+
+                    b.ToTable("Refunds", (string)null);
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.RefundItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("RefundId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SaleItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RefundId");
+
+                    b.HasIndex("SaleItemId");
+
+                    b.ToTable("RefundItems", (string)null);
                 });
 
             modelBuilder.Entity("ShopKeeper.Domain.Entities.Role", b =>
@@ -555,6 +1283,11 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                     b.Property<string>("Description")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
 
                     b.Property<bool>("IsSystemRole")
                         .HasColumnType("boolean");
@@ -588,6 +1321,206 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                     b.HasIndex("PermissionId");
 
                     b.ToTable("RolePermissions", (string)null);
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.Sale", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BusinessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CashierUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ClientRequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("DiscountAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("GrossProfit")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("SaleNumber")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<decimal>("Subtotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("TotalCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("VoidReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTimeOffset?>("VoidedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("VoidedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("CashierUserId");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("BusinessId", "ClientRequestId")
+                        .IsUnique()
+                        .HasFilter("\"ClientRequestId\" IS NOT NULL");
+
+                    b.HasIndex("BusinessId", "SaleNumber")
+                        .IsUnique();
+
+                    b.HasIndex("BusinessId", "BranchId", "CreatedAt");
+
+                    b.ToTable("Sales", (string)null);
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.SaleItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("DiscountAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("LineCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("LineProfit")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("LineRevenue")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ProductNameSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RefundedQuantity")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("SaleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SkuSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<decimal>("UnitCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("SaleId");
+
+                    b.ToTable("SaleItems", (string)null);
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.Supplier", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Address")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("BusinessId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContactName")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Phone")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessId", "Name");
+
+                    b.ToTable("Suppliers", (string)null);
                 });
 
             modelBuilder.Entity("ShopKeeper.Domain.Entities.User", b =>
@@ -642,6 +1575,18 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
+
+                    b.Property<string>("PhotoUrl")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("TwoFactorEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("TwoFactorRecoveryCodesJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("TwoFactorSecret")
+                        .HasColumnType("text");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -710,6 +1655,269 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.Customer", b =>
+                {
+                    b.HasOne("ShopKeeper.Domain.Entities.Business", "Business")
+                        .WithMany()
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Business");
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.Expense", b =>
+                {
+                    b.HasOne("ShopKeeper.Domain.Entities.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("ShopKeeper.Domain.Entities.Business", "Business")
+                        .WithMany()
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ShopKeeper.Domain.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ShopKeeper.Domain.Entities.ExpenseCategory", "ExpenseCategory")
+                        .WithMany("Expenses")
+                        .HasForeignKey("ExpenseCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("Business");
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("ExpenseCategory");
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.ExpenseCategory", b =>
+                {
+                    b.HasOne("ShopKeeper.Domain.Entities.Business", "Business")
+                        .WithMany()
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Business");
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.InventoryTransaction", b =>
+                {
+                    b.HasOne("ShopKeeper.Domain.Entities.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ShopKeeper.Domain.Entities.Business", "Business")
+                        .WithMany()
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ShopKeeper.Domain.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("Business");
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.JoinRequest", b =>
+                {
+                    b.HasOne("ShopKeeper.Domain.Entities.Business", "Business")
+                        .WithMany()
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ShopKeeper.Domain.Entities.User", "ReviewedByUser")
+                        .WithMany()
+                        .HasForeignKey("ReviewedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ShopKeeper.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Business");
+
+                    b.Navigation("ReviewedByUser");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.Notification", b =>
+                {
+                    b.HasOne("ShopKeeper.Domain.Entities.Business", "Business")
+                        .WithMany()
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ShopKeeper.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Business");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.NotificationPreference", b =>
+                {
+                    b.HasOne("ShopKeeper.Domain.Entities.Business", "Business")
+                        .WithMany()
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ShopKeeper.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Business");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.Payment", b =>
+                {
+                    b.HasOne("ShopKeeper.Domain.Entities.Business", "Business")
+                        .WithMany()
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ShopKeeper.Domain.Entities.Sale", "Sale")
+                        .WithMany("Payments")
+                        .HasForeignKey("SaleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Business");
+
+                    b.Navigation("Sale");
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.PendingInvitation", b =>
+                {
+                    b.HasOne("ShopKeeper.Domain.Entities.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("ShopKeeper.Domain.Entities.Business", "Business")
+                        .WithMany()
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ShopKeeper.Domain.Entities.User", "InvitedByUser")
+                        .WithMany()
+                        .HasForeignKey("InvitedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ShopKeeper.Domain.Entities.Role", "Role")
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("Business");
+
+                    b.Navigation("InvitedByUser");
+
+                    b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.Product", b =>
+                {
+                    b.HasOne("ShopKeeper.Domain.Entities.Business", "Business")
+                        .WithMany()
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ShopKeeper.Domain.Entities.ProductCategory", "Category")
+                        .WithMany("Products")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("ShopKeeper.Domain.Entities.Supplier", "Supplier")
+                        .WithMany("Products")
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Business");
+
+                    b.Navigation("Category");
+
+                    b.Navigation("Supplier");
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.ProductCategory", b =>
+                {
+                    b.HasOne("ShopKeeper.Domain.Entities.Business", "Business")
+                        .WithMany()
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Business");
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.ProductStock", b =>
+                {
+                    b.HasOne("ShopKeeper.Domain.Entities.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ShopKeeper.Domain.Entities.Business", "Business")
+                        .WithMany()
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ShopKeeper.Domain.Entities.Product", "Product")
+                        .WithMany("StockByBranch")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("Business");
+
+                    b.Navigation("Product");
+                });
+
             modelBuilder.Entity("ShopKeeper.Domain.Entities.RefreshToken", b =>
                 {
                     b.HasOne("ShopKeeper.Domain.Entities.User", "User")
@@ -719,6 +1927,52 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.Refund", b =>
+                {
+                    b.HasOne("ShopKeeper.Domain.Entities.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ShopKeeper.Domain.Entities.Business", "Business")
+                        .WithMany()
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ShopKeeper.Domain.Entities.Sale", "Sale")
+                        .WithMany("Refunds")
+                        .HasForeignKey("SaleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("Business");
+
+                    b.Navigation("Sale");
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.RefundItem", b =>
+                {
+                    b.HasOne("ShopKeeper.Domain.Entities.Refund", "Refund")
+                        .WithMany("Items")
+                        .HasForeignKey("RefundId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ShopKeeper.Domain.Entities.SaleItem", "SaleItem")
+                        .WithMany()
+                        .HasForeignKey("SaleItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Refund");
+
+                    b.Navigation("SaleItem");
                 });
 
             modelBuilder.Entity("ShopKeeper.Domain.Entities.Role", b =>
@@ -751,6 +2005,70 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                     b.Navigation("Role");
                 });
 
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.Sale", b =>
+                {
+                    b.HasOne("ShopKeeper.Domain.Entities.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ShopKeeper.Domain.Entities.Business", "Business")
+                        .WithMany()
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ShopKeeper.Domain.Entities.User", "CashierUser")
+                        .WithMany()
+                        .HasForeignKey("CashierUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ShopKeeper.Domain.Entities.Customer", "Customer")
+                        .WithMany("Sales")
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("Business");
+
+                    b.Navigation("CashierUser");
+
+                    b.Navigation("Customer");
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.SaleItem", b =>
+                {
+                    b.HasOne("ShopKeeper.Domain.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ShopKeeper.Domain.Entities.Sale", "Sale")
+                        .WithMany("Items")
+                        .HasForeignKey("SaleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+
+                    b.Navigation("Sale");
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.Supplier", b =>
+                {
+                    b.HasOne("ShopKeeper.Domain.Entities.Business", "Business")
+                        .WithMany()
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Business");
+                });
+
             modelBuilder.Entity("ShopKeeper.Domain.Entities.Business", b =>
                 {
                     b.Navigation("Branches");
@@ -762,9 +2080,34 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                     b.Navigation("Setting");
                 });
 
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.Customer", b =>
+                {
+                    b.Navigation("Sales");
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.ExpenseCategory", b =>
+                {
+                    b.Navigation("Expenses");
+                });
+
             modelBuilder.Entity("ShopKeeper.Domain.Entities.Permission", b =>
                 {
                     b.Navigation("RolePermissions");
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.Product", b =>
+                {
+                    b.Navigation("StockByBranch");
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.ProductCategory", b =>
+                {
+                    b.Navigation("Products");
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.Refund", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("ShopKeeper.Domain.Entities.Role", b =>
@@ -772,6 +2115,20 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                     b.Navigation("BusinessUsers");
 
                     b.Navigation("RolePermissions");
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.Sale", b =>
+                {
+                    b.Navigation("Items");
+
+                    b.Navigation("Payments");
+
+                    b.Navigation("Refunds");
+                });
+
+            modelBuilder.Entity("ShopKeeper.Domain.Entities.Supplier", b =>
+                {
+                    b.Navigation("Products");
                 });
 
             modelBuilder.Entity("ShopKeeper.Domain.Entities.User", b =>

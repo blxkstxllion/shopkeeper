@@ -14,12 +14,17 @@ import * as onboardingApi from '@/api/onboarding'
 import type { BusinessGoal, BusinessType } from '@/types/business'
 import {
   businessTypes,
+  countries,
+  currencies,
   goalOptions,
   onboardingDefaults,
   onboardingSchema,
   stepFields,
+  suggestedColorThemeByBusinessType,
   type OnboardingFormValues,
 } from './onboarding.schema'
+
+const COLOR_THEME_LABELS: Record<'blue' | 'red', string> = { blue: 'Blue', red: 'Red' }
 
 const steps = ['Business', 'First branch', 'Tax settings', 'Goals', 'Review']
 
@@ -29,6 +34,10 @@ export function OnboardingPage() {
   const [step, setStep] = useState(0)
   const [serverError, setServerError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // Which businessType the color-theme suggestion banner was already answered for - prevents it
+  // re-appearing every render while the same type stays selected, but shows again if the user
+  // changes to a different suggested type.
+  const [respondedColorSuggestionFor, setRespondedColorSuggestionFor] = useState<string | null>(null)
 
   const {
     register,
@@ -44,6 +53,14 @@ export function OnboardingPage() {
   })
 
   const values = watch()
+
+  const colorSuggestion = suggestedColorThemeByBusinessType[values.businessType]
+  const showColorSuggestion = Boolean(colorSuggestion) && respondedColorSuggestionFor !== values.businessType
+
+  const respondToColorSuggestion = (accept: boolean) => {
+    setValue('colorTheme', accept && colorSuggestion ? colorSuggestion : 'green', { shouldDirty: true })
+    setRespondedColorSuggestionFor(values.businessType)
+  }
 
   const goNext = async () => {
     const fields = stepFields[step]
@@ -76,6 +93,7 @@ export function OnboardingPage() {
         firstBranchName: data.firstBranchName,
         firstBranchAddress: data.firstBranchAddress || null,
         firstBranchCity: data.firstBranchCity || null,
+        colorTheme: data.colorTheme,
       })
 
       completeOnboarding(result, result.user)
@@ -105,7 +123,8 @@ export function OnboardingPage() {
                 className={clsx(
                   'flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold',
                   i < step && 'bg-primary-600 text-white',
-                  i === step && 'bg-primary-100 text-primary-700 ring-2 ring-primary-600 dark:bg-primary-900/40 dark:text-primary-300',
+                  i === step &&
+                    'bg-primary-100 text-primary-700 ring-2 ring-primary-600 dark:bg-primary-900/40 dark:text-primary-300',
                   i > step && 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-500',
                 )}
               >
@@ -138,12 +157,54 @@ export function OnboardingPage() {
                     ))}
                   </select>
                 </FormField>
+                {showColorSuggestion && colorSuggestion && (
+                  <Alert tone="info">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span>
+                        Businesses like yours often use the {COLOR_THEME_LABELS[colorSuggestion]} theme. Use it?
+                      </span>
+                      <div className="flex gap-2">
+                        <Button type="button" size="sm" onClick={() => respondToColorSuggestion(true)}>
+                          Use it
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => respondToColorSuggestion(false)}
+                        >
+                          Keep green
+                        </Button>
+                      </div>
+                    </div>
+                  </Alert>
+                )}
                 <div className="grid grid-cols-2 gap-3">
                   <FormField label="Country" htmlFor="country" error={errors.country?.message}>
-                    <Input id="country" {...register('country')} error={errors.country?.message} />
+                    <select
+                      id="country"
+                      {...register('country')}
+                      className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                    >
+                      {countries.map((c) => (
+                        <option key={c.value} value={c.value}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
                   </FormField>
-                  <FormField label="Currency code" htmlFor="currencyCode" error={errors.currencyCode?.message} hint="e.g. GHS, USD">
-                    <Input id="currencyCode" maxLength={3} {...register('currencyCode')} error={errors.currencyCode?.message} />
+                  <FormField label="Currency" htmlFor="currencyCode" error={errors.currencyCode?.message}>
+                    <select
+                      id="currencyCode"
+                      {...register('currencyCode')}
+                      className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                    >
+                      {currencies.map((c) => (
+                        <option key={c.value} value={c.value}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
                   </FormField>
                 </div>
               </>
@@ -151,8 +212,17 @@ export function OnboardingPage() {
 
             {step === 1 && (
               <>
-                <FormField label="Branch name" htmlFor="firstBranchName" error={errors.firstBranchName?.message} hint="e.g. Main Store, Accra Branch">
-                  <Input id="firstBranchName" {...register('firstBranchName')} error={errors.firstBranchName?.message} />
+                <FormField
+                  label="Branch name"
+                  htmlFor="firstBranchName"
+                  error={errors.firstBranchName?.message}
+                  hint="e.g. Main Store, Accra Branch"
+                >
+                  <Input
+                    id="firstBranchName"
+                    {...register('firstBranchName')}
+                    error={errors.firstBranchName?.message}
+                  />
                 </FormField>
                 <FormField label="Address (optional)" htmlFor="firstBranchAddress">
                   <Input id="firstBranchAddress" {...register('firstBranchAddress')} />
@@ -166,7 +236,11 @@ export function OnboardingPage() {
             {step === 2 && (
               <>
                 <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                  <input type="checkbox" {...register('taxEnabled')} className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" />
+                  <input
+                    type="checkbox"
+                    {...register('taxEnabled')}
+                    className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                  />
                   Charge tax on sales
                 </label>
 
@@ -215,7 +289,9 @@ export function OnboardingPage() {
                         <div
                           className={clsx(
                             'flex h-4 w-4 shrink-0 items-center justify-center rounded border',
-                            checked ? 'border-primary-600 bg-primary-600 text-white' : 'border-slate-300 dark:border-slate-600',
+                            checked
+                              ? 'border-primary-600 bg-primary-600 text-white'
+                              : 'border-slate-300 dark:border-slate-600',
                           )}
                         >
                           {checked && <Check className="h-3 w-3" />}

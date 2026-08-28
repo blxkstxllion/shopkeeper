@@ -1,19 +1,35 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import * as authApi from '@/api/auth'
+import { dedupedRefresh } from '@/lib/api-client'
 import { setAccessToken, onAccessTokenChange } from '@/lib/token-store'
-import type { User, UserBusiness } from '@/types/auth'
+import { clearOfflineDb } from '@/offline/db'
+import { setActiveCurrencyCode } from '@/lib/format'
+import { applyColorTheme } from '@/lib/colorTheme'
+import type { AuthResult, User, UserBusiness } from '@/types/auth'
 import type { Business } from '@/types/business'
 
-interface AuthContextValue {
+/** Either a completed login, or a signal that the caller must now collect a 2FA code. */
+type LoginOutcome = { requiresTwoFactor: true; challengeToken: string } | { requiresTwoFactor: false; user: User }
+
+export interface AuthContextValue {
   user: User | null
   /** The business the current access token is scoped to, or null if the user hasn't picked one yet (e.g. multi-business login). */
   activeBusiness: UserBusiness | null
   isInitializing: boolean
-  login: (email: string, password: string, businessId?: string) => Promise<User>
+  login: (email: string, password: string, businessId?: string) => Promise<LoginOutcome>
+  completeTwoFactorLogin: (challengeToken: string, code: string) => Promise<User>
   register: (email: string, password: string, firstName: string, lastName: string) => Promise<User>
   logout: () => Promise<void>
   selectBusiness: (businessId: string) => Promise<void>
-  completeOnboarding: (business: Business, user: User) => void
+  completeOnboarding: (business: Business & { accessToken: string }, user: User) => void
+  /** Applies an already-issued AuthResult (e.g. from accepting a team invitation) - same
+   * session-setting logic as login/selectBusiness, exposed for flows that get their tokens
+   * from a different endpoint but should land in the app exactly the same way. */
+  applyAuthResult: (result: AuthResult, businessId?: string) => void
+  /** Re-pulls the current user (GET /users/me) into context without a full token refresh -
+   * for flows that change a User field in place (e.g. profile photo) and need every consumer
+   * of useAuth().user to see it immediately, not just after the next login/business switch. */
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -31,16 +47,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false
 
-    authApi
-      .refresh()
+    // dedupedRefresh (not authApi.refresh directly) because React.StrictMode double-invokes
+    // this effect in development: two independent refresh calls would race to redeem the
+    // same (rotating) refresh token, and the loser looks identical to token theft to the
+    // API, which revokes the whole session - see the comment on dedupedRefresh itself.
+    dedupedRefresh()
       .then((result) => {
-        if (cancelled) return
-        setAccessToken(result.accessToken)
+        if (cancelled || !result) return
         setUser(result.user)
         setActiveBusinessId(resolveActiveBusiness(result.user)?.businessId ?? null)
-      })
-      .catch(() => {
-        // No valid session (first visit, expired/revoked token) - user must log in.
       })
       .finally(() => {
         if (!cancelled) setIsInitializing(false)
@@ -62,13 +77,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   )
 
-  const login = useCallback(async (email: string, password: string, businessId?: string) => {
-    const result = await authApi.login({ email, password, businessId })
+  const applyAuthResult = useCallback((result: AuthResult, businessId?: string) => {
     setAccessToken(result.accessToken)
     setUser(result.user)
     setActiveBusinessId(businessId ?? resolveActiveBusiness(result.user)?.businessId ?? null)
-    return result.user
   }, [])
+
+  const login = useCallback(
+    async (email: string, password: string, businessId?: string): Promise<LoginOutcome> => {
+      const result = await authApi.login({ email, password, businessId })
+
+      if (result.requiresTwoFactor) {
+        return { requiresTwoFactor: true, challengeToken: result.challengeToken }
+      }
+
+      applyAuthResult(result.auth, businessId)
+      return { requiresTwoFactor: false, user: result.auth.user }
+    },
+    [applyAuthResult],
+  )
+
+  const completeTwoFactorLogin = useCallback(
+    async (challengeToken: string, code: string) => {
+      const result = await authApi.verifyTwoFactor(challengeToken, code)
+      applyAuthResult(result)
+      return result.user
+    },
+    [applyAuthResult],
+  )
 
   const register = useCallback(async (email: string, password: string, firstName: string, lastName: string) => {
     const result = await authApi.register({ email, password, firstName, lastName })
@@ -80,10 +116,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await authApi.logout().catch(() => undefined)
+    // A shared/public POS terminal shouldn't keep this business's cached products and
+    // customers around for whoever logs in next - offline reads must go stale, not leak.
+    if (activeBusinessId) {
+      await clearOfflineDb(activeBusinessId).catch(() => undefined)
+    }
     setAccessToken(null)
     setUser(null)
     setActiveBusinessId(null)
-  }, [])
+  }, [activeBusinessId])
 
   const selectBusiness = useCallback(async (businessId: string) => {
     const result = await authApi.switchBusiness(businessId)
@@ -92,9 +133,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setActiveBusinessId(businessId)
   }, [])
 
-  const completeOnboarding = useCallback((business: Business, updatedUser: User) => {
+  const completeOnboarding = useCallback((business: Business & { accessToken: string }, updatedUser: User) => {
+    // Onboarding issues a new access token scoped to the just-created business (with its
+    // real permissions) - without applying it, every request after this keeps using the
+    // pre-onboarding token, which has no business context, so tenant-scoped queries
+    // (branches, products, ...) silently return empty until the next full refresh.
+    setAccessToken(business.accessToken)
     setUser(updatedUser)
     setActiveBusinessId(business.id)
+  }, [])
+
+  const refreshUser = useCallback(async () => {
+    const freshUser = await authApi.getCurrentUser()
+    setUser(freshUser)
   }, [])
 
   const activeBusiness = useMemo(
@@ -102,9 +153,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user, activeBusinessId],
   )
 
+  useEffect(() => {
+    setActiveCurrencyCode(activeBusiness?.currencyCode ?? 'GHS')
+    applyColorTheme(activeBusiness?.colorTheme ?? 'green')
+  }, [activeBusiness])
+
   const value = useMemo<AuthContextValue>(
-    () => ({ user, activeBusiness, isInitializing, login, register, logout, selectBusiness, completeOnboarding }),
-    [user, activeBusiness, isInitializing, login, register, logout, selectBusiness, completeOnboarding],
+    () => ({
+      user,
+      activeBusiness,
+      isInitializing,
+      login,
+      completeTwoFactorLogin,
+      register,
+      logout,
+      selectBusiness,
+      completeOnboarding,
+      applyAuthResult,
+      refreshUser,
+    }),
+    [
+      user,
+      activeBusiness,
+      isInitializing,
+      login,
+      completeTwoFactorLogin,
+      register,
+      logout,
+      selectBusiness,
+      completeOnboarding,
+      applyAuthResult,
+      refreshUser,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

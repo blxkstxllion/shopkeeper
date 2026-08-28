@@ -1,0 +1,65 @@
+# Local development overlay: hot reload for both apps, dev-only host port
+# exposure for direct DB/cache inspection from the host.
+#
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml up -d
+#
+# Host port 5433 (not 5432) for Postgres: many Windows/Mac dev machines already
+# have a native PostgreSQL install bound to 5432, which silently collides with
+# Docker's forwarding (you get "password authentication failed" against what
+# turns out to be the wrong server). 5433 sidesteps that entirely.
+
+services:
+  postgres:
+    ports:
+      - "5433:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  api:
+    build:
+      target: development
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      DOTNET_USE_POLLING_FILE_WATCHER: "1" # required for file-change detection across the Docker bind mount
+      # Unset by default, unlike prod - keeps SetPlanTierCommand's current fully self-serve
+      # behavior unless a developer's own .env opts in with real Paystack test keys to exercise
+      # the full checkout flow locally (see .env.example).
+      Paystack__SecretKey: ${PAYSTACK_SECRET_KEY:-}
+      Paystack__BusinessPlanCode: ${PAYSTACK_BUSINESS_PLAN_CODE:-}
+      Paystack__BusinessAiPlanCode: ${PAYSTACK_BUSINESS_AI_PLAN_CODE:-}
+      Paystack__EnterprisePlanCode: ${PAYSTACK_ENTERPRISE_PLAN_CODE:-}
+      Paystack__EnterpriseAiPlanCode: ${PAYSTACK_ENTERPRISE_AI_PLAN_CODE:-}
+      Paystack__FrontendBaseUrl: http://localhost:5173
+      # Unset by default - keeps the Advisor's current plain-template answers unless a developer's
+      # own .env opts in with a real Anthropic key to exercise Claude narration locally (see
+      # .env.example).
+      Anthropic__ApiKey: ${ANTHROPIC_API_KEY:-}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../backend:/src
+      # Anonymous volumes mask each project's bin/obj so the container's own
+      # Linux-built artifacts aren't clobbered by the host's (Windows) ones.
+      - /src/src/ShopKeeper.Api/bin
+      - /src/src/ShopKeeper.Api/obj
+      - /src/src/ShopKeeper.Application/bin
+      - /src/src/ShopKeeper.Application/obj
+      - /src/src/ShopKeeper.Domain/bin
+      - /src/src/ShopKeeper.Domain/obj
+      - /src/src/ShopKeeper.Infrastructure/bin
+      - /src/src/ShopKeeper.Infrastructure/obj
+      - /src/tests/ShopKeeper.Api.Tests/bin
+      - /src/tests/ShopKeeper.Api.Tests/obj
+
+  frontend:
+    build:
+      target: development
+    environment:
+      VITE_API_BASE_URL: http://localhost:8080/api
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules

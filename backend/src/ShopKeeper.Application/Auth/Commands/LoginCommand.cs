@@ -8,7 +8,8 @@ using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Application.Common.Services;
 
-public record LoginCommand(string Email, string Password, Guid? BusinessId, string? IpAddress) : IRequest<AuthResultDto>;
+public record LoginCommand(string Email, string Password, Guid? BusinessId, string? IpAddress, string? UserAgent = null)
+    : IRequest<LoginResultDto>;
 
 public class LoginCommandValidator : AbstractValidator<LoginCommand>
 {
@@ -19,10 +20,10 @@ public class LoginCommandValidator : AbstractValidator<LoginCommand>
     }
 }
 
-public class LoginCommandHandler(IAppDbContext db, IPasswordHasher hasher, TokenIssuer tokenIssuer)
-    : IRequestHandler<LoginCommand, AuthResultDto>
+public class LoginCommandHandler(IAppDbContext db, IPasswordHasher hasher, TokenIssuer tokenIssuer, IJwtTokenService jwt)
+    : IRequestHandler<LoginCommand, LoginResultDto>
 {
-    public async Task<AuthResultDto> Handle(LoginCommand request, CancellationToken cancellationToken)
+    public async Task<LoginResultDto> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
         var user = await db.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken);
@@ -40,6 +41,14 @@ public class LoginCommandHandler(IAppDbContext db, IPasswordHasher hasher, Token
         user.LastLoginAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
 
-        return await tokenIssuer.IssueAsync(user, request.BusinessId, request.IpAddress, cancellationToken);
+        if (user.TwoFactorEnabled)
+        {
+            // Password check passed, but no tokens are issued yet - see LoginResultDto.
+            var challengeToken = jwt.GenerateTwoFactorChallengeToken(user.Id, request.BusinessId);
+            return new LoginResultDto(true, challengeToken, null);
+        }
+
+        var auth = await tokenIssuer.IssueAsync(user, request.BusinessId, request.IpAddress, request.UserAgent, cancellationToken);
+        return new LoginResultDto(false, null, auth);
     }
 }

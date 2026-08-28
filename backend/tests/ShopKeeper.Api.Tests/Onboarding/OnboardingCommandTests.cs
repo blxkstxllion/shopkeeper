@@ -92,10 +92,51 @@ public class OnboardingCommandTests : IDisposable
         Assert.True(business.OnboardingCompleted);
     }
 
+    [Fact]
+    public async Task CompleteOnboarding_DefaultsColorThemeToGreenWhenNotSpecified()
+    {
+        var currentUser = new TestCurrentUserService();
+        var context = _db.CreateContext(currentUser);
+        var tokenIssuer = new TokenIssuer(context, _jwt);
+
+        var owner = await RegisterOwner(context, tokenIssuer);
+
+        var handler = new CompleteOnboardingCommandHandler(context, tokenIssuer);
+        var business = await handler.Handle(BuildCommand(owner.Id), CancellationToken.None);
+
+        Assert.Equal("green", business.ColorTheme);
+    }
+
+    [Fact]
+    public async Task CompleteOnboarding_PersistsSuggestedColorThemeWhenSpecified()
+    {
+        var currentUser = new TestCurrentUserService();
+        var context = _db.CreateContext(currentUser);
+        var tokenIssuer = new TokenIssuer(context, _jwt);
+
+        var owner = await RegisterOwner(context, tokenIssuer);
+
+        var handler = new CompleteOnboardingCommandHandler(context, tokenIssuer);
+        var business = await handler.Handle(BuildCommand(owner.Id) with { ColorTheme = "red" }, CancellationToken.None);
+
+        Assert.Equal("red", business.ColorTheme);
+    }
+
+    [Fact]
+    public async Task CompleteOnboardingValidator_RejectsUnknownColorTheme()
+    {
+        var validator = new CompleteOnboardingCommandValidator();
+
+        var result = await validator.ValidateAsync(BuildCommand(Guid.NewGuid()) with { ColorTheme = "purple" });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.PropertyName == nameof(CompleteOnboardingCommand.ColorTheme));
+    }
+
     private async Task<Domain.Entities.User> RegisterOwner(
         Infrastructure.Persistence.AppDbContext context, TokenIssuer tokenIssuer)
     {
-        var registerHandler = new RegisterCommandHandler(context, _hasher, tokenIssuer);
+        var registerHandler = new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender());
         var result = await registerHandler.Handle(
             new RegisterCommand("founder@shop.test", "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
         return await context.Users.SingleAsync(u => u.Id == result.User.Id);

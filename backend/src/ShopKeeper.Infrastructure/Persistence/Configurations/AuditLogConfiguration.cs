@@ -22,5 +22,11 @@ public class BusinessSettingConfiguration : IEntityTypeConfiguration<BusinessSet
         builder.ToTable("BusinessSettings");
         builder.HasIndex(s => s.BusinessId).IsUnique();
         builder.Property(s => s.TaxRatePercent).HasPrecision(5, 2);
+        builder.Property(s => s.JoinCode).HasMaxLength(8);
+        // Plain unique index - both Postgres and the SQLite test provider treat NULL as
+        // distinct from itself in uniqueness checks, so any number of businesses can sit at
+        // JoinCode = null (no active code) without violating this.
+        builder.HasIndex(s => s.JoinCode).IsUnique();
+        builder.Property(s => s.RowVersion).IsConcurrencyToken();
     }
 }

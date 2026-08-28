@@ -1,7 +1,12 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+
+/* Ties every `dark:` utility to the explicit data-theme attribute the toggle sets
+   (see ThemeContext), rather than Tailwind's default prefers-color-scheme media
+   query - so a manual toggle actually overrides the OS setting everywhere. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme {
-  --font-sans: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
 
   /* Emerald green primary - "premium, modern, minimal, trustworthy" (spec section 31) */
   --color-primary-50: #ecfdf5;
@@ -15,11 +20,24 @@
   --color-primary-800: #065f46;
   --color-primary-900: #064e3b;
 
-  /* Supporting colors - used sparingly, only to communicate meaning */
-  --color-info-500: #3b82f6;
-  --color-warning-500: #f59e0b;
-  --color-danger-500: #ef4444;
-  --color-danger-600: #dc2626;
+  /* Status colors - reserved meaning (good/warning/serious/danger), always paired
+     with an icon or label, never color alone. Two steps per role: the base value
+     reads correctly as a dark-mode text color and as a background tint in either
+     mode; the plain name is a darker substitute used for that role's light-mode
+     text specifically, since the base value alone falls short of 4.5:1 (WCAG AA
+     for text) against a white surface for warning/serious/good. Values validated
+     with the dataviz skill's contrast() checker against this app's actual
+     surfaces (#ffffff light / #12151a dark) - --color-danger-dark in particular
+     fixes a real gap where dark-mode text reused the light-mode value and only
+     cleared 3.8:1, short of the 4.5:1 text threshold. */
+  --color-good: #006300;
+  --color-good-dark: #0ca30c;
+  --color-warning: #8a5a00;
+  --color-warning-dark: #fab219;
+  --color-serious: #b0431b;
+  --color-serious-dark: #ec835a;
+  --color-danger: #d03b3b;
+  --color-danger-dark: #f87171;
 }
 
 :root {
@@ -31,7 +49,7 @@
   color-scheme: light;
 }
 
-:root[data-theme="dark"] {
+:root[data-theme='dark'] {
   --color-surface: #12151a;
   --color-surface-muted: #1a1d24;
   --color-border: #2a2e37;
@@ -40,18 +58,41 @@
   color-scheme: dark;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --color-surface: #12151a;
-    --color-surface-muted: #1a1d24;
-    --color-border: #2a2e37;
-    --color-text: #f1f5f9;
-    --color-text-muted: #94a3b8;
-    color-scheme: dark;
-  }
+/* Brand color presets (Settings > Business, or suggested at onboarding by BusinessType) - see
+   ThemeContext for light/dark (a personal device preference) vs this (a per-business identity
+   choice applied via AuthContext/lib/colorTheme.ts). 'green' needs no override block - it's the
+   literal default above. Blue/red reuse Tailwind's own stock 50-900 ramps (well-tested lightness
+   steps), so existing contrast assumptions - e.g. white text on a -600 button - carry over
+   without re-validating. */
+:root[data-color-theme='blue'] {
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-300: #93c5fd;
+  --color-primary-400: #60a5fa;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary-900: #1e3a8a;
 }
 
-html, body, #root {
+:root[data-color-theme='red'] {
+  --color-primary-50: #fef2f2;
+  --color-primary-100: #fee2e2;
+  --color-primary-200: #fecaca;
+  --color-primary-300: #fca5a5;
+  --color-primary-400: #f87171;
+  --color-primary-500: #ef4444;
+  --color-primary-600: #dc2626;
+  --color-primary-700: #b91c1c;
+  --color-primary-800: #991b1b;
+  --color-primary-900: #7f1d1d;
+}
+
+html,
+body,
+#root {
   height: 100%;
 }
 
