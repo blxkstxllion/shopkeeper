@@ -1,0 +1,35 @@
+# Shared TLS termination for every app on this host - only one process can bind ports
+# 80/443, so this one Caddy instance (its own compose project, docker-compose.caddy.yml)
+# fronts both Omni Fix Labs (the root domain) and Shop Keeper (the app. subdomain).
+# Automatically obtains and renews a Let's Encrypt certificate per site block, no manual
+# certbot/cron/webroot dance - deliberately chosen over Certbot+Nginx for this deployment
+# shape, since both apps' frontends are pre-built, immutable images - not a natural place
+# to inject live-issued certs and renewal-reload logic. Each frontend container's Nginx
+# keeps doing exactly what it already does (SPA + /api reverse proxy), just no longer
+# directly exposed on the host.
+#
+# Both target hostnames resolve via Docker's embedded DNS on the shared `public-web`
+# network - see the `aliases:` entries on each app's frontend service (docker-compose.yml
+# here, docker-compose.yml in the omnifixlabs repo) for why they're not just "frontend".
+{
+	email {$ACME_EMAIL}
+}
+
+{$ROOT_DOMAIN} {
+	reverse_proxy omnifixlabs-frontend:8080
+}
+
+app.{$ROOT_DOMAIN} {
+	# Testing-phase APK/installer distribution - static files, not baked into the
+	# versioned frontend image, so shipping a new test build never needs a CI rebuild.
+	# No directory browsing (explicit file_server, no `browse`) - only exact, known
+	# file paths are servable. Range requests work out of the box (Caddy's file_server
+	# default), which matters on unreliable mobile connections.
+	handle_path /downloads/* {
+		root * /srv/downloads
+		file_server
+	}
+	handle {
+		reverse_proxy shopkeeper-frontend:8080
+	}
+}

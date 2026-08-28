@@ -12,6 +12,7 @@ public record UserDto(
     string FirstName,
     string LastName,
     bool IsEmailVerified,
+    string? PhotoUrl,
     IReadOnlyList<UserBusinessDto> Businesses);
 
 public record UserBusinessDto(
@@ -19,4 +20,6 @@ public record UserBusinessDto(
     string BusinessName,
     string RoleName,
     bool IsOwner,
-    bool OnboardingCompleted);
+    bool OnboardingCompleted,
+    string CurrencyCode,
+    string ColorTheme);

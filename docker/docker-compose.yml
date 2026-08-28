@@ -1,0 +1,79 @@
+# Base service definitions shared by every environment. Always combined with an
+# environment overlay - never run alone:
+#
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml  up -d
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.prod.yml up -d
+#
+# Values here are environment-agnostic (image names, internal ports, volumes,
+# network, healthchecks). Anything that differs between dev/staging/production
+# (build target, exposed host ports, restart policy, secrets) belongs in an overlay.
+
+name: shopkeeper
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-shopkeeper}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set - see .env.example}
+      POSTGRES_DB: ${POSTGRES_DB:-shopkeeper}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../database/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-shopkeeper} -d ${POSTGRES_DB:-shopkeeper}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [shopkeeper-network]
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [shopkeeper-network]
+
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    environment:
+      ConnectionStrings__Default: Host=postgres;Port=5432;Database=${POSTGRES_DB:-shopkeeper};Username=${POSTGRES_USER:-shopkeeper};Password=${POSTGRES_PASSWORD:?}
+      Redis__ConnectionString: redis:6379
+      Jwt__Issuer: ${JWT_ISSUER:-ShopKeeper}
+      Jwt__Audience: ${JWT_AUDIENCE:-ShopKeeperClient}
+      Jwt__Secret: ${JWT_SECRET:?JWT_SECRET must be set - see .env.example}
+      Cors__AllowedOrigins__0: ${CORS_ALLOWED_ORIGIN:-http://localhost:5173}
+      # Optional second allowed origin - e.g. the Tauri desktop app's fixed webview origin
+      # (https://tauri.localhost as of Tauri v2). Empty is a harmless no-op entry - no real
+      # browser ever sends an empty Origin header, so nothing matches it accidentally.
+      Cors__AllowedOrigins__1: ${CORS_ALLOWED_ORIGIN_2:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [shopkeeper-network]
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [shopkeeper-network]
+
+networks:
+  shopkeeper-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:

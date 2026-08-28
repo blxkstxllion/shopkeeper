@@ -14,6 +14,12 @@ public class BusinessConfiguration : IEntityTypeConfiguration<Business>
         builder.Property(b => b.Country).HasMaxLength(100).IsRequired();
         builder.Property(b => b.CurrencyCode).HasMaxLength(3).IsRequired();
         builder.Property(b => b.BusinessType).HasConversion<string>().HasMaxLength(50);
+        builder.Property(b => b.PlanTier).HasConversion<string>().HasMaxLength(20);
+        builder.Property(b => b.PaystackCustomerCode).HasMaxLength(50);
+        builder.Property(b => b.PaystackSubscriptionCode).HasMaxLength(50);
+        builder.Property(b => b.PaystackSubscriptionEmailToken).HasMaxLength(100);
+        builder.Property(b => b.PaystackSubscriptionStatus).HasMaxLength(20);
+        builder.Property(b => b.PaystackSubscriptionPlanCode).HasMaxLength(50);
 
         builder.HasMany(b => b.Branches).WithOne(br => br.Business).HasForeignKey(br => br.BusinessId).OnDelete(DeleteBehavior.Cascade);
         builder.HasMany(b => b.Roles).WithOne(r => r.Business).HasForeignKey(r => r.BusinessId).OnDelete(DeleteBehavior.Cascade);

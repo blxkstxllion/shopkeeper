@@ -25,4 +25,13 @@ public class LoggingEmailSender(ILogger<LoggingEmailSender> logger) : IEmailSend
             toEmail, firstName, resetToken);
         return Task.CompletedTask;
     }
+
+    public Task SendBusinessInviteAsync(
+        string toEmail, string businessName, string inviterName, string inviteToken, CancellationToken ct = default)
+    {
+        logger.LogInformation(
+            "[DEV EMAIL] {InviterName} invited {Email} to join {BusinessName}. Token: {Token}",
+            inviterName, toEmail, businessName, inviteToken);
+        return Task.CompletedTask;
+    }
 }

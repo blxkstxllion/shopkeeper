@@ -14,7 +14,8 @@ public record RegisterCommand(
     string Password,
     string FirstName,
     string LastName,
-    string? IpAddress) : IRequest<AuthResultDto>;
+    string? IpAddress,
+    string? UserAgent = null) : IRequest<AuthResultDto>;
 
 public class RegisterCommandValidator : AbstractValidator<RegisterCommand>
 {
@@ -30,7 +31,7 @@ public class RegisterCommandValidator : AbstractValidator<RegisterCommand>
     }
 }
 
-public class RegisterCommandHandler(IAppDbContext db, IPasswordHasher hasher, TokenIssuer tokenIssuer)
+public class RegisterCommandHandler(IAppDbContext db, IPasswordHasher hasher, TokenIssuer tokenIssuer, IEmailSender emailSender)
     : IRequestHandler<RegisterCommand, AuthResultDto>
 {
     public async Task<AuthResultDto> Handle(RegisterCommand request, CancellationToken cancellationToken)
@@ -55,10 +56,28 @@ public class RegisterCommandHandler(IAppDbContext db, IPasswordHasher hasher, To
         };
 
         db.Users.Add(user);
-        await db.SaveChangesAsync(cancellationToken);
 
-        // TODO: dispatch email-verification message once IEmailSender has a real provider (Phase 5+).
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // The precheck above is the fast path; this is the race-window safety net. Only
+            // convert to the same ConflictException when the specific condition it protects is
+            // confirmed true after the fact - anything else rethrows unchanged and still
+            // surfaces as a logged 500, exactly as an unrelated DbUpdateException should.
+            var stillExists = await db.Users.AnyAsync(u => u.Email == normalizedEmail, cancellationToken);
+            if (!stillExists)
+            {
+                throw;
+            }
 
-        return await tokenIssuer.IssueAsync(user, activeBusinessId: null, request.IpAddress, cancellationToken);
+            throw new ConflictException("An account with this email already exists.");
+        }
+
+        await emailSender.SendEmailVerificationAsync(user.Email, user.FirstName, user.EmailVerificationToken!, cancellationToken);
+
+        return await tokenIssuer.IssueAsync(user, activeBusinessId: null, request.IpAddress, request.UserAgent, cancellationToken);
     }
 }

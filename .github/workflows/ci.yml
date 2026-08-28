@@ -1,0 +1,170 @@
+name: CI
+
+# Comprehensive validation - the counterpart to the fast pre-commit hooks (see .husky/).
+# Runs on every push to develop/main and every PR targeting them; nothing here is faked
+# or skipped silently - a red check means something genuinely failed.
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least-privilege default; secret-scan below adds the one extra read scope gitleaks-action
+# needs to list a PR's commits - without it, the GitHub API call it makes internally 403s
+# with "Resource not accessible by integration" and the whole job fails before it ever scans
+# anything (this is exactly what happened on PRs #7 and #8).
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  # jsdom 30 / undici 8 (frontend/package.json) require Node >=22.22.2 - Node 20 installs fine
+  # (npm only warns on the engines mismatch) but crashes at test-run time importing jsdom's
+  # undici-based Cache/fetch shim ("webidl.util.markAsUncloneable is not a function"), before a
+  # single test executes. Doesn't reproduce locally on a newer Node - only shows up in CI's
+  # pinned version.
+  NODE_VERSION: '22'
+
+jobs:
+  frontend:
+    name: Frontend (lint, typecheck, test, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      - name: Dependency vulnerability audit
+        run: npm audit --audit-level=high
+
+      - name: Lint (oxlint)
+        run: npm run lint
+
+      - name: Format check (Prettier)
+        run: npx prettier --check .
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm run test
+
+      - name: Build production bundle
+        run: npm run build
+
+  backend:
+    name: Backend (format, build, test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - run: dotnet restore ShopKeeper.sln
+
+      - name: Dependency vulnerability audit
+        run: |
+          report=$(dotnet list ShopKeeper.sln package --vulnerable --include-transitive 2>&1)
+          echo "$report"
+          if echo "$report" | grep -q "has the following vulnerable packages"; then
+            echo "::error::Vulnerable NuGet package(s) detected - see report above."
+            exit 1
+          fi
+
+      - name: Format check
+        run: dotnet format ShopKeeper.sln --verify-no-changes --no-restore
+
+      - name: Build
+        run: dotnet build ShopKeeper.sln --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test ShopKeeper.sln --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
+
+      - name: Publish test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: backend/**/TestResults/**/*.trx
+
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  docker-build:
+    name: Docker build (backend + frontend)
+    runs-on: ubuntu-latest
+    needs: [frontend, backend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # load: true is required - without it, build-push-action leaves the image only in the
+      # buildx cache, never in the local Docker daemon, so `trivy image shopkeeper-api:ci`
+      # below can never find it ("No such image") regardless of anything else in this job.
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: false
+          load: true
+          tags: shopkeeper-api:ci
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          push: false
+          load: true
+          tags: shopkeeper-frontend:ci
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+      - name: Scan backend image (Trivy)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: shopkeeper-api:ci
+          severity: CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Scan frontend image (Trivy)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: shopkeeper-frontend:ci
+          severity: CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true

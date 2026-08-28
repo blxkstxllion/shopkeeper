@@ -10,6 +10,7 @@ import {
   Receipt,
   Settings,
   Sparkles,
+  History,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -24,6 +25,7 @@ export interface NavItem {
 export const navItems: NavItem[] = [
   { label: 'Dashboard', to: '/app', icon: LayoutDashboard, mobilePriority: true },
   { label: 'Sell', to: '/app/sell', icon: ShoppingCart, mobilePriority: true },
+  { label: 'Sales', to: '/app/sales', icon: Receipt },
   { label: 'Inventory', to: '/app/inventory', icon: Package, mobilePriority: true },
   { label: 'AI Advisor', to: '/app/ai', icon: Sparkles, mobilePriority: true },
   { label: 'Branches', to: '/app/branches', icon: Building2 },
@@ -32,5 +34,6 @@ export const navItems: NavItem[] = [
   { label: 'Customers', to: '/app/customers', icon: UserCircle },
   { label: 'Expenses', to: '/app/expenses', icon: Receipt },
   { label: 'Reports', to: '/app/reports', icon: BarChart3 },
+  { label: 'Audit Logs', to: '/app/audit-logs', icon: History },
   { label: 'Settings', to: '/app/settings', icon: Settings },
 ]

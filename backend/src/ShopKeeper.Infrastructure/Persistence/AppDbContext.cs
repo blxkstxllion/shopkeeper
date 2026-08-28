@@ -27,6 +27,25 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUserSe
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<BusinessSetting> BusinessSettings => Set<BusinessSetting>();
 
+    public DbSet<ProductCategory> ProductCategories => Set<ProductCategory>();
+    public DbSet<Supplier> Suppliers => Set<Supplier>();
+    public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<Product> Products => Set<Product>();
+    public DbSet<ProductStock> ProductStocks => Set<ProductStock>();
+    public DbSet<InventoryTransaction> InventoryTransactions => Set<InventoryTransaction>();
+    public DbSet<Sale> Sales => Set<Sale>();
+    public DbSet<SaleItem> SaleItems => Set<SaleItem>();
+    public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<Refund> Refunds => Set<Refund>();
+    public DbSet<RefundItem> RefundItems => Set<RefundItem>();
+    public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
+    public DbSet<Expense> Expenses => Set<Expense>();
+    public DbSet<PendingInvitation> PendingInvitations => Set<PendingInvitation>();
+    public DbSet<JoinRequest> JoinRequests => Set<JoinRequest>();
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
+    public DbSet<PaystackWebhookEvent> PaystackWebhookEvents => Set<PaystackWebhookEvent>();
+
     /// <summary>
     /// Referenced as `this.TenantBusinessId` (implicitly, from inside an instance method) in the
     /// query filter lambdas below. EF Core caches the compiled model once per context type/process,
@@ -67,7 +86,23 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUserSe
         return filter;
     }
 
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        StampTimestamps();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        StampTimestamps();
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>Only IAppDbContext.SaveChangesAsync is exposed to Application-layer code, so the
+    /// sync SaveChanges override exists for completeness (anything calling the concrete
+    /// AppDbContext or the base DbContext directly, e.g. EF tooling) rather than a code path
+    /// this app currently uses - kept in sync with the async path so it can't silently drift.</summary>
+    private void StampTimestamps()
     {
         var now = DateTimeOffset.UtcNow;
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
@@ -82,7 +117,5 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUserSe
                 entry.Entity.UpdatedAt = now;
             }
         }
-
-        return base.SaveChangesAsync(cancellationToken);
     }
 }
