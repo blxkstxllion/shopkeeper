@@ -4,10 +4,11 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Loader2, Store } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { getBusinessByCode, submitJoinRequest, submitJoinRequestForExistingUser } from '@/api/join'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/Card'
+import { Logo } from '@/components/ui/Logo'
 import { Button } from '@/components/ui/Button'
 import { Input, FormField } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
@@ -35,9 +36,7 @@ function Shell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12 dark:bg-slate-950">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-2 text-center">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-600 text-white">
-            <Store className="h-6 w-6" />
-          </div>
+          <Logo className="h-11 w-11" />
           <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">The Shop Keeper</h1>
         </div>
         {children}
