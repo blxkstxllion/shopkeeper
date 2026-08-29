@@ -113,30 +113,42 @@ export const goalOptions: { value: string; label: string }[] = [
   { value: 'ImproveEmployeePerformance', label: 'Improve employee performance' },
 ]
 
-export const onboardingSchema = z.object({
-  businessName: z.string().min(1, 'Business name is required').max(200),
-  businessType: z.enum(businessTypes),
-  country: z.string().min(1, 'Country is required'),
-  currencyCode: z
-    .string()
-    .min(3, 'Use a 3-letter currency code')
-    .max(3, 'Use a 3-letter currency code')
-    .transform((v) => v.toUpperCase()),
-  taxEnabled: z.boolean(),
-  taxRatePercent: z.number().min(0, 'Must be 0 or more').max(100, 'Must be 100 or less'),
-  taxInclusivePricing: z.boolean(),
-  goals: z.array(z.string()).min(1, 'Pick at least one goal'),
-  firstBranchName: z.string().min(1, 'Branch name is required').max(200),
-  firstBranchAddress: z.string().optional(),
-  firstBranchCity: z.string().optional(),
-  colorTheme: z.enum(['blue', 'red', 'green']),
-})
+export const onboardingSchema = z
+  .object({
+    businessName: z.string().min(1, 'Business name is required').max(200),
+    businessType: z.enum(businessTypes),
+    businessTypeOther: z.string().max(200).optional(),
+    country: z.string().min(1, 'Country is required'),
+    currencyCode: z
+      .string()
+      .min(3, 'Use a 3-letter currency code')
+      .max(3, 'Use a 3-letter currency code')
+      .transform((v) => v.toUpperCase()),
+    taxEnabled: z.boolean(),
+    taxRatePercent: z.number().min(0, 'Must be 0 or more').max(100, 'Must be 100 or less'),
+    taxInclusivePricing: z.boolean(),
+    goals: z.array(z.string()).min(1, 'Pick at least one goal'),
+    firstBranchName: z.string().min(1, 'Branch name is required').max(200),
+    firstBranchAddress: z.string().optional(),
+    firstBranchCity: z.string().optional(),
+    colorTheme: z.enum(['blue', 'red', 'green']),
+  })
+  .superRefine((data, ctx) => {
+    if (data.businessType === 'Other' && !data.businessTypeOther?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Tell us what kind of business this is',
+        path: ['businessTypeOther'],
+      })
+    }
+  })
 
 export type OnboardingFormValues = z.infer<typeof onboardingSchema>
 
 export const onboardingDefaults: OnboardingFormValues = {
   businessName: '',
   businessType: 'Retail',
+  businessTypeOther: '',
   country: 'Ghana',
   currencyCode: 'GHS',
   taxEnabled: false,
@@ -150,7 +162,7 @@ export const onboardingDefaults: OnboardingFormValues = {
 }
 
 export const stepFields: Record<number, (keyof OnboardingFormValues)[]> = {
-  0: ['businessName', 'businessType', 'country', 'currencyCode'],
+  0: ['businessName', 'businessType', 'businessTypeOther', 'country', 'currencyCode'],
   1: ['firstBranchName', 'firstBranchAddress', 'firstBranchCity'],
   2: ['taxEnabled', 'taxRatePercent', 'taxInclusivePricing'],
   3: ['goals'],

@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Sparkles, ChevronDown, LogOut, Building2, Sun, Moon, Info } from 'lucide-react'
+import { Search, Sparkles, ChevronDown, LogOut, Building2, Sun, Moon, Info, Compass } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useBranchContext } from '@/contexts/BranchContext'
 import { useTheme } from '@/contexts/ThemeContext'
+import { useTour } from '@/features/tour/TourContext'
 import { Avatar } from '@/components/ui/Avatar'
 import { NotificationBell } from './NotificationBell'
 import { OfflineStatusIndicator } from '@/offline/OfflineStatusIndicator'
@@ -12,6 +13,7 @@ export function TopNav() {
   const { user, activeBusiness, logout } = useAuth()
   const { branches, activeBranch, setActiveBranchId, canSwitchBranches } = useBranchContext()
   const { theme, toggleTheme } = useTheme()
+  const { start: startTour } = useTour()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const [branchMenuOpen, setBranchMenuOpen] = useState(false)
@@ -169,6 +171,17 @@ export function TopNav() {
               >
                 <Info className="h-4 w-4" />
                 About
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false)
+                  startTour()
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                <Compass className="h-4 w-4" />
+                Take the tour
               </button>
               <button
                 type="button"
