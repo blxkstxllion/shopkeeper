@@ -1,15 +1,13 @@
 import { NavLink } from 'react-router-dom'
-import { Store } from 'lucide-react'
 import { clsx } from 'clsx'
 import { navItems } from '@/config/navigation'
+import { Logo } from '@/components/ui/Logo'
 
 export function Sidebar() {
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r border-slate-200 bg-white lg:flex dark:border-slate-800 dark:bg-slate-900">
       <div className="flex h-16 items-center gap-2 px-5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600 text-white">
-          <Store className="h-[18px] w-[18px]" />
-        </div>
+        <Logo className="h-8 w-8" />
         <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">The Shop Keeper</span>
       </div>
 
