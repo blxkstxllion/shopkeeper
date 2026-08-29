@@ -30,7 +30,11 @@ export default defineConfig({
       // disagree.
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff,woff2}'],
-        navigateFallbackDenylist: [/^\/api\//],
+        // /downloads/* are static binaries served straight from the VPS (see
+        // docker/Caddyfile), not part of the SPA - without this, a browser navigation to
+        // a download link (a top-level <a href> click) gets caught by the SPA fallback
+        // and silently redirected back to index.html instead of downloading the file.
+        navigateFallbackDenylist: [/^\/api\//, /^\/downloads\//],
         runtimeCaching: [
           {
             // API calls always go to the network or fail explicitly - never served
