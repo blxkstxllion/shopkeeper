@@ -71,13 +71,13 @@ public class AdjustStockCommandHandler(IAppDbContext db, ICurrentUserService cur
         stock.QuantityOnHand = newQuantity;
         stock.RowVersion++;
 
-        // Fires once, on the adjustment that actually crosses the reorder level going down -
+        // Fires once, on the adjustment that actually crosses the minimum stock going down -
         // not on every subsequent adjustment while stock is already low.
-        if (product.ReorderLevel > 0 && newQuantity <= product.ReorderLevel && previousQuantity > product.ReorderLevel)
+        if (product.MinimumStock > 0 && newQuantity <= product.MinimumStock && previousQuantity > product.MinimumStock)
         {
             await notifications.NotifyOwnersAsync(
                 businessId, "LowStock", "Low stock alert",
-                $"'{product.Name}' is down to {newQuantity} units (reorder level: {product.ReorderLevel}).",
+                $"'{product.Name}' is down to {newQuantity} units (minimum stock: {product.MinimumStock}).",
                 "/app/inventory", cancellationToken);
         }
 

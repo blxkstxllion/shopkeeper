@@ -25,7 +25,7 @@ public class SalesCommandTests : IDisposable
         var context = _db.CreateContext(owner);
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Widget", "SKU-SALE", null, null, null, null, sellingPrice, costPrice, 5, 10, true, initialQuantity, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-SALE", null, null, null, null, sellingPrice, costPrice, 10, true, initialQuantity, seeded.BranchId),
             CancellationToken.None);
 
         return (seeded, context, owner, product.Id);
@@ -261,7 +261,7 @@ public class SalesCommandTests : IDisposable
         var setupContext = db.CreateContext(owner);
 
         var product = await new CreateProductCommandHandler(setupContext, owner, new PlanLimitService(setupContext)).Handle(
-            new CreateProductCommand("Widget", "SKU-IDEMPOTENT", null, null, null, null, 10m, 6m, 0, 0, true, 20, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-IDEMPOTENT", null, null, null, null, 10m, 6m, 0, true, 20, seeded.BranchId),
             CancellationToken.None);
 
         var clientRequestId = Guid.NewGuid();

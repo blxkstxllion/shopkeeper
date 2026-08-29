@@ -69,8 +69,7 @@ public class GetProductsQueryHandler(IAppDbContext db, ICurrentUserService curre
                 SupplierName = p.Supplier != null ? p.Supplier.Name : null,
                 p.SellingPrice,
                 p.CostPrice,
-                p.MinStock,
-                p.ReorderLevel,
+                p.MinimumStock,
                 p.TrackInventory,
                 p.IsActive,
                 QuantityOnHand = branchId == null
@@ -80,7 +79,7 @@ public class GetProductsQueryHandler(IAppDbContext db, ICurrentUserService curre
 
         if (request.LowStockOnly)
         {
-            projected = projected.Where(p => p.QuantityOnHand != null && p.QuantityOnHand <= p.ReorderLevel);
+            projected = projected.Where(p => p.QuantityOnHand != null && p.QuantityOnHand <= p.MinimumStock);
         }
 
         var totalCount = await projected.CountAsync(cancellationToken);
@@ -96,8 +95,8 @@ public class GetProductsQueryHandler(IAppDbContext db, ICurrentUserService curre
         var dtos = items.Select(p => new ProductDto(
             p.Id, p.Name, p.Sku, p.Barcode, p.Description, p.ImageUrl, p.CategoryId, p.CategoryName,
             p.SupplierId, p.SupplierName,
-            p.SellingPrice, p.CostPrice, p.MinStock, p.ReorderLevel, p.TrackInventory, p.IsActive,
-            p.QuantityOnHand, p.QuantityOnHand.HasValue && p.QuantityOnHand.Value <= p.ReorderLevel)).ToList();
+            p.SellingPrice, p.CostPrice, p.MinimumStock, p.TrackInventory, p.IsActive,
+            p.QuantityOnHand, p.QuantityOnHand.HasValue && p.QuantityOnHand.Value <= p.MinimumStock)).ToList();
 
         return new PagedResult<ProductDto>(dtos, totalCount, page, pageSize);
     }

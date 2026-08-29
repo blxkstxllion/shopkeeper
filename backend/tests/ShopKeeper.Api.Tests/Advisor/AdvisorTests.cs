@@ -29,7 +29,7 @@ public class AdvisorTests : IDisposable
         var context = _db.CreateContext(owner);
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Widget", "SKU-ADV-1", null, null, null, null, 10m, 6m, 5, 10, true, 50, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-ADV-1", null, null, null, null, 10m, 6m, 10, true, 50, seeded.BranchId),
             CancellationToken.None);
         await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(product.Id, 5, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 50m, null)]),
@@ -49,7 +49,7 @@ public class AdvisorTests : IDisposable
         var context = _db.CreateContext(owner);
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Widget", "SKU-ADV-2", null, null, null, null, 10m, 5m, 5, 10, true, 50, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-ADV-2", null, null, null, null, 10m, 5m, 10, true, 50, seeded.BranchId),
             CancellationToken.None);
         await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(product.Id, 2, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 20m, null)]),
@@ -82,10 +82,10 @@ public class AdvisorTests : IDisposable
         var context = _db.CreateContext(owner);
 
         await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Almost Gone", "SKU-ADV-3", null, null, null, null, 10m, 5m, 5, 10, true, 2, seeded.BranchId),
+            new CreateProductCommand("Almost Gone", "SKU-ADV-3", null, null, null, null, 10m, 5m, 10, true, 2, seeded.BranchId),
             CancellationToken.None);
         await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("All Gone", "SKU-ADV-4", null, null, null, null, 10m, 5m, 5, 10, true, 0, seeded.BranchId),
+            new CreateProductCommand("All Gone", "SKU-ADV-4", null, null, null, null, 10m, 5m, 10, true, 0, seeded.BranchId),
             CancellationToken.None);
 
         var handler = new GetAdvisorAnswerQueryHandler(new AdvisorCalculations(new TestSender(context, owner), context, owner), owner, new PassthroughAdvisorNarrator());
@@ -103,7 +103,7 @@ public class AdvisorTests : IDisposable
         var context = _db.CreateContext(owner);
 
         await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Plenty", "SKU-ADV-5", null, null, null, null, 10m, 5m, 5, 10, true, 100, seeded.BranchId),
+            new CreateProductCommand("Plenty", "SKU-ADV-5", null, null, null, null, 10m, 5m, 10, true, 100, seeded.BranchId),
             CancellationToken.None);
 
         var handler = new GetAdvisorAnswerQueryHandler(new AdvisorCalculations(new TestSender(context, owner), context, owner), owner, new PassthroughAdvisorNarrator());
@@ -120,10 +120,10 @@ public class AdvisorTests : IDisposable
         var context = _db.CreateContext(owner);
 
         var top = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Popular", "SKU-ADV-6", null, null, null, null, 10m, 5m, 5, 10, true, 50, seeded.BranchId),
+            new CreateProductCommand("Popular", "SKU-ADV-6", null, null, null, null, 10m, 5m, 10, true, 50, seeded.BranchId),
             CancellationToken.None);
         var other = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Slow Mover", "SKU-ADV-7", null, null, null, null, 10m, 5m, 5, 10, true, 50, seeded.BranchId),
+            new CreateProductCommand("Slow Mover", "SKU-ADV-7", null, null, null, null, 10m, 5m, 10, true, 50, seeded.BranchId),
             CancellationToken.None);
 
         await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
@@ -145,10 +145,10 @@ public class AdvisorTests : IDisposable
         var context = _db.CreateContext(owner);
 
         var good = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("High Margin", "SKU-ADV-8", null, null, null, null, 20m, 5m, 5, 10, true, 10, seeded.BranchId),
+            new CreateProductCommand("High Margin", "SKU-ADV-8", null, null, null, null, 20m, 5m, 10, true, 10, seeded.BranchId),
             CancellationToken.None);
         var bad = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Low Margin", "SKU-ADV-9", null, null, null, null, 10m, 9m, 5, 10, true, 10, seeded.BranchId),
+            new CreateProductCommand("Low Margin", "SKU-ADV-9", null, null, null, null, 10m, 9m, 10, true, 10, seeded.BranchId),
             CancellationToken.None);
 
         await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
@@ -170,7 +170,7 @@ public class AdvisorTests : IDisposable
         var context = _db.CreateContext(owner);
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Widget", "SKU-ADV-9B", null, null, null, null, 10m, 5m, 5, 10, true, 50, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-ADV-9B", null, null, null, null, 10m, 5m, 10, true, 50, seeded.BranchId),
             CancellationToken.None);
         await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(product.Id, 2, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 20m, null)]),
@@ -228,7 +228,7 @@ public class AdvisorTests : IDisposable
         await context.SaveChangesAsync(CancellationToken.None);
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Widget", "SKU-ADV-10", null, null, null, null, 10m, 6m, 5, 10, true, 10, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-ADV-10", null, null, null, null, 10m, 6m, 10, true, 10, seeded.BranchId),
             CancellationToken.None);
         context.ProductStocks.Add(new ProductStock { BusinessId = seeded.BusinessId, ProductId = product.Id, BranchId = branchB.Id, QuantityOnHand = 10 });
         await context.SaveChangesAsync(CancellationToken.None);
@@ -287,7 +287,7 @@ public class AdvisorTests : IDisposable
         var context = _db.CreateContext(owner);
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Widget", "SKU-ADV-11", null, null, null, null, 10m, 5m, 5, 10, true, 50, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-ADV-11", null, null, null, null, 10m, 5m, 10, true, 50, seeded.BranchId),
             CancellationToken.None);
         await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(product.Id, 5, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 50m, null)]),
@@ -307,7 +307,7 @@ public class AdvisorTests : IDisposable
         var context = _db.CreateContext(owner);
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Widget", "SKU-ADV-12", null, null, null, null, 10m, 9m, 5, 10, true, 50, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-ADV-12", null, null, null, null, 10m, 9m, 10, true, 50, seeded.BranchId),
             CancellationToken.None);
         await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(product.Id, 1, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 10m, null)]),
@@ -372,7 +372,7 @@ public class AdvisorTests : IDisposable
 
         var contextB = _db.CreateContext(ownerB);
         var productB = await new CreateProductCommandHandler(contextB, ownerB, new PlanLimitService(contextB)).Handle(
-            new CreateProductCommand("Business B Widget", "SKU-ADV-B", null, null, null, null, 999m, 1m, 5, 10, true, 50, businessB.BranchId),
+            new CreateProductCommand("Business B Widget", "SKU-ADV-B", null, null, null, null, 999m, 1m, 10, true, 50, businessB.BranchId),
             CancellationToken.None);
         await new CreateSaleCommandHandler(contextB, ownerB, new NotificationDispatcher(contextB)).Handle(
             new CreateSaleCommand(businessB.BranchId, [new SaleLineInput(productB.Id, 5, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 4995m, null)]),
@@ -403,7 +403,7 @@ public class AdvisorTests : IDisposable
         var context = _db.CreateContext(owner);
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Widget", "SKU-ADV-13", null, null, null, null, 10m, 6m, 5, 10, true, 50, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-ADV-13", null, null, null, null, 10m, 6m, 10, true, 50, seeded.BranchId),
             CancellationToken.None);
         await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(product.Id, 5, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 50m, null)]),

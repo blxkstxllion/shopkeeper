@@ -108,7 +108,7 @@ public static class WordReportBuilder
                 body.AppendChild(Heading("Stock alerts", 24));
                 body.AppendChild(BuildTable(
                     ["Product", "On hand", "Reorder level"],
-                    stockAlerts.Select(p => new[] { p.ProductName, p.QuantityOnHand.ToString(), p.ReorderLevel.ToString() })));
+                    stockAlerts.Select(p => new[] { p.ProductName, p.QuantityOnHand.ToString(), p.MinimumStock.ToString() })));
             }
 
             mainPart.Document.Save();

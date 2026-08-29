@@ -66,7 +66,7 @@ public class SuppliersTests : IDisposable
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand(
-                "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 10, 20, true, 50, seeded.BranchId, supplier.Id),
+                "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 20, true, 50, seeded.BranchId, supplier.Id),
             CancellationToken.None);
 
         await new DeleteSupplierCommandHandler(context, owner).Handle(new DeleteSupplierCommand(supplier.Id), CancellationToken.None);
@@ -94,7 +94,7 @@ public class SuppliersTests : IDisposable
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand(
-                "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 10, 20, true, 50, seeded.BranchId, supplier.Id),
+                "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 20, true, 50, seeded.BranchId, supplier.Id),
             CancellationToken.None);
 
         var newQuantity = await new RestockFromSupplierCommandHandler(context, owner, mediator).Handle(
@@ -123,7 +123,7 @@ public class SuppliersTests : IDisposable
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand(
-                "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 10, 20, true, 50, seeded.BranchId, supplier.Id),
+                "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 20, true, 50, seeded.BranchId, supplier.Id),
             CancellationToken.None);
 
         await new RestockFromSupplierCommandHandler(context, owner, mediator).Handle(
@@ -148,7 +148,7 @@ public class SuppliersTests : IDisposable
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand(
-                "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 10, 20, true, 50, seeded.BranchId, null),
+                "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 20, true, 50, seeded.BranchId, null),
             CancellationToken.None);
 
         await new RestockFromSupplierCommandHandler(context, owner, mediator).Handle(
@@ -176,7 +176,7 @@ public class SuppliersTests : IDisposable
             new CreateSupplierCommand("Accra Distributors", null, null, null, null), CancellationToken.None);
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand(
-                "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 10, 20, true, 50, seeded.BranchId, supplier.Id),
+                "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 20, true, 50, seeded.BranchId, supplier.Id),
             CancellationToken.None);
 
         await new DeleteSupplierCommandHandler(context, owner).Handle(new DeleteSupplierCommand(supplier.Id), CancellationToken.None);
@@ -201,7 +201,7 @@ public class SuppliersTests : IDisposable
 
         await Assert.ThrowsAsync<ConflictException>(() => new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand(
-                "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 10, 20, true, 50, seeded.BranchId, supplier.Id),
+                "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 20, true, 50, seeded.BranchId, supplier.Id),
             CancellationToken.None));
     }
 
@@ -214,7 +214,7 @@ public class SuppliersTests : IDisposable
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand(
-                "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 10, 20, true, 50, seeded.BranchId, null),
+                "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 20, true, 50, seeded.BranchId, null),
             CancellationToken.None);
         var supplier = await new CreateSupplierCommandHandler(context, owner).Handle(
             new CreateSupplierCommand("Accra Distributors", null, null, null, null), CancellationToken.None);
@@ -222,7 +222,7 @@ public class SuppliersTests : IDisposable
 
         await Assert.ThrowsAsync<ConflictException>(() => new UpdateProductCommandHandler(context, owner).Handle(
             new UpdateProductCommand(
-                product.Id, "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 10, 20, true, true, supplier.Id),
+                product.Id, "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 20, true, true, supplier.Id),
             CancellationToken.None));
     }
 
@@ -237,7 +237,7 @@ public class SuppliersTests : IDisposable
             new CreateSupplierCommand("Accra Distributors", null, null, null, null), CancellationToken.None);
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand(
-                "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 10, 20, true, 50, seeded.BranchId, supplier.Id),
+                "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 20, true, 50, seeded.BranchId, supplier.Id),
             CancellationToken.None);
         await new DeleteSupplierCommandHandler(context, owner).Handle(new DeleteSupplierCommand(supplier.Id), CancellationToken.None);
 
@@ -245,7 +245,7 @@ public class SuppliersTests : IDisposable
         // since-deactivated supplier must not be blocked - only a *change* of supplier is gated.
         await new UpdateProductCommandHandler(context, owner).Handle(
             new UpdateProductCommand(
-                product.Id, "Coca-Cola 500ml", "SKU-001", null, null, null, null, 6.00m, 3.00m, 10, 20, true, true, supplier.Id),
+                product.Id, "Coca-Cola 500ml", "SKU-001", null, null, null, null, 6.00m, 3.00m, 20, true, true, supplier.Id),
             CancellationToken.None);
 
         var updated = await context.Products.SingleAsync(p => p.Id == product.Id);
@@ -265,7 +265,7 @@ public class SuppliersTests : IDisposable
             new CreateSupplierCommand("Accra Distributors", null, null, null, null), CancellationToken.None);
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
             new CreateProductCommand(
-                "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 10, 20, true, 50, seeded.BranchId, supplier.Id),
+                "Coca-Cola 500ml", "SKU-001", null, null, null, null, 5.00m, 3.00m, 20, true, 50, seeded.BranchId, supplier.Id),
             CancellationToken.None);
         await new RestockFromSupplierCommandHandler(context, owner, mediator).Handle(
             new RestockFromSupplierCommand(supplier.Id, product.Id, seeded.BranchId, 10, null), CancellationToken.None);
