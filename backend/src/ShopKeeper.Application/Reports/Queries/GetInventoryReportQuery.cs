@@ -46,19 +46,19 @@ public class GetInventoryReportQueryHandler(IAppDbContext db, ICurrentUserServic
         }
         var stocks = await stockQuery.ToListAsync(cancellationToken);
 
-        var lowStock = stocks.Where(s => s.QuantityOnHand > 0 && s.QuantityOnHand <= s.Product.ReorderLevel).ToList();
+        var lowStock = stocks.Where(s => s.QuantityOnHand > 0 && s.QuantityOnHand <= s.Product.MinimumStock).ToList();
         var outOfStock = stocks.Where(s => s.QuantityOnHand == 0).ToList();
 
         var valuation = new InventoryValuationDto(
             stocks.Count, lowStock.Count, outOfStock.Count, stocks.Sum(s => s.QuantityOnHand * s.Product.CostPrice));
 
         var lowStockProducts = lowStock
-            .Select(s => new StockAlertProductDto(s.ProductId, s.Product.Name, s.QuantityOnHand, s.Product.ReorderLevel))
+            .Select(s => new StockAlertProductDto(s.ProductId, s.Product.Name, s.QuantityOnHand, s.Product.MinimumStock))
             .OrderBy(p => p.QuantityOnHand)
             .ToList();
 
         var outOfStockProducts = outOfStock
-            .Select(s => new StockAlertProductDto(s.ProductId, s.Product.Name, s.QuantityOnHand, s.Product.ReorderLevel))
+            .Select(s => new StockAlertProductDto(s.ProductId, s.Product.Name, s.QuantityOnHand, s.Product.MinimumStock))
             .ToList();
 
         var rangeStart = new DateTimeOffset(request.From.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);

@@ -51,12 +51,12 @@ public class PlanLimitEnforcementTests : IDisposable
         for (var i = 0; i < 25; i++)
         {
             await handler.Handle(
-                new CreateProductCommand($"Product {i}", $"SKU-LIM-{i}", null, null, null, null, 10m, 5m, 0, 0, false, 0, null),
+                new CreateProductCommand($"Product {i}", $"SKU-LIM-{i}", null, null, null, null, 10m, 5m, 0, false, 0, null),
                 CancellationToken.None);
         }
 
         var ex = await Assert.ThrowsAsync<ConflictException>(() => handler.Handle(
-            new CreateProductCommand("One Too Many", "SKU-LIM-25", null, null, null, null, 10m, 5m, 0, 0, false, 0, null),
+            new CreateProductCommand("One Too Many", "SKU-LIM-25", null, null, null, null, 10m, 5m, 0, false, 0, null),
             CancellationToken.None));
         Assert.Contains("product limit", ex.Message);
 
@@ -78,7 +78,7 @@ public class PlanLimitEnforcementTests : IDisposable
         for (var i = 0; i < 30; i++) // above the Free tier's 25-product cap
         {
             await handler.Handle(
-                new CreateProductCommand($"Product {i}", $"SKU-ADDON-{i}", null, null, null, null, 10m, 5m, 0, 0, false, 0, null),
+                new CreateProductCommand($"Product {i}", $"SKU-ADDON-{i}", null, null, null, null, 10m, 5m, 0, false, 0, null),
                 CancellationToken.None);
         }
 

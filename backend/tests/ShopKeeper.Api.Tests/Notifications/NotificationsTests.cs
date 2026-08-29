@@ -40,7 +40,7 @@ public class NotificationsTests : IDisposable
     }
 
     [Fact]
-    public async Task AdjustStock_CrossingReorderLevel_NotifiesOwnerOnce()
+    public async Task AdjustStock_CrossingMinimumStock_NotifiesOwnerOnce()
     {
         var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
         var owner = seeded.AsOwner();
@@ -48,7 +48,7 @@ public class NotificationsTests : IDisposable
         var notifications = new NotificationDispatcher(context);
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Widget", "SKU-LOWSTOCK", null, null, null, null, 10m, 6m, 0, 5, true, 10, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-LOWSTOCK", null, null, null, null, 10m, 6m, 5, true, 10, seeded.BranchId),
             CancellationToken.None);
 
         // 10 -> 6: still above the reorder level of 5, no alert yet.
@@ -68,14 +68,14 @@ public class NotificationsTests : IDisposable
     }
 
     [Fact]
-    public async Task CreateSale_CrossingReorderLevel_NotifiesOwner()
+    public async Task CreateSale_CrossingMinimumStock_NotifiesOwner()
     {
         var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
         var owner = seeded.AsOwner();
         var context = _db.CreateContext(owner);
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Widget", "SKU-SALE-LOWSTOCK", null, null, null, null, 10m, 6m, 0, 5, true, 6, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-SALE-LOWSTOCK", null, null, null, null, 10m, 6m, 5, true, 6, seeded.BranchId),
             CancellationToken.None);
 
         await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
@@ -159,7 +159,7 @@ public class NotificationsTests : IDisposable
             new UpdateNotificationPreferencesCommand(true, false), CancellationToken.None);
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Widget", "SKU-MUTED-LOWSTOCK", null, null, null, null, 10m, 6m, 0, 5, true, 6, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-MUTED-LOWSTOCK", null, null, null, null, 10m, 6m, 5, true, 6, seeded.BranchId),
             CancellationToken.None);
 
         await new AdjustStockCommandHandler(context, owner, notifications).Handle(
