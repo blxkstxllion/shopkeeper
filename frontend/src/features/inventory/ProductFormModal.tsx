@@ -63,8 +63,7 @@ export function ProductFormModal({
           supplierId: product.supplierId ?? '',
           sellingPrice: product.sellingPrice,
           costPrice: product.costPrice,
-          minStock: product.minStock,
-          reorderLevel: product.reorderLevel,
+          minimumStock: product.minimumStock,
           trackInventory: product.trackInventory,
           initialQuantity: 0,
         }
@@ -107,8 +106,7 @@ export function ProductFormModal({
         imageUrl,
         sellingPrice: values.sellingPrice,
         costPrice: values.costPrice,
-        minStock: values.minStock,
-        reorderLevel: values.reorderLevel,
+        minimumStock: values.minimumStock,
         trackInventory: values.trackInventory,
         initialQuantity: values.initialQuantity,
         branchId,
@@ -298,34 +296,19 @@ export function ProductFormModal({
           </FormField>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <FormField
-            label="Minimum stock"
-            htmlFor="minStock"
-            error={errors.minStock?.message}
-            hint="The lowest quantity you want to keep on hand, for your own reference."
-          >
-            <Input
-              id="minStock"
-              type="number"
-              {...register('minStock', { valueAsNumber: true })}
-              error={errors.minStock?.message}
-            />
-          </FormField>
-          <FormField
-            label="Reorder level"
-            htmlFor="reorderLevel"
-            error={errors.reorderLevel?.message}
-            hint="When stock falls to this number or below, it shows up as “low stock” on your dashboard and inventory page."
-          >
-            <Input
-              id="reorderLevel"
-              type="number"
-              {...register('reorderLevel', { valueAsNumber: true })}
-              error={errors.reorderLevel?.message}
-            />
-          </FormField>
-        </div>
+        <FormField
+          label="Minimum stock"
+          htmlFor="minimumStock"
+          error={errors.minimumStock?.message}
+          hint="When stock falls to this number or below, it shows up as “low stock” on your dashboard and inventory page."
+        >
+          <Input
+            id="minimumStock"
+            type="number"
+            {...register('minimumStock', { valueAsNumber: true })}
+            error={errors.minimumStock?.message}
+          />
+        </FormField>
 
         <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
           <input

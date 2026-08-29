@@ -19,8 +19,7 @@ public record UpdateProductCommand(
     Guid? CategoryId,
     decimal SellingPrice,
     decimal CostPrice,
-    int MinStock,
-    int ReorderLevel,
+    int MinimumStock,
     bool TrackInventory,
     bool IsActive,
     Guid? SupplierId = null) : IRequest;
@@ -34,8 +33,7 @@ public class UpdateProductCommandValidator : AbstractValidator<UpdateProductComm
         RuleFor(x => x.Barcode).MaximumLength(50);
         RuleFor(x => x.SellingPrice).GreaterThanOrEqualTo(0);
         RuleFor(x => x.CostPrice).GreaterThanOrEqualTo(0);
-        RuleFor(x => x.MinStock).GreaterThanOrEqualTo(0);
-        RuleFor(x => x.ReorderLevel).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.MinimumStock).GreaterThanOrEqualTo(0);
     }
 }
 
@@ -76,8 +74,7 @@ public class UpdateProductCommandHandler(IAppDbContext db, ICurrentUserService c
         product.SupplierId = request.SupplierId;
         product.SellingPrice = request.SellingPrice;
         product.CostPrice = request.CostPrice;
-        product.MinStock = request.MinStock;
-        product.ReorderLevel = request.ReorderLevel;
+        product.MinimumStock = request.MinimumStock;
         product.TrackInventory = request.TrackInventory;
         product.IsActive = request.IsActive;
 

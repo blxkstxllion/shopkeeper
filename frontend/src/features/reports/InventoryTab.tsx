@@ -150,7 +150,7 @@ function StockAlertCard({
             <li key={p.productId} className="flex items-center justify-between py-2 text-sm">
               <span className="text-slate-700 dark:text-slate-300">{p.productName}</span>
               <span className={`font-medium ${toneClass}`}>
-                {p.quantityOnHand} / {p.reorderLevel} reorder level
+                {p.quantityOnHand} / {p.minimumStock} minimum stock
               </span>
             </li>
           ))}

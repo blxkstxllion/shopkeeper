@@ -82,7 +82,7 @@ public class AboutTests : IDisposable
         var context = _db.CreateContext(owner);
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Widget", "SKU-ABOUT", null, null, null, null, 10m, 6m, 0, 0, true, 100, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-ABOUT", null, null, null, null, 10m, 6m, 0, true, 100, seeded.BranchId),
             CancellationToken.None);
 
         var strongYearSale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
@@ -116,7 +116,7 @@ public class AboutTests : IDisposable
             new UpdateBusinessAboutCommand("Visible to everyone.", null, null), CancellationToken.None);
 
         var product = await new CreateProductCommandHandler(ownerContext, owner, new PlanLimitService(ownerContext)).Handle(
-            new CreateProductCommand("Widget", "SKU-NOPERM", null, null, null, null, 10m, 6m, 0, 0, true, 100, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-NOPERM", null, null, null, null, 10m, 6m, 0, true, 100, seeded.BranchId),
             CancellationToken.None);
         await new CreateSaleCommandHandler(ownerContext, owner, new NotificationDispatcher(ownerContext)).Handle(
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(product.Id, 1, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 10m, null)]),

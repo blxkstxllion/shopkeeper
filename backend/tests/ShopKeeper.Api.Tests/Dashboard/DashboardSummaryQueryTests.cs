@@ -19,7 +19,7 @@ public class DashboardSummaryQueryTests : IDisposable
     private readonly JwtTokenService _jwt = new(Options.Create(PosTestFixture.JwtTestSettings));
 
     private async Task<(PosTestFixture.SeededBusiness Seeded, AppDbContext Context, TestCurrentUserService Owner, Guid ProductId)> SeedWithProductAsync(
-        decimal sellingPrice = 10m, decimal costPrice = 6m, int initialQuantity = 20, int reorderLevel = 5)
+        decimal sellingPrice = 10m, decimal costPrice = 6m, int initialQuantity = 20, int minimumStock = 5)
     {
         var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
         var owner = seeded.AsOwner();
@@ -29,7 +29,7 @@ public class DashboardSummaryQueryTests : IDisposable
             new CreateProductCategoryCommand("Beverages", null), CancellationToken.None);
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Widget", "SKU-DASH", null, null, null, category.Id, sellingPrice, costPrice, 5, reorderLevel, true, initialQuantity, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-DASH", null, null, null, category.Id, sellingPrice, costPrice, minimumStock, true, initialQuantity, seeded.BranchId),
             CancellationToken.None);
 
         return (seeded, context, owner, product.Id);
@@ -97,7 +97,7 @@ public class DashboardSummaryQueryTests : IDisposable
     [Fact]
     public async Task Handle_ComputesInventoryValueAndLowStockCount()
     {
-        var (seeded, context, owner, _) = await SeedWithProductAsync(costPrice: 6m, initialQuantity: 20, reorderLevel: 25);
+        var (seeded, context, owner, _) = await SeedWithProductAsync(costPrice: 6m, initialQuantity: 20, minimumStock: 25);
 
         var summary = await new GetDashboardSummaryQueryHandler(context, owner).Handle(new GetDashboardSummaryQuery(null), CancellationToken.None);
 
@@ -160,7 +160,7 @@ public class DashboardSummaryQueryTests : IDisposable
         await context.SaveChangesAsync(CancellationToken.None);
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Widget", "SKU-BRANCH", null, null, null, null, 10m, 6m, 5, 10, true, 10, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-BRANCH", null, null, null, null, 10m, 6m, 10, true, 10, seeded.BranchId),
             CancellationToken.None);
         context.ProductStocks.Add(new ProductStock { BusinessId = seeded.BusinessId, ProductId = product.Id, BranchId = branchB.Id, QuantityOnHand = 10 });
         await context.SaveChangesAsync(CancellationToken.None);

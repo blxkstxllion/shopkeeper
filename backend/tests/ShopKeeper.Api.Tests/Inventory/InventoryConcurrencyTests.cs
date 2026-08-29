@@ -34,7 +34,7 @@ public class InventoryConcurrencyTests
         var setupContext = db.CreateContext(owner);
 
         var product = await new CreateProductCommandHandler(setupContext, owner, new PlanLimitService(setupContext)).Handle(
-            new CreateProductCommand("Widget", "SKU-CONC", null, null, null, null, 10m, 6m, 0, 0, true, 1, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-CONC", null, null, null, null, 10m, 6m, 0, true, 1, seeded.BranchId),
             CancellationToken.None);
 
         // Two independent contexts (two "cashiers"), each reading stock=1 before either writes -
@@ -70,7 +70,7 @@ public class InventoryConcurrencyTests
         var setupContext = db.CreateContext(owner);
 
         var product = await new CreateProductCommandHandler(setupContext, owner, new PlanLimitService(setupContext)).Handle(
-            new CreateProductCommand("Widget", "SKU-LASTUNIT", null, null, null, null, 10m, 6m, 0, 0, true, 1, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-LASTUNIT", null, null, null, null, 10m, 6m, 0, true, 1, seeded.BranchId),
             CancellationToken.None);
 
         var contextA = db.CreateContext(owner);
@@ -102,7 +102,7 @@ public class InventoryConcurrencyTests
         var setupContext = db.CreateContext(owner);
 
         var product = await new CreateProductCommandHandler(setupContext, owner, new PlanLimitService(setupContext)).Handle(
-            new CreateProductCommand("Widget", "SKU-RACE", null, null, null, null, 10m, 6m, 0, 0, true, 1, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-RACE", null, null, null, null, 10m, 6m, 0, true, 1, seeded.BranchId),
             CancellationToken.None);
 
         // Two real, independently-connected contexts racing via Task.WhenAll - not a
@@ -142,7 +142,7 @@ public class InventoryConcurrencyTests
         var setupContext = db.CreateContext(owner);
 
         var product = await new CreateProductCommandHandler(setupContext, owner, new PlanLimitService(setupContext)).Handle(
-            new CreateProductCommand("Widget", "SKU-RACE-SALE", null, null, null, null, 10m, 6m, 0, 0, true, 1, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-RACE-SALE", null, null, null, null, 10m, 6m, 0, true, 1, seeded.BranchId),
             CancellationToken.None);
 
         async Task<bool> TrySell()
@@ -180,7 +180,7 @@ public class InventoryConcurrencyTests
         var context = db.CreateContext(owner);
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Widget", "SKU-INSUFFICIENT", null, null, null, null, 10m, 6m, 0, 0, true, 3, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-INSUFFICIENT", null, null, null, null, 10m, 6m, 0, true, 3, seeded.BranchId),
             CancellationToken.None);
 
         var ex = await Assert.ThrowsAsync<ConflictException>(() => new AdjustStockCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
@@ -202,10 +202,10 @@ public class InventoryConcurrencyTests
         var setupB = db.CreateContext(ownerB);
 
         var productA = await new CreateProductCommandHandler(setupA, ownerA, new PlanLimitService(setupA)).Handle(
-            new CreateProductCommand("Widget A", "SKU-TENANT-A", null, null, null, null, 10m, 6m, 0, 0, true, 1, businessA.BranchId),
+            new CreateProductCommand("Widget A", "SKU-TENANT-A", null, null, null, null, 10m, 6m, 0, true, 1, businessA.BranchId),
             CancellationToken.None);
         var productB = await new CreateProductCommandHandler(setupB, ownerB, new PlanLimitService(setupB)).Handle(
-            new CreateProductCommand("Widget B", "SKU-TENANT-B", null, null, null, null, 10m, 6m, 0, 0, true, 1, businessB.BranchId),
+            new CreateProductCommand("Widget B", "SKU-TENANT-B", null, null, null, null, 10m, 6m, 0, true, 1, businessB.BranchId),
             CancellationToken.None);
 
         // Both businesses sell their own last unit at the same time - neither should be able
@@ -239,7 +239,7 @@ public class InventoryConcurrencyTests
         var setupContext = db.CreateContext(owner);
 
         var product = await new CreateProductCommandHandler(setupContext, owner, new PlanLimitService(setupContext)).Handle(
-            new CreateProductCommand("Widget", "SKU-NUMS", null, null, null, null, 10m, 6m, 0, 0, true, 10, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-NUMS", null, null, null, null, 10m, 6m, 0, true, 10, seeded.BranchId),
             CancellationToken.None);
 
         Task<Application.Sales.Dtos.SaleDto> Sell()
@@ -269,10 +269,10 @@ public class InventoryConcurrencyTests
         var setupB = db.CreateContext(ownerB);
 
         var productA = await new CreateProductCommandHandler(setupA, ownerA, new PlanLimitService(setupA)).Handle(
-            new CreateProductCommand("Widget A", "SKU-NUM-A", null, null, null, null, 10m, 6m, 0, 0, true, 5, businessA.BranchId),
+            new CreateProductCommand("Widget A", "SKU-NUM-A", null, null, null, null, 10m, 6m, 0, true, 5, businessA.BranchId),
             CancellationToken.None);
         var productB = await new CreateProductCommandHandler(setupB, ownerB, new PlanLimitService(setupB)).Handle(
-            new CreateProductCommand("Widget B", "SKU-NUM-B", null, null, null, null, 10m, 6m, 0, 0, true, 5, businessB.BranchId),
+            new CreateProductCommand("Widget B", "SKU-NUM-B", null, null, null, null, 10m, 6m, 0, true, 5, businessB.BranchId),
             CancellationToken.None);
 
         // Each business's very first sale - both should independently claim "S-000001".
