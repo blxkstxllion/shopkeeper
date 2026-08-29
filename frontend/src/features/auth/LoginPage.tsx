@@ -49,7 +49,7 @@ function DownloadMenu({ className, variant = 'light' }: { className: string; var
         className={
           variant === 'dark'
             ? 'flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-sm font-medium text-white shadow-sm backdrop-blur-sm hover:bg-white/20'
-            : 'flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'
+            : 'flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50'
         }
       >
         <Download className="h-3.5 w-3.5" />
@@ -58,17 +58,17 @@ function DownloadMenu({ className, variant = 'light' }: { className: string; var
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-20 mt-1 w-52 rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+        <div className="absolute right-0 top-full z-20 mt-1 w-52 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
           <a
             href="/downloads/ShopKeeper.apk"
-            className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
           >
             <Smartphone className="h-4 w-4" />
             Android (APK)
           </a>
           <a
             href="/downloads/ShopKeeper-Setup-x64.exe"
-            className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
           >
             <Monitor className="h-4 w-4" />
             Windows (.exe)
@@ -200,11 +200,8 @@ function IconField({
         className={clsx(
           'h-11 w-full rounded-xl border bg-white/70 pl-10 text-sm text-slate-900 placeholder:text-slate-400 backdrop-blur-sm transition-all duration-200',
           'focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/15',
-          'dark:bg-slate-900/50 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:bg-slate-900',
           rightAdornment ? 'pr-10' : 'pr-3',
-          error
-            ? 'border-red-400 focus:border-red-500 focus:ring-red-500/15'
-            : 'border-slate-200 dark:border-slate-700',
+          error ? 'border-red-400 focus:border-red-500 focus:ring-red-500/15' : 'border-slate-200',
           className,
         )}
       />
@@ -241,7 +238,7 @@ function SignInButton({ isLoading, children }: { isLoading: boolean; children: R
 
 function GlassCard({ children }: { children: ReactNode }) {
   return (
-    <div className="rounded-3xl border border-white/60 bg-white/80 p-7 shadow-2xl shadow-slate-900/10 backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/70 dark:shadow-black/30 sm:p-8">
+    <div className="rounded-3xl border border-white/60 bg-white/80 p-7 shadow-2xl shadow-slate-900/10 backdrop-blur-xl sm:p-8">
       {children}
     </div>
   )
@@ -317,7 +314,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-slate-950 lg:flex-row">
+    <div className="flex min-h-screen flex-col bg-slate-50 lg:flex-row">
       {/* Mobile: compact animated header instead of a shrunk copy of the desktop panel */}
       <div className="relative overflow-hidden bg-gradient-to-br from-primary-800 via-primary-700 to-primary-900 px-5 pb-7 pt-5 text-white lg:hidden">
         <BrandAmbience compact />
@@ -386,11 +383,11 @@ export function LoginPage() {
           {challengeToken ? (
             <GlassCard>
               <div className="mb-5 flex flex-col items-center gap-2 text-center">
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-100 dark:bg-primary-900/40">
-                  <ShieldCheck className="h-6 w-6 text-primary-600 dark:text-primary-400" />
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-100">
+                  <ShieldCheck className="h-6 w-6 text-primary-600" />
                 </span>
-                <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Two-factor verification</h1>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
+                <h1 className="text-lg font-semibold text-slate-900">Two-factor verification</h1>
+                <p className="text-sm text-slate-500">
                   Enter the 6-digit code from your authenticator app, or one of your recovery codes.
                 </p>
               </div>
@@ -419,7 +416,7 @@ export function LoginPage() {
                       autoFocus
                     />
                     {codeForm.formState.errors.code && (
-                      <p className="text-xs text-red-600 dark:text-red-400">{codeForm.formState.errors.code.message}</p>
+                      <p className="text-xs text-red-600">{codeForm.formState.errors.code.message}</p>
                     )}
                   </div>
                 )}
@@ -442,7 +439,7 @@ export function LoginPage() {
                     setChallengeToken(null)
                     setServerError(null)
                   }}
-                  className="text-center text-sm font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                  className="text-center text-sm font-medium text-slate-500 hover:text-slate-700"
                 >
                   Back to sign in
                 </button>
@@ -451,17 +448,17 @@ export function LoginPage() {
           ) : (
             <GlassCard>
               <div className="mb-6 text-center">
-                <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                <h1 className="text-xl font-semibold text-slate-900">
                   Welcome back <span aria-hidden="true">👋</span>
                 </h1>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Sign in to continue to your account</p>
+                <p className="mt-1 text-sm text-slate-500">Sign in to continue to your account</p>
               </div>
 
               <form onSubmit={credentialsForm.handleSubmit(onSubmitCredentials)} className="flex flex-col gap-4">
                 {serverError && <Alert tone="error">{serverError}</Alert>}
 
                 <div className="flex flex-col gap-1.5">
-                  <label htmlFor="email" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  <label htmlFor="email" className="text-sm font-medium text-slate-700">
                     Email
                   </label>
                   <IconField
@@ -474,15 +471,13 @@ export function LoginPage() {
                     {...credentialsForm.register('email')}
                   />
                   {credentialsForm.formState.errors.email && (
-                    <p className="text-xs text-red-600 dark:text-red-400">
-                      {credentialsForm.formState.errors.email.message}
-                    </p>
+                    <p className="text-xs text-red-600">{credentialsForm.formState.errors.email.message}</p>
                   )}
                 </div>
 
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between">
-                    <label htmlFor="password" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    <label htmlFor="password" className="text-sm font-medium text-slate-700">
                       Password
                     </label>
                     <Link to="/forgot-password" className="text-xs font-medium text-primary-600 hover:text-primary-700">
@@ -502,7 +497,7 @@ export function LoginPage() {
                         tabIndex={-1}
                         onClick={() => setShowPassword((v) => !v)}
                         aria-label={showPassword ? 'Hide password' : 'Show password'}
-                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                        className="text-slate-400 hover:text-slate-600"
                       >
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
@@ -510,16 +505,14 @@ export function LoginPage() {
                     {...credentialsForm.register('password')}
                   />
                   {credentialsForm.formState.errors.password && (
-                    <p className="text-xs text-red-600 dark:text-red-400">
-                      {credentialsForm.formState.errors.password.message}
-                    </p>
+                    <p className="text-xs text-red-600">{credentialsForm.formState.errors.password.message}</p>
                   )}
                 </div>
 
                 <SignInButton isLoading={credentialsForm.formState.isSubmitting}>Sign in</SignInButton>
               </form>
 
-              <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
+              <p className="mt-6 text-center text-sm text-slate-500">
                 Don&apos;t have an account?{' '}
                 <Link to="/register" className="font-medium text-primary-600 hover:text-primary-700">
                   Create one
