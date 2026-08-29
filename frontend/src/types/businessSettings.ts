@@ -3,6 +3,7 @@ export interface BusinessSettings {
   name: string
   legalName: string | null
   businessType: string
+  businessTypeOther: string | null
   country: string
   currencyCode: string
   timeZone: string

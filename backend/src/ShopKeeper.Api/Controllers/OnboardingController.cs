@@ -17,6 +17,7 @@ public class OnboardingController(ISender mediator, ICurrentUserService currentU
     public record CompleteOnboardingRequest(
         string BusinessName,
         BusinessType BusinessType,
+        string? BusinessTypeOther,
         string Country,
         string CurrencyCode,
         string? LogoUrl,
@@ -36,6 +37,7 @@ public class OnboardingController(ISender mediator, ICurrentUserService currentU
             currentUser.UserId!.Value,
             request.BusinessName,
             request.BusinessType,
+            request.BusinessTypeOther,
             request.Country,
             request.CurrencyCode,
             request.LogoUrl,

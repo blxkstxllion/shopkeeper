@@ -38,7 +38,7 @@ public class TenantIsolationTests : IDisposable
 
         var business = await new CompleteOnboardingCommandHandler(setupContext, tokenIssuer).Handle(
             new CompleteOnboardingCommand(
-                registerResult.User.Id, businessName, BusinessType.Retail, "Ghana", "GHS", null,
+                registerResult.User.Id, businessName, BusinessType.Retail, null, "Ghana", "GHS", null,
                 false, 0, true, [], "Main", null, null, null),
             CancellationToken.None);
 

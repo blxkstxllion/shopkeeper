@@ -10,17 +10,23 @@ import { Input, FormField } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
 import { ApiError } from '@/lib/api-client'
 
-const schema = z.object({
-  firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().min(1, 'Last name is required'),
-  email: z.string().min(1, 'Email is required').email('Enter a valid email address'),
-  password: z
-    .string()
-    .min(8, 'Must be at least 8 characters')
-    .regex(/[A-Z]/, 'Must include an uppercase letter')
-    .regex(/[a-z]/, 'Must include a lowercase letter')
-    .regex(/[0-9]/, 'Must include a number'),
-})
+const schema = z
+  .object({
+    firstName: z.string().min(1, 'First name is required'),
+    lastName: z.string().min(1, 'Last name is required'),
+    email: z.string().min(1, 'Email is required').email('Enter a valid email address'),
+    password: z
+      .string()
+      .min(8, 'Must be at least 8 characters')
+      .regex(/[A-Z]/, 'Must include an uppercase letter')
+      .regex(/[a-z]/, 'Must include a lowercase letter')
+      .regex(/[0-9]/, 'Must include a number'),
+    confirmPassword: z.string().min(1, 'Please confirm your password'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  })
 
 type FormValues = z.infer<typeof schema>
 
@@ -39,7 +45,7 @@ export function RegisterPage() {
     setServerError(null)
     try {
       await registerUser(values.email, values.password, values.firstName, values.lastName)
-      navigate('/onboarding', { replace: true })
+      navigate('/onboarding', { replace: true, state: { justRegistered: true, email: values.email } })
     } catch (err) {
       setServerError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.')
     }
@@ -86,6 +92,16 @@ export function RegisterPage() {
             autoComplete="new-password"
             {...register('password')}
             error={errors.password?.message}
+          />
+        </FormField>
+
+        <FormField label="Confirm password" htmlFor="confirmPassword" error={errors.confirmPassword?.message}>
+          <Input
+            id="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            {...register('confirmPassword')}
+            error={errors.confirmPassword?.message}
           />
         </FormField>
 

@@ -132,7 +132,9 @@ export function BusinessProfileSection() {
         <div className="grid grid-cols-2 gap-4 rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-800">
           <div>
             <p className="text-xs uppercase tracking-wide text-slate-400">Business type</p>
-            <p className="text-slate-700 dark:text-slate-200">{data.businessType}</p>
+            <p className="text-slate-700 dark:text-slate-200">
+              {data.businessType === 'Other' && data.businessTypeOther ? data.businessTypeOther : data.businessType}
+            </p>
           </div>
           <div>
             <p className="text-xs uppercase tracking-wide text-slate-400">Country</p>

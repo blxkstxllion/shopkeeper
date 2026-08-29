@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Check } from 'lucide-react'
@@ -32,6 +32,9 @@ const steps = ['Business', 'First branch', 'Tax settings', 'Goals', 'Review']
 export function OnboardingPage() {
   const { completeOnboarding } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const justRegisteredState = location.state as { justRegistered?: boolean; email?: string } | null
+  const [showVerificationNotice, setShowVerificationNotice] = useState(Boolean(justRegisteredState?.justRegistered))
   const [step, setStep] = useState(0)
   const [serverError, setServerError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -85,6 +88,7 @@ export function OnboardingPage() {
       const result = await onboardingApi.completeOnboarding({
         businessName: data.businessName,
         businessType: data.businessType as BusinessType,
+        businessTypeOther: data.businessType === 'Other' ? data.businessTypeOther?.trim() || null : null,
         country: data.country,
         currencyCode: data.currencyCode,
         taxEnabled: data.taxEnabled,
@@ -114,6 +118,26 @@ export function OnboardingPage() {
           <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Set up your business</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">A few quick questions to get you started.</p>
         </div>
+
+        {showVerificationNotice && (
+          <div className="mb-6">
+            <Alert tone="info">
+              <div className="flex items-start justify-between gap-3">
+                <span>
+                  We&apos;ve sent a verification link to {justRegisteredState?.email ?? 'your email'}. You can verify
+                  anytime - it won&apos;t block you from setting up your business.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowVerificationNotice(false)}
+                  className="shrink-0 text-sm font-medium underline hover:no-underline"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </Alert>
+          </div>
+        )}
 
         <ol className="mb-6 flex items-center justify-center gap-2">
           {steps.map((label, i) => (
@@ -156,6 +180,20 @@ export function OnboardingPage() {
                     ))}
                   </select>
                 </FormField>
+                {values.businessType === 'Other' && (
+                  <FormField
+                    label="What kind of business?"
+                    htmlFor="businessTypeOther"
+                    error={errors.businessTypeOther?.message}
+                  >
+                    <Input
+                      id="businessTypeOther"
+                      placeholder="e.g. Car wash, Barbershop, Bakery"
+                      {...register('businessTypeOther')}
+                      error={errors.businessTypeOther?.message}
+                    />
+                  </FormField>
+                )}
                 {showColorSuggestion && colorSuggestion && (
                   <Alert tone="info">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -306,7 +344,10 @@ export function OnboardingPage() {
 
             {step === 4 && (
               <div className="flex flex-col gap-3 text-sm">
-                <SummaryRow label="Business" value={`${values.businessName} (${values.businessType})`} />
+                <SummaryRow
+                  label="Business"
+                  value={`${values.businessName} (${values.businessType === 'Other' ? values.businessTypeOther || 'Other' : values.businessType})`}
+                />
                 <SummaryRow label="Location" value={`${values.country} · ${values.currencyCode}`} />
                 <SummaryRow label="First branch" value={values.firstBranchName} />
                 <SummaryRow label="Tax" value={values.taxEnabled ? `${values.taxRatePercent}%` : 'Not charging tax'} />
