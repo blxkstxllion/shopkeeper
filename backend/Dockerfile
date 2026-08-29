@@ -53,6 +53,13 @@ RUN addgroup --system --gid 1000 shopkeeper \
 
 COPY --from=build --chown=shopkeeper:shopkeeper /app/publish .
 
+# Pre-create the uploads mount point owned by the app user before the volume is ever
+# attached - Docker copies a fresh named volume's initial content/ownership from whatever
+# already exists at the mount path in the image, so without this the volume ends up
+# root-owned and LocalFileStorageService's Directory.CreateDirectory() throws
+# UnauthorizedAccessException the first time anyone uploads a product image or profile photo.
+RUN mkdir -p /app/App_Data/uploads && chown -R shopkeeper:shopkeeper /app/App_Data
+
 USER shopkeeper
 ENV ASPNETCORE_URLS=http://+:8080 \
     ASPNETCORE_ENVIRONMENT=Production \

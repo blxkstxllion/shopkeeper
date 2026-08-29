@@ -37,7 +37,7 @@ public class GetInventoryStatsQueryHandler(IAppDbContext db, ICurrentUserService
 
         return new InventoryStatsDto(
             TotalProducts: stocks.Count,
-            LowStockCount: stocks.Count(s => s.QuantityOnHand > 0 && s.QuantityOnHand <= s.Product.ReorderLevel),
+            LowStockCount: stocks.Count(s => s.QuantityOnHand > 0 && s.QuantityOnHand <= s.Product.MinimumStock),
             OutOfStockCount: stocks.Count(s => s.QuantityOnHand == 0),
             InventoryValue: stocks.Sum(s => s.QuantityOnHand * s.Product.CostPrice));
     }

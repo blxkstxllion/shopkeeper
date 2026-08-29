@@ -18,8 +18,7 @@ export interface Product {
   supplierName: string | null
   sellingPrice: number
   costPrice: number
-  minStock: number
-  reorderLevel: number
+  minimumStock: number
   trackInventory: boolean
   isActive: boolean
   quantityOnHand: number | null
@@ -44,8 +43,7 @@ export interface CreateProductPayload {
   supplierId?: string | null
   sellingPrice: number
   costPrice: number
-  minStock: number
-  reorderLevel: number
+  minimumStock: number
   trackInventory: boolean
   initialQuantity: number
   branchId?: string | null

@@ -87,7 +87,7 @@ public class CustomersTests : IDisposable
             new CreateCustomerCommand("Kwame Boateng", null, null, null), CancellationToken.None);
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Widget", "SKU-CUST", null, null, null, null, 10m, 6m, 5, 10, true, 20, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-CUST", null, null, null, null, 10m, 6m, 10, true, 20, seeded.BranchId),
             CancellationToken.None);
 
         var sale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
@@ -119,7 +119,7 @@ public class CustomersTests : IDisposable
             new CreateCustomerCommand("Kwame Boateng", null, null, null), CancellationToken.None);
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Widget", "SKU-CUST2", null, null, null, null, 10m, 6m, 5, 10, true, 20, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-CUST2", null, null, null, null, 10m, 6m, 10, true, 20, seeded.BranchId),
             CancellationToken.None);
 
         var sale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
@@ -143,7 +143,7 @@ public class CustomersTests : IDisposable
         var context = _db.CreateContext(owner);
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Widget", "SKU-WALKIN", null, null, null, null, 10m, 6m, 5, 10, true, 20, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-WALKIN", null, null, null, null, 10m, 6m, 10, true, 20, seeded.BranchId),
             CancellationToken.None);
 
         var sale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
@@ -169,7 +169,7 @@ public class CustomersTests : IDisposable
             new CreateCustomerCommand("Kwame Boateng", null, null, null), CancellationToken.None);
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Widget", "SKU-AGG", null, null, null, null, 10m, 6m, 5, 10, true, 20, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-AGG", null, null, null, null, 10m, 6m, 10, true, 20, seeded.BranchId),
             CancellationToken.None);
 
         await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(

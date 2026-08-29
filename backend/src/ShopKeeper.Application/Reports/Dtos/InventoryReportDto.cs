@@ -2,7 +2,7 @@ namespace ShopKeeper.Application.Reports.Dtos;
 
 public record InventoryValuationDto(int TotalProducts, int LowStockCount, int OutOfStockCount, decimal InventoryValue);
 
-public record StockAlertProductDto(Guid ProductId, string ProductName, int QuantityOnHand, int ReorderLevel);
+public record StockAlertProductDto(Guid ProductId, string ProductName, int QuantityOnHand, int MinimumStock);
 
 /// <summary>
 /// TurnoverRatio is UnitsSoldInRange / current QuantityOnHand - an approximation, not a true
