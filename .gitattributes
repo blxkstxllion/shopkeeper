@@ -1,0 +1,19 @@
+# Normalize all text files to LF in the repository, regardless of a contributor's local
+# core.autocrlf setting. Without this, any text file first committed with LF (the default for
+# most editors/tools) perpetually shows a "LF will be replaced by CRLF" warning on every git
+# operation on Windows with core.autocrlf=true set - harmless, but noisy forever, and easy to
+# mistake for a real uncommitted change (this is exactly what happened with
+# frontend/src-tauri/Cargo.toml throughout an entire session).
+* text=auto eol=lf
+
+# Binaries some tooling might otherwise try to text-normalize - never touch these.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.icns binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+*.keystore binary
