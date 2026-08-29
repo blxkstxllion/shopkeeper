@@ -1,17 +1,70 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ShieldCheck, Store, Check } from 'lucide-react'
+import { ShieldCheck, Check, Download, ChevronDown, Smartphone, Monitor } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/Card'
+import { Logo } from '@/components/ui/Logo'
 import { Button } from '@/components/ui/Button'
 import { Input, FormField } from '@/components/ui/Input'
 import { DigitCodeInput } from '@/components/ui/DigitCodeInput'
 import { Alert } from '@/components/ui/Alert'
 import { ApiError } from '@/lib/api-client'
 import type { User } from '@/types/auth'
+
+function DownloadMenu({ className, variant = 'light' }: { className: string; variant?: 'light' | 'dark' }) {
+  const [open, setOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  return (
+    <div className={className} ref={menuRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="true"
+        aria-expanded={open}
+        className={
+          variant === 'dark'
+            ? 'flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-white/20'
+            : 'flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'
+        }
+      >
+        <Download className="h-3.5 w-3.5" />
+        Download app
+        <ChevronDown className={variant === 'dark' ? 'h-3.5 w-3.5 text-white/70' : 'h-3.5 w-3.5 text-slate-400'} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full z-20 mt-1 w-52 rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+          <a
+            href="/downloads/ShopKeeper.apk"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            <Smartphone className="h-4 w-4" />
+            Android (APK)
+          </a>
+          <a
+            href="/downloads/ShopKeeper-Setup-x64.exe"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            <Monitor className="h-4 w-4" />
+            Windows (.exe)
+          </a>
+        </div>
+      )}
+    </div>
+  )
+}
 
 const credentialsSchema = z.object({
   email: z.string().min(1, 'Email is required').email('Enter a valid email address'),
@@ -83,11 +136,11 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-screen">
-      <div className="hidden w-1/2 flex-col justify-between bg-gradient-to-br from-primary-700 to-primary-900 p-12 text-white lg:flex">
+      <DownloadMenu className="fixed right-4 top-4 z-20 lg:hidden" />
+      <div className="relative hidden w-1/2 flex-col justify-between bg-gradient-to-br from-primary-700 to-primary-900 p-12 text-white lg:flex">
+        <DownloadMenu className="absolute right-12 top-12 z-20" variant="dark" />
         <div className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15">
-            <Store className="h-5 w-5" />
-          </div>
+          <Logo className="h-10 w-10" />
           <span className="text-lg font-semibold">The Shop Keeper</span>
         </div>
 
@@ -111,9 +164,7 @@ export function LoginPage() {
       <div className="flex w-full flex-col items-center justify-center bg-slate-50 px-4 py-12 dark:bg-slate-950 lg:w-1/2">
         <div className="w-full max-w-sm">
           <div className="mb-8 flex flex-col items-center gap-2 text-center lg:hidden">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-600 text-white">
-              <Store className="h-6 w-6" />
-            </div>
+            <Logo className="h-11 w-11" />
             <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">The Shop Keeper</p>
             <p className="text-sm text-slate-500 dark:text-slate-400">Know Your Business. Grow Your Profit.</p>
           </div>
