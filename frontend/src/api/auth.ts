@@ -86,6 +86,10 @@ export async function verifyEmail(token: string): Promise<void> {
   await apiClient.post('/auth/verify-email', { token })
 }
 
+export async function resendVerificationEmail(): Promise<void> {
+  await apiClient.post('/auth/resend-verification-email')
+}
+
 export async function switchBusiness(businessId: string): Promise<AuthResult> {
   const { data } = await apiClient.post<AuthResult>('/auth/switch-business', { businessId })
   return data
