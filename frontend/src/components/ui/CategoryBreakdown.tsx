@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import { EmptyState } from './EmptyState'
 import { formatMoney } from '@/lib/format'
 
@@ -11,6 +12,43 @@ export interface CategoryBreakdownItem {
   name: string
   value: number
   percentOfTotal: number
+}
+
+function Donut({ items, total }: { items: CategoryBreakdownItem[]; total: number }) {
+  return (
+    <div className="relative mx-auto h-44 w-44 shrink-0">
+      <ResponsiveContainer>
+        <PieChart>
+          <Pie
+            data={items}
+            dataKey="value"
+            nameKey="name"
+            innerRadius="72%"
+            outerRadius="100%"
+            paddingAngle={items.length > 1 ? 2 : 0}
+            startAngle={90}
+            endAngle={-270}
+            stroke="none"
+            isAnimationActive
+            animationDuration={700}
+            animationEasing="ease-out"
+          >
+            {items.map((item, i) => (
+              <Cell key={item.name} fill={`var(${CATEGORY_SLOT_VARS[i % CATEGORY_SLOT_VARS.length]})`} />
+            ))}
+          </Pie>
+          <Tooltip
+            formatter={(value, name) => [formatMoney(Number(value)), name]}
+            contentStyle={{ borderRadius: 8, fontSize: 12, border: '1px solid var(--color-border)' }}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+        <p className="text-base font-semibold text-slate-900 dark:text-slate-100">{formatMoney(total)}</p>
+        <p className="text-xs text-slate-400">Total</p>
+      </div>
+    </div>
+  )
 }
 
 export function CategoryBreakdown({
@@ -29,24 +67,12 @@ export function CategoryBreakdown({
   }
 
   const shown = items.slice(0, 8)
+  const total = shown.reduce((sum, item) => sum + item.value, 0)
 
   return (
-    <div>
-      <div className="flex h-6 w-full overflow-hidden rounded" role="img" aria-label="Share by category">
-        {shown.map((item, i) => (
-          <div
-            key={item.name}
-            className="h-full first:rounded-l last:rounded-r"
-            style={{
-              width: `${item.percentOfTotal}%`,
-              backgroundColor: `var(${CATEGORY_SLOT_VARS[i % CATEGORY_SLOT_VARS.length]})`,
-              marginRight: i < shown.length - 1 ? 2 : 0,
-            }}
-            title={`${item.name}: ${item.percentOfTotal}%`}
-          />
-        ))}
-      </div>
-      <ul className="mt-4 space-y-2.5">
+    <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
+      <Donut items={shown} total={total} />
+      <ul className="w-full flex-1 space-y-2.5">
         {shown.map((item, i) => (
           <li key={item.name} className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
