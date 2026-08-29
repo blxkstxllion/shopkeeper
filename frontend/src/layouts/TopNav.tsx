@@ -152,7 +152,7 @@ export function TopNav() {
           {menuOpen && (
             <div
               className="fixed inset-x-4 top-16 z-20 rounded-lg border border-slate-200 bg-white py-1 shadow-lg
-                sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:z-auto sm:mt-1 sm:w-56
+                sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-1 sm:w-56
                 dark:border-slate-700 dark:bg-slate-900"
             >
               <div className="border-b border-slate-100 px-3 py-2 dark:border-slate-800">
