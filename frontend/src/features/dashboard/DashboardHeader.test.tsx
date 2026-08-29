@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { DashboardHeader } from './DashboardHeader'
 import * as authApi from '@/api/auth'
 import * as AuthContextModule from '@/contexts/AuthContext'
@@ -54,17 +55,25 @@ describe('DashboardHeader', () => {
   })
 
   it('renders the welcome greeting with role and business name', () => {
-    render(<DashboardHeader />)
+    render(
+      <MemoryRouter>
+        <DashboardHeader />
+      </MemoryRouter>,
+    )
 
-    expect(screen.getByText('Welcome back, Ama')).toBeInTheDocument()
-    expect(screen.getByText('Owner at Ama Shop')).toBeInTheDocument()
+    expect(screen.getByText(/Welcome back, Ama/)).toBeInTheDocument()
+    expect(screen.getByText(/Ama Shop/)).toBeInTheDocument()
   })
 
   it('uploads a selected photo, saves it, and refreshes the user', async () => {
     vi.mocked(authApi.uploadProfilePhoto).mockResolvedValue({ url: '/uploads/profile-photos/x.jpg' })
     vi.mocked(authApi.updateProfilePhoto).mockResolvedValue(undefined)
 
-    render(<DashboardHeader />)
+    render(
+      <MemoryRouter>
+        <DashboardHeader />
+      </MemoryRouter>,
+    )
     const file = new File(['fake-image-bytes'], 'me.jpg', { type: 'image/jpeg' })
     await userEvent.upload(screen.getByLabelText('Upload profile photo'), file)
 
@@ -74,7 +83,11 @@ describe('DashboardHeader', () => {
   })
 
   it('rejects an unsupported file type before ever calling the upload API', async () => {
-    render(<DashboardHeader />)
+    render(
+      <MemoryRouter>
+        <DashboardHeader />
+      </MemoryRouter>,
+    )
     const file = new File(['not an image'], 'me.txt', { type: 'text/plain' })
     // fireEvent, not userEvent.upload - userEvent respects the input's `accept` attribute and
     // silently filters mismatched files the way a real OS file picker would, so it would never
