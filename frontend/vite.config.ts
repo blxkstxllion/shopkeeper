@@ -41,13 +41,13 @@ export default defineConfig({
           },
         ],
       },
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
+      includeAssets: ['favicon.png', 'apple-touch-icon.png'],
       manifest: {
         name: 'The Shop Keeper',
         short_name: 'Shop Keeper',
         description: 'Point of sale and inventory management, built to keep working offline.',
-        theme_color: '#1a0533',
-        background_color: '#1a0533',
+        theme_color: '#1a7a3c',
+        background_color: '#1a7a3c',
         display: 'standalone',
         start_url: '/',
         icons: [
