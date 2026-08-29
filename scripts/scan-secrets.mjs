@@ -12,7 +12,11 @@ const patterns = [
   { name: 'GitHub token', re: /gh[pousr]_[A-Za-z0-9]{36,}/ },
   { name: 'Slack token', re: /xox[baprs]-[A-Za-z0-9-]{10,}/ },
   { name: 'Stripe key', re: /sk_(live|test)_[A-Za-z0-9]{16,}/ },
-  { name: 'Generic API key / secret assignment', re: /\b(api[_-]?key|secret|password|passwd|token)\b\s*[:=]\s*['"][A-Za-z0-9_\-/+=]{16,}['"]/i },
+  // (?!test-secret) excludes this repo's established fake-signing-secret test fixture literal
+  // (e.g. "test-secret-at-least-32-bytes-long-for-hmac-sha256", reused verbatim across test
+  // files) - self-documenting by name, not a real credential, but every new test file that
+  // uses it would otherwise re-trigger this scanner since it only checks added diff lines.
+  { name: 'Generic API key / secret assignment', re: /\b(api[_-]?key|secret|password|passwd|token)\b\s*[:=]\s*['"](?!test-secret)[A-Za-z0-9_\-/+=]{16,}['"]/i },
   { name: 'JWT-looking literal', re: /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/ },
 ];
 
