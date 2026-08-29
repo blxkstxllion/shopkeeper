@@ -5,6 +5,7 @@ public record BusinessSettingsDto(
     string Name,
     string? LegalName,
     string BusinessType,
+    string? BusinessTypeOther,
     string Country,
     string CurrencyCode,
     string TimeZone,

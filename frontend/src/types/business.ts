@@ -13,6 +13,7 @@ export interface Business {
   id: string
   name: string
   businessType: string
+  businessTypeOther: string | null
   country: string
   currencyCode: string
   logoUrl: string | null
@@ -49,6 +50,7 @@ export type UpdateBranchPayload = CreateBranchPayload & { id: string; isMain: bo
 export interface CompleteOnboardingRequest {
   businessName: string
   businessType: BusinessType
+  businessTypeOther?: string | null
   country: string
   currencyCode: string
   logoUrl?: string | null

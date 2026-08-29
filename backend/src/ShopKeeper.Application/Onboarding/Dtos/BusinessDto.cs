@@ -6,6 +6,7 @@ public record BusinessDto(
     Guid Id,
     string Name,
     string BusinessType,
+    string? BusinessTypeOther,
     string Country,
     string CurrencyCode,
     string? LogoUrl,
