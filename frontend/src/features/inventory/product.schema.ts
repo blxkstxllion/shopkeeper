@@ -8,8 +8,7 @@ export const productSchema = z.object({
   supplierId: z.string().optional(),
   sellingPrice: z.number().min(0, 'Must be 0 or more'),
   costPrice: z.number().min(0, 'Must be 0 or more'),
-  minStock: z.number().int().min(0),
-  reorderLevel: z.number().int().min(0),
+  minimumStock: z.number().int().min(0),
   trackInventory: z.boolean(),
   initialQuantity: z.number().int().min(0),
 })
@@ -24,8 +23,7 @@ export const productDefaults: ProductFormValues = {
   supplierId: '',
   sellingPrice: 0,
   costPrice: 0,
-  minStock: 0,
-  reorderLevel: 0,
+  minimumStock: 0,
   trackInventory: true,
   initialQuantity: 0,
 }

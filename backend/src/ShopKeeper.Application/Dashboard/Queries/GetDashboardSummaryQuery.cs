@@ -108,7 +108,7 @@ public class GetDashboardSummaryQueryHandler(IAppDbContext db, ICurrentUserServi
         var stocks = await stockQuery.ToListAsync(cancellationToken);
 
         var inventoryValue = stocks.Sum(s => s.QuantityOnHand * s.Product.CostPrice);
-        var lowStockCount = stocks.Count(s => s.QuantityOnHand > 0 && s.QuantityOnHand <= s.Product.ReorderLevel);
+        var lowStockCount = stocks.Count(s => s.QuantityOnHand > 0 && s.QuantityOnHand <= s.Product.MinimumStock);
         var outOfStockCount = stocks.Count(s => s.QuantityOnHand == 0);
 
         return new DashboardSummaryDto(

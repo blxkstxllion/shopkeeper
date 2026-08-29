@@ -21,8 +21,7 @@ public record CreateProductCommand(
     Guid? CategoryId,
     decimal SellingPrice,
     decimal CostPrice,
-    int MinStock,
-    int ReorderLevel,
+    int MinimumStock,
     bool TrackInventory,
     int InitialQuantity,
     Guid? BranchId,
@@ -37,8 +36,7 @@ public class CreateProductCommandValidator : AbstractValidator<CreateProductComm
         RuleFor(x => x.Barcode).MaximumLength(50);
         RuleFor(x => x.SellingPrice).GreaterThanOrEqualTo(0);
         RuleFor(x => x.CostPrice).GreaterThanOrEqualTo(0);
-        RuleFor(x => x.MinStock).GreaterThanOrEqualTo(0);
-        RuleFor(x => x.ReorderLevel).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.MinimumStock).GreaterThanOrEqualTo(0);
         RuleFor(x => x.InitialQuantity).GreaterThanOrEqualTo(0);
         RuleFor(x => x.BranchId).NotNull().When(x => x.TrackInventory && x.InitialQuantity > 0)
             .WithMessage("A branch is required to receive the initial stock quantity.");
@@ -86,8 +84,7 @@ public class CreateProductCommandHandler(IAppDbContext db, ICurrentUserService c
             SupplierId = request.SupplierId,
             SellingPrice = request.SellingPrice,
             CostPrice = request.CostPrice,
-            MinStock = request.MinStock,
-            ReorderLevel = request.ReorderLevel,
+            MinimumStock = request.MinimumStock,
             TrackInventory = request.TrackInventory,
         };
         db.Products.Add(product);
@@ -133,8 +130,8 @@ public class CreateProductCommandHandler(IAppDbContext db, ICurrentUserService c
         return new ProductDto(
             product.Id, product.Name, product.Sku, product.Barcode, product.Description, product.ImageUrl,
             product.CategoryId, categoryName, product.SupplierId, supplierName,
-            product.SellingPrice, product.CostPrice, product.MinStock,
-            product.ReorderLevel, product.TrackInventory, product.IsActive, quantityOnHand,
-            quantityOnHand.HasValue && quantityOnHand.Value <= product.ReorderLevel);
+            product.SellingPrice, product.CostPrice, product.MinimumStock,
+            product.TrackInventory, product.IsActive, quantityOnHand,
+            quantityOnHand.HasValue && quantityOnHand.Value <= product.MinimumStock);
     }
 }

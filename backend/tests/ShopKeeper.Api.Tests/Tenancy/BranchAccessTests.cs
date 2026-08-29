@@ -35,7 +35,7 @@ public class BranchAccessTests : IDisposable
         context.Branches.Add(branchB);
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Widget", "SKU-BR", null, null, null, null, 10m, 6m, 5, 10, true, 20, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-BR", null, null, null, null, 10m, 6m, 10, true, 20, seeded.BranchId),
             CancellationToken.None);
 
         // Give the second branch its own stock too, so a successful cross-branch attempt would be detectable.
@@ -97,7 +97,7 @@ public class BranchAccessTests : IDisposable
         await context.SaveChangesAsync(CancellationToken.None);
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Gadget", "SKU-OWN", null, null, null, null, 10m, 6m, 5, 10, true, 10, branchB.Id),
+            new CreateProductCommand("Gadget", "SKU-OWN", null, null, null, null, 10m, 6m, 10, true, 10, branchB.Id),
             CancellationToken.None);
 
         // Owner has BranchId == null, so acting on branchB (not the business's main branch) must not throw.

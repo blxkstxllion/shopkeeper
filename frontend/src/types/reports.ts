@@ -81,7 +81,7 @@ export interface StockAlertProduct {
   productId: string
   productName: string
   quantityOnHand: number
-  reorderLevel: number
+  minimumStock: number
 }
 
 export interface ProductTurnover {
