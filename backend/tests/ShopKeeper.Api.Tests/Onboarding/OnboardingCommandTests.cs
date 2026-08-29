@@ -133,6 +133,65 @@ public class OnboardingCommandTests : IDisposable
         Assert.Contains(result.Errors, e => e.PropertyName == nameof(CompleteOnboardingCommand.ColorTheme));
     }
 
+    [Fact]
+    public async Task CompleteOnboardingValidator_RequiresBusinessTypeOther_WhenBusinessTypeIsOther()
+    {
+        var validator = new CompleteOnboardingCommandValidator();
+
+        var result = await validator.ValidateAsync(
+            BuildCommand(Guid.NewGuid()) with { BusinessType = BusinessType.Other, BusinessTypeOther = null });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.PropertyName == nameof(CompleteOnboardingCommand.BusinessTypeOther));
+    }
+
+    [Fact]
+    public async Task CompleteOnboardingValidator_AcceptsBusinessTypeOther_WhenProvidedAlongsideOther()
+    {
+        var validator = new CompleteOnboardingCommandValidator();
+
+        var result = await validator.ValidateAsync(
+            BuildCommand(Guid.NewGuid()) with { BusinessType = BusinessType.Other, BusinessTypeOther = "Car wash" });
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public async Task CompleteOnboarding_PersistsBusinessTypeOther_WhenBusinessTypeIsOther()
+    {
+        var currentUser = new TestCurrentUserService();
+        var context = _db.CreateContext(currentUser);
+        var tokenIssuer = new TokenIssuer(context, _jwt);
+
+        var owner = await RegisterOwner(context, tokenIssuer);
+
+        var handler = new CompleteOnboardingCommandHandler(context, tokenIssuer);
+        var business = await handler.Handle(
+            BuildCommand(owner.Id) with { BusinessType = BusinessType.Other, BusinessTypeOther = "Car wash" },
+            CancellationToken.None);
+
+        Assert.Equal("Car wash", business.BusinessTypeOther);
+    }
+
+    [Fact]
+    public async Task CompleteOnboarding_DiscardsBusinessTypeOther_WhenBusinessTypeIsNotOther()
+    {
+        var currentUser = new TestCurrentUserService();
+        var context = _db.CreateContext(currentUser);
+        var tokenIssuer = new TokenIssuer(context, _jwt);
+
+        var owner = await RegisterOwner(context, tokenIssuer);
+
+        var handler = new CompleteOnboardingCommandHandler(context, tokenIssuer);
+        // Retail with a stray BusinessTypeOther value - the field only means something for
+        // "Other" businesses, so a client sending it anyway must not have it silently stick.
+        var business = await handler.Handle(
+            BuildCommand(owner.Id) with { BusinessType = BusinessType.Retail, BusinessTypeOther = "Car wash" },
+            CancellationToken.None);
+
+        Assert.Null(business.BusinessTypeOther);
+    }
+
     private async Task<Domain.Entities.User> RegisterOwner(
         Infrastructure.Persistence.AppDbContext context, TokenIssuer tokenIssuer)
     {
@@ -146,6 +205,7 @@ public class OnboardingCommandTests : IDisposable
         OwnerUserId: ownerId,
         BusinessName: "Ama's Provisions",
         BusinessType: BusinessType.Retail,
+        BusinessTypeOther: null,
         Country: "Ghana",
         CurrencyCode: "GHS",
         LogoUrl: null,

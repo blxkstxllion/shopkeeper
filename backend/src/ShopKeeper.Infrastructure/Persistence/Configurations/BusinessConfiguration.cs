@@ -14,6 +14,7 @@ public class BusinessConfiguration : IEntityTypeConfiguration<Business>
         builder.Property(b => b.Country).HasMaxLength(100).IsRequired();
         builder.Property(b => b.CurrencyCode).HasMaxLength(3).IsRequired();
         builder.Property(b => b.BusinessType).HasConversion<string>().HasMaxLength(50);
+        builder.Property(b => b.BusinessTypeOther).HasMaxLength(200);
         builder.Property(b => b.PlanTier).HasConversion<string>().HasMaxLength(20);
         builder.Property(b => b.PaystackCustomerCode).HasMaxLength(50);
         builder.Property(b => b.PaystackSubscriptionCode).HasMaxLength(50);

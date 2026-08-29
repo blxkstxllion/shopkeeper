@@ -15,6 +15,7 @@ public record CompleteOnboardingCommand(
     Guid OwnerUserId,
     string BusinessName,
     BusinessType BusinessType,
+    string? BusinessTypeOther,
     string Country,
     string CurrencyCode,
     string? LogoUrl,
@@ -37,6 +38,9 @@ public class CompleteOnboardingCommandValidator : AbstractValidator<CompleteOnbo
     public CompleteOnboardingCommandValidator()
     {
         RuleFor(x => x.BusinessName).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.BusinessTypeOther).NotEmpty().MaximumLength(200)
+            .When(x => x.BusinessType == BusinessType.Other)
+            .WithMessage("Tell us what kind of business this is.");
         RuleFor(x => x.Country).NotEmpty().MaximumLength(100);
         RuleFor(x => x.CurrencyCode).NotEmpty().Length(3);
         RuleFor(x => x.TaxRatePercent).InclusiveBetween(0, 100);
@@ -58,6 +62,7 @@ public class CompleteOnboardingCommandHandler(IAppDbContext db, TokenIssuer toke
         {
             Name = request.BusinessName.Trim(),
             BusinessType = request.BusinessType,
+            BusinessTypeOther = request.BusinessType == BusinessType.Other ? request.BusinessTypeOther?.Trim() : null,
             Country = request.Country.Trim(),
             CurrencyCode = request.CurrencyCode.Trim().ToUpperInvariant(),
             LogoUrl = request.LogoUrl,
@@ -145,6 +150,7 @@ public class CompleteOnboardingCommandHandler(IAppDbContext db, TokenIssuer toke
             business.Id,
             business.Name,
             business.BusinessType.ToString(),
+            business.BusinessTypeOther,
             business.Country,
             business.CurrencyCode,
             business.LogoUrl,

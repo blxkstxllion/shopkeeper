@@ -12,6 +12,12 @@ public class Business : BaseEntity
     public string Name { get; set; } = default!;
     public string? LegalName { get; set; }
     public BusinessType BusinessType { get; set; }
+
+    /// <summary>Free text set at onboarding when BusinessType is "Other" - what the owner actually
+    /// typed for their business. Null for every other BusinessType. Not editable later, same as
+    /// BusinessType itself (see UpdateBusinessProfileCommand's doc comment).</summary>
+    public string? BusinessTypeOther { get; set; }
+
     public string Country { get; set; } = default!;
     public string CurrencyCode { get; set; } = "GHS";
     public string? LogoUrl { get; set; }
