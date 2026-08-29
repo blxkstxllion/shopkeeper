@@ -1,13 +1,26 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type InputHTMLAttributes, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ShieldCheck, Check, Download, ChevronDown, Smartphone, Monitor } from 'lucide-react'
+import { clsx } from 'clsx'
+import {
+  ShieldCheck,
+  Check,
+  Download,
+  ChevronDown,
+  Smartphone,
+  Monitor,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  Loader2,
+  type LucideIcon,
+} from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { Card } from '@/components/ui/Card'
 import { Logo } from '@/components/ui/Logo'
-import { Button } from '@/components/ui/Button'
 import { Input, FormField } from '@/components/ui/Input'
 import { DigitCodeInput } from '@/components/ui/DigitCodeInput'
 import { Alert } from '@/components/ui/Alert'
@@ -35,7 +48,7 @@ function DownloadMenu({ className, variant = 'light' }: { className: string; var
         aria-expanded={open}
         className={
           variant === 'dark'
-            ? 'flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-white/20'
+            ? 'flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-sm font-medium text-white shadow-sm backdrop-blur-sm hover:bg-white/20'
             : 'flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'
         }
       >
@@ -62,6 +75,174 @@ function DownloadMenu({ className, variant = 'light' }: { className: string; var
           </a>
         </div>
       )}
+    </div>
+  )
+}
+
+// Ambient background for the brand panel: a faint drifting grid, two slow-pulsing glow
+// blobs, a handful of floating geometric outlines, and particles drifting upward. All
+// motion is decorative-only (aria-hidden via pointer-events-none + no interactive content)
+// and gets neutralized globally by the prefers-reduced-motion rule in index.css.
+function BrandAmbience({ compact = false }: { compact?: boolean }) {
+  const particleCount = compact ? 4 : 10
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div
+        className="absolute inset-0 animate-[grid-pan_18s_linear_infinite] opacity-[0.07]"
+        style={{
+          backgroundImage:
+            'linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)',
+          backgroundSize: '48px 48px',
+        }}
+      />
+
+      <div className="absolute -left-16 -top-16 h-72 w-72 animate-[pulse-glow_7s_ease-in-out_infinite] rounded-full bg-primary-400 blur-3xl" />
+      <div
+        className={clsx(
+          'absolute animate-[pulse-glow_9s_ease-in-out_infinite] rounded-full bg-emerald-300 blur-3xl',
+          compact ? 'right-0 top-0 h-40 w-40' : '-bottom-24 right-0 h-96 w-96',
+        )}
+        style={{ animationDelay: '2s' }}
+      />
+
+      {!compact && (
+        <>
+          <div className="absolute right-24 top-48 h-10 w-10 animate-[float_6s_ease-in-out_infinite] rounded-lg border border-white/20 [transform:rotate(12deg)]" />
+          <div
+            className="absolute bottom-40 left-24 h-6 w-6 animate-[float-slow_7s_ease-in-out_infinite] rounded-md border border-white/20"
+            style={{ animationDelay: '1s' }}
+          />
+          <div
+            className="absolute bottom-10 right-1/3 h-4 w-4 animate-[float_5s_ease-in-out_infinite] rounded-full bg-white/20"
+            style={{ animationDelay: '0.5s' }}
+          />
+        </>
+      )}
+
+      {Array.from({ length: particleCount }).map((_, i) => (
+        <span
+          key={i}
+          className="absolute bottom-0 h-1 w-1 animate-[drift_6s_ease-in-out_infinite] rounded-full bg-white/60"
+          style={{
+            left: `${(i * 37) % 100}%`,
+            animationDelay: `${i * 0.7}s`,
+            animationDuration: `${6 + (i % 4)}s`,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+// Decorative mock dashboard cards - static illustrative numbers (not live data), styled
+// and positioned to sell "this is a business dashboard" at a glance. Gated to xl+ screens
+// so it never fights the heading/bullets for space on a smaller desktop window.
+function DashboardCards() {
+  return (
+    <div className="relative mt-10 hidden h-64 w-full xl:block">
+      <div className="absolute left-0 top-0 w-44 animate-[float_7s_ease-in-out_infinite] rounded-2xl border border-white/15 bg-white/10 p-4 shadow-xl backdrop-blur-md">
+        <p className="text-xs text-primary-100/80">Total Profit</p>
+        <p className="mt-1 text-lg font-semibold text-white">$24,530</p>
+        <svg viewBox="0 0 100 30" className="mt-2 h-8 w-full overflow-visible">
+          <polyline
+            points="0,25 15,20 30,22 45,12 60,15 75,6 100,2"
+            fill="none"
+            stroke="#6ee7b7"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeDasharray="240"
+            className="animate-[draw-line_1.8s_ease-out_0.6s_forwards]"
+            style={{ strokeDashoffset: 240 }}
+          />
+        </svg>
+        <span className="mt-1 inline-block text-[11px] font-medium text-primary-300">+12.5%</span>
+      </div>
+
+      <div
+        className="absolute right-0 top-4 w-36 animate-[float-slow_8s_ease-in-out_infinite] rounded-2xl border border-white/15 bg-white/10 p-4 shadow-xl backdrop-blur-md"
+        style={{ animationDelay: '0.4s' }}
+      >
+        <p className="text-xs text-primary-100/80">Orders</p>
+        <p className="mt-1 text-lg font-semibold text-white">1,642</p>
+        <span className="mt-1 inline-block text-[11px] font-medium text-primary-300">+8.2%</span>
+      </div>
+
+      <div
+        className="absolute bottom-0 right-12 w-40 animate-[float_9s_ease-in-out_infinite] rounded-2xl border border-white/15 bg-white/10 p-4 shadow-xl backdrop-blur-md"
+        style={{ animationDelay: '1.2s' }}
+      >
+        <p className="text-xs text-primary-100/80">Inventory</p>
+        <p className="mt-1 text-lg font-semibold text-white">
+          98 <span className="text-xs font-normal text-primary-200">in stock</span>
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function IconField({
+  icon: Icon,
+  error,
+  rightAdornment,
+  className,
+  ...props
+}: {
+  icon: LucideIcon
+  error?: string
+  rightAdornment?: ReactNode
+} & InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <div className="relative">
+      <Icon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+      <input
+        {...props}
+        className={clsx(
+          'h-11 w-full rounded-xl border bg-white/70 pl-10 text-sm text-slate-900 placeholder:text-slate-400 backdrop-blur-sm transition-all duration-200',
+          'focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary-500/15',
+          'dark:bg-slate-900/50 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:bg-slate-900',
+          rightAdornment ? 'pr-10' : 'pr-3',
+          error
+            ? 'border-red-400 focus:border-red-500 focus:ring-red-500/15'
+            : 'border-slate-200 dark:border-slate-700',
+          className,
+        )}
+      />
+      {rightAdornment && <div className="absolute right-3 top-1/2 -translate-y-1/2">{rightAdornment}</div>}
+    </div>
+  )
+}
+
+function SignInButton({ isLoading, children }: { isLoading: boolean; children: ReactNode }) {
+  return (
+    <button
+      type="submit"
+      disabled={isLoading}
+      className={clsx(
+        'group relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-xl',
+        'bg-gradient-to-r from-primary-600 via-primary-500 to-primary-600 bg-[length:200%_100%] bg-[position:0%_0%]',
+        'text-sm font-semibold text-white shadow-lg shadow-primary-600/20 transition-all duration-300',
+        'hover:-translate-y-0.5 hover:bg-[position:100%_0%] hover:shadow-xl hover:shadow-primary-600/30',
+        'active:translate-y-0 active:shadow-md',
+        'disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0',
+      )}
+    >
+      {isLoading ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <>
+          {children}
+          <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+        </>
+      )}
+    </button>
+  )
+}
+
+function GlassCard({ children }: { children: ReactNode }) {
+  return (
+    <div className="rounded-3xl border border-white/60 bg-white/80 p-7 shadow-2xl shadow-slate-900/10 backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/70 dark:shadow-black/30 sm:p-8">
+      {children}
     </div>
   )
 }
@@ -93,6 +274,7 @@ export function LoginPage() {
   const [serverError, setServerError] = useState<string | null>(null)
   const [challengeToken, setChallengeToken] = useState<string | null>(null)
   const [useRecoveryCode, setUseRecoveryCode] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   const credentialsForm = useForm<CredentialsFormValues>({ resolver: zodResolver(credentialsSchema) })
   const codeForm = useForm<CodeFormValues>({ resolver: zodResolver(codeSchema) })
@@ -135,20 +317,56 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen">
-      <DownloadMenu className="fixed right-4 top-4 z-20 lg:hidden" />
-      <div className="relative hidden w-1/2 flex-col justify-between bg-gradient-to-br from-primary-700 to-primary-900 p-12 text-white lg:flex">
+    <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-slate-950 lg:flex-row">
+      {/* Mobile: compact animated header instead of a shrunk copy of the desktop panel */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-primary-800 via-primary-700 to-primary-900 px-5 pb-7 pt-5 text-white lg:hidden">
+        <BrandAmbience compact />
+        <div className="relative z-10 flex items-center justify-between gap-2">
+          <div className="flex animate-[fade-up_0.5s_ease-out_both] items-center gap-2">
+            <Logo className="h-9 w-9" />
+            <span className="text-base font-semibold">The Shop Keeper</span>
+          </div>
+          <DownloadMenu className="relative" variant="dark" />
+        </div>
+        <p
+          className="relative z-10 mt-3 animate-[fade-up_0.5s_ease-out_both] text-sm text-primary-100"
+          style={{ animationDelay: '0.1s' }}
+        >
+          Know your business. Grow your profit.
+        </p>
+      </div>
+
+      {/* Desktop brand panel */}
+      <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-gradient-to-br from-primary-900 via-primary-800 to-primary-950 p-12 text-white lg:flex">
+        <BrandAmbience />
         <DownloadMenu className="absolute right-12 top-12 z-20" variant="dark" />
-        <div className="flex items-center gap-2">
+
+        <div className="relative z-10 flex animate-[fade-up_0.6s_ease-out_both] items-center gap-2">
           <Logo className="h-10 w-10" />
           <span className="text-lg font-semibold">The Shop Keeper</span>
         </div>
 
-        <div>
-          <h2 className="mb-6 text-3xl font-semibold leading-tight">Know your business. Grow your profit.</h2>
+        <div className="relative z-10">
+          <span
+            className="mb-4 inline-flex animate-[fade-up_0.6s_ease-out_both] items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-primary-100"
+            style={{ animationDelay: '0.05s' }}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-primary-300" />
+            All-in-one solution
+          </span>
+          <h2
+            className="mb-6 animate-[fade-up_0.6s_ease-out_both] text-3xl font-semibold leading-tight"
+            style={{ animationDelay: '0.15s' }}
+          >
+            Know your business. Grow your profit.
+          </h2>
           <ul className="space-y-3">
-            {BRAND_HIGHLIGHTS.map((highlight) => (
-              <li key={highlight} className="flex items-center gap-2.5 text-sm text-primary-100">
+            {BRAND_HIGHLIGHTS.map((highlight, i) => (
+              <li
+                key={highlight}
+                className="flex animate-[fade-up_0.6s_ease-out_both] items-center gap-2.5 text-sm text-primary-100"
+                style={{ animationDelay: `${0.25 + i * 0.08}s` }}
+              >
                 <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/15">
                   <Check className="h-3 w-3" />
                 </span>
@@ -156,24 +374,22 @@ export function LoginPage() {
               </li>
             ))}
           </ul>
+
+          <DashboardCards />
         </div>
 
-        <p className="text-xs text-primary-200">&copy; {new Date().getFullYear()} The Shop Keeper</p>
+        <p className="relative z-10 text-xs text-primary-200">&copy; {new Date().getFullYear()} The Shop Keeper</p>
       </div>
 
-      <div className="flex w-full flex-col items-center justify-center bg-slate-50 px-4 py-12 dark:bg-slate-950 lg:w-1/2">
-        <div className="w-full max-w-sm">
-          <div className="mb-8 flex flex-col items-center gap-2 text-center lg:hidden">
-            <Logo className="h-11 w-11" />
-            <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">The Shop Keeper</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Know Your Business. Grow Your Profit.</p>
-          </div>
-
+      <div className="flex w-full flex-1 flex-col items-center justify-center px-4 py-10 lg:w-1/2 lg:py-12">
+        <div className="w-full max-w-sm animate-[fade-up_0.6s_ease-out_both]" style={{ animationDelay: '0.15s' }}>
           {challengeToken ? (
-            <Card className="p-6">
-              <div className="mb-4 flex flex-col items-center gap-2 text-center">
-                <ShieldCheck className="h-8 w-8 text-primary-600" />
-                <h1 className="text-base font-semibold text-slate-900 dark:text-slate-100">Two-factor verification</h1>
+            <GlassCard>
+              <div className="mb-5 flex flex-col items-center gap-2 text-center">
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-100 dark:bg-primary-900/40">
+                  <ShieldCheck className="h-6 w-6 text-primary-600 dark:text-primary-400" />
+                </span>
+                <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Two-factor verification</h1>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   Enter the 6-digit code from your authenticator app, or one of your recovery codes.
                 </p>
@@ -208,9 +424,7 @@ export function LoginPage() {
                   </div>
                 )}
 
-                <Button type="submit" isLoading={codeForm.formState.isSubmitting} className="w-full">
-                  Verify and sign in
-                </Button>
+                <SignInButton isLoading={codeForm.formState.isSubmitting}>Verify and sign in</SignInButton>
                 <button
                   type="button"
                   onClick={() => {
@@ -233,46 +447,76 @@ export function LoginPage() {
                   Back to sign in
                 </button>
               </form>
-            </Card>
+            </GlassCard>
           ) : (
-            <Card className="p-6">
-              <h1 className="mb-4 text-center text-lg font-semibold text-slate-900 dark:text-slate-100">Sign in</h1>
+            <GlassCard>
+              <div className="mb-6 text-center">
+                <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                  Welcome back <span aria-hidden="true">👋</span>
+                </h1>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Sign in to continue to your account</p>
+              </div>
+
               <form onSubmit={credentialsForm.handleSubmit(onSubmitCredentials)} className="flex flex-col gap-4">
                 {serverError && <Alert tone="error">{serverError}</Alert>}
 
-                <FormField label="Email" htmlFor="email" error={credentialsForm.formState.errors.email?.message}>
-                  <Input
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="email" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Email
+                  </label>
+                  <IconField
+                    icon={Mail}
                     id="email"
                     type="email"
                     autoComplete="email"
-                    {...credentialsForm.register('email')}
+                    placeholder="you@example.com"
                     error={credentialsForm.formState.errors.email?.message}
+                    {...credentialsForm.register('email')}
                   />
-                </FormField>
-
-                <FormField
-                  label="Password"
-                  htmlFor="password"
-                  error={credentialsForm.formState.errors.password?.message}
-                >
-                  <Input
-                    id="password"
-                    type="password"
-                    autoComplete="current-password"
-                    {...credentialsForm.register('password')}
-                    error={credentialsForm.formState.errors.password?.message}
-                  />
-                </FormField>
-
-                <div className="-mt-2 flex justify-end">
-                  <Link to="/forgot-password" className="text-sm font-medium text-primary-600 hover:text-primary-700">
-                    Forgot password?
-                  </Link>
+                  {credentialsForm.formState.errors.email && (
+                    <p className="text-xs text-red-600 dark:text-red-400">
+                      {credentialsForm.formState.errors.email.message}
+                    </p>
+                  )}
                 </div>
 
-                <Button type="submit" isLoading={credentialsForm.formState.isSubmitting} className="w-full">
-                  Sign in
-                </Button>
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="password" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Password
+                    </label>
+                    <Link to="/forgot-password" className="text-xs font-medium text-primary-600 hover:text-primary-700">
+                      Forgot password?
+                    </Link>
+                  </div>
+                  <IconField
+                    icon={Lock}
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    placeholder="••••••••"
+                    error={credentialsForm.formState.errors.password?.message}
+                    rightAdornment={
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => setShowPassword((v) => !v)}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    }
+                    {...credentialsForm.register('password')}
+                  />
+                  {credentialsForm.formState.errors.password && (
+                    <p className="text-xs text-red-600 dark:text-red-400">
+                      {credentialsForm.formState.errors.password.message}
+                    </p>
+                  )}
+                </div>
+
+                <SignInButton isLoading={credentialsForm.formState.isSubmitting}>Sign in</SignInButton>
               </form>
 
               <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
@@ -281,7 +525,7 @@ export function LoginPage() {
                   Create one
                 </Link>
               </p>
-            </Card>
+            </GlassCard>
           )}
         </div>
       </div>
