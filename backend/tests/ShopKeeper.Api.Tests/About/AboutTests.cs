@@ -36,7 +36,7 @@ public class AboutTests : IDisposable
         var context = _db.CreateContext(owner);
 
         await new UpdateBusinessAboutCommandHandler(context, owner).Handle(
-            new UpdateBusinessAboutCommand("We sell fresh produce.", "Ama has run this shop for 10 years."), CancellationToken.None);
+            new UpdateBusinessAboutCommand("We sell fresh produce.", "Ama has run this shop for 10 years.", null), CancellationToken.None);
 
         var about = await new GetBusinessAboutQueryHandler(context, owner).Handle(new GetBusinessAboutQuery(), CancellationToken.None);
         Assert.Equal("We sell fresh produce.", about.Description);
@@ -59,7 +59,7 @@ public class AboutTests : IDisposable
         };
 
         await Assert.ThrowsAsync<ForbiddenAccessException>(() => new UpdateBusinessAboutCommandHandler(context, cashier).Handle(
-            new UpdateBusinessAboutCommand("Hacked description", null), CancellationToken.None));
+            new UpdateBusinessAboutCommand("Hacked description", null, null), CancellationToken.None));
     }
 
     [Fact]
@@ -113,7 +113,7 @@ public class AboutTests : IDisposable
         var ownerContext = _db.CreateContext(owner);
 
         await new UpdateBusinessAboutCommandHandler(ownerContext, owner).Handle(
-            new UpdateBusinessAboutCommand("Visible to everyone.", null), CancellationToken.None);
+            new UpdateBusinessAboutCommand("Visible to everyone.", null, null), CancellationToken.None);
 
         var product = await new CreateProductCommandHandler(ownerContext, owner, new PlanLimitService(ownerContext)).Handle(
             new CreateProductCommand("Widget", "SKU-NOPERM", null, null, null, null, 10m, 6m, 0, 0, true, 100, seeded.BranchId),

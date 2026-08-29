@@ -203,7 +203,12 @@ export function ProductFormModal({
           <FormField label="Name" htmlFor="name" error={errors.name?.message}>
             <Input id="name" {...register('name')} error={errors.name?.message} />
           </FormField>
-          <FormField label="SKU" htmlFor="sku" error={errors.sku?.message}>
+          <FormField
+            label="SKU"
+            htmlFor="sku"
+            error={errors.sku?.message}
+            hint="A short code you choose to identify this product (e.g. RICE-5KG) - used for lookups and reports, doesn't need to match anything printed on the item."
+          >
             <Input id="sku" {...register('sku')} error={errors.sku?.message} />
           </FormField>
         </div>
@@ -294,7 +299,12 @@ export function ProductFormModal({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Minimum stock" htmlFor="minStock" error={errors.minStock?.message}>
+          <FormField
+            label="Minimum stock"
+            htmlFor="minStock"
+            error={errors.minStock?.message}
+            hint="The lowest quantity you want to keep on hand, for your own reference."
+          >
             <Input
               id="minStock"
               type="number"
@@ -302,7 +312,12 @@ export function ProductFormModal({
               error={errors.minStock?.message}
             />
           </FormField>
-          <FormField label="Reorder level" htmlFor="reorderLevel" error={errors.reorderLevel?.message}>
+          <FormField
+            label="Reorder level"
+            htmlFor="reorderLevel"
+            error={errors.reorderLevel?.message}
+            hint="When stock falls to this number or below, it shows up as “low stock” on your dashboard and inventory page."
+          >
             <Input
               id="reorderLevel"
               type="number"
