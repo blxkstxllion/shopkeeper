@@ -25,8 +25,8 @@ public class GetBusinessSettingsQueryHandler(IAppDbContext db, ICurrentUserServi
             ?? throw new NotFoundException(nameof(BusinessSetting), businessId);
 
         return new BusinessSettingsDto(
-            business.Id, business.Name, business.LegalName, business.BusinessType.ToString(), business.Country,
-            business.CurrencyCode, business.TimeZone, business.LogoUrl, business.ColorTheme,
+            business.Id, business.Name, business.LegalName, business.BusinessType.ToString(), business.BusinessTypeOther,
+            business.Country, business.CurrencyCode, business.TimeZone, business.LogoUrl, business.ColorTheme,
             setting.TaxEnabled, setting.TaxIdNumber, setting.TaxRatePercent, setting.TaxInclusivePricing);
     }
 }
