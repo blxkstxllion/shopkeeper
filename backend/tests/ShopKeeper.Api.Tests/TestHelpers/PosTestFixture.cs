@@ -35,7 +35,7 @@ public static class PosTestFixture
 
         var business = await new CompleteOnboardingCommandHandler(context, tokenIssuer).Handle(
             new CompleteOnboardingCommand(
-                registerResult.User.Id, "Ama's Shop", BusinessType.Retail, "Ghana", "GHS", null,
+                registerResult.User.Id, "Ama's Shop", BusinessType.Retail, null, "Ghana", "GHS", null,
                 false, 0, true, [], "Main Store", null, null, null),
             CancellationToken.None);
 

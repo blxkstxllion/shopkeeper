@@ -159,6 +159,15 @@ public class AuthController(ISender mediator, IWebHostEnvironment env, ICurrentU
     }
 
     [Authorize]
+    [EnableRateLimiting("auth")]
+    [HttpPost("resend-verification-email")]
+    public async Task<IActionResult> ResendVerificationEmail(CancellationToken ct)
+    {
+        await mediator.Send(new ResendVerificationEmailCommand(currentUser.UserId!.Value), ct);
+        return Ok(new { message = "If your email isn't verified yet, a new link has been sent." });
+    }
+
+    [Authorize]
     [HttpPost("switch-business")]
     public async Task<ActionResult<AuthResultDto>> SwitchBusiness(SwitchBusinessRequest request, CancellationToken ct)
     {
