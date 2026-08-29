@@ -1,16 +1,37 @@
-import { Package } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Package, PackagePlus } from 'lucide-react'
 import { formatMoney, resolveUploadUrl } from '@/lib/format'
 import type { SellableProduct } from '@/types/sale'
 
 export function ProductGrid({
   products,
   onSelect,
+  hasActiveFilter = false,
 }: {
   products: SellableProduct[]
   onSelect: (product: SellableProduct) => void
+  /** Whether the empty result is from a search/category filter, vs. a genuinely empty
+   * catalog - the two need different empty states (refine your search vs. add a product). */
+  hasActiveFilter?: boolean
 }) {
   if (products.length === 0) {
-    return <p className="col-span-full py-16 text-center text-sm text-slate-400">No products match your search.</p>
+    if (hasActiveFilter) {
+      return <p className="col-span-full py-16 text-center text-sm text-slate-400">No products match your search.</p>
+    }
+    return (
+      <div className="col-span-full flex flex-col items-center gap-3 py-16 text-center">
+        <PackagePlus className="h-8 w-8 text-slate-300 dark:text-slate-600" />
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Nothing to sell yet — add your first product to get started.
+        </p>
+        <Link
+          to="/app/inventory"
+          className="inline-flex items-center justify-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+        >
+          Add a product
+        </Link>
+      </div>
+    )
   }
 
   return (

@@ -43,7 +43,7 @@ public class ReportExportTests : IDisposable
         var context = _db.CreateContext(owner);
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Widget", "SKU-EXPORT", null, null, null, null, 10m, 6m, 5, 10, true, 50, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-EXPORT", null, null, null, null, 10m, 6m, 10, true, 50, seeded.BranchId),
             CancellationToken.None);
         await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
             new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(product.Id, 5, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 50m, null)]),

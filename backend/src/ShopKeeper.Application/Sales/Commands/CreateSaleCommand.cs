@@ -114,7 +114,7 @@ public class CreateSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
         };
 
         decimal subtotal = 0, totalCost = 0, lineDiscountTotal = 0;
-        var lowStockAlerts = new List<(string ProductName, int NewQuantity, int ReorderLevel)>();
+        var lowStockAlerts = new List<(string ProductName, int NewQuantity, int MinimumStock)>();
 
         foreach (var line in request.Items)
         {
@@ -148,11 +148,11 @@ public class CreateSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
                 stock.QuantityOnHand = newQuantity;
                 stock.RowVersion++;
 
-                // Fires once, on the sale that actually crosses the reorder level going down -
+                // Fires once, on the sale that actually crosses the minimum stock going down -
                 // not on every subsequent sale while stock is already low.
-                if (product.ReorderLevel > 0 && newQuantity <= product.ReorderLevel && previousQuantity > product.ReorderLevel)
+                if (product.MinimumStock > 0 && newQuantity <= product.MinimumStock && previousQuantity > product.MinimumStock)
                 {
-                    lowStockAlerts.Add((product.Name, newQuantity, product.ReorderLevel));
+                    lowStockAlerts.Add((product.Name, newQuantity, product.MinimumStock));
                 }
 
                 db.InventoryTransactions.Add(new InventoryTransaction
@@ -226,7 +226,7 @@ public class CreateSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
         {
             await notifications.NotifyOwnersAsync(
                 businessId, "LowStock", "Low stock alert",
-                $"'{alert.ProductName}' is down to {alert.NewQuantity} units (reorder level: {alert.ReorderLevel}).",
+                $"'{alert.ProductName}' is down to {alert.NewQuantity} units (minimum stock: {alert.MinimumStock}).",
                 "/app/inventory", cancellationToken);
         }
 

@@ -16,4 +16,5 @@ export interface BusinessAbout {
 export interface UpdateBusinessAboutPayload {
   description: string | null
   ownerBio: string | null
+  logoUrl?: string | null
 }

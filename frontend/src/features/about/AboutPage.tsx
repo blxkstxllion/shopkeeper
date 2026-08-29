@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Store, Trophy, TrendingDown, Pencil } from 'lucide-react'
-import { getBusinessAbout, updateBusinessAbout } from '@/api/about'
+import { Store, Trophy, TrendingDown, Pencil, Upload, X } from 'lucide-react'
+import { getBusinessAbout, updateBusinessAbout, uploadBusinessLogo } from '@/api/about'
 import { useSessionClaims } from '@/hooks/useSessionClaims'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -10,6 +10,9 @@ import { Alert } from '@/components/ui/Alert'
 import { FormSkeleton } from '@/components/ui/Skeleton'
 import { ApiError } from '@/lib/api-client'
 import { formatMoney, resolveUploadUrl } from '@/lib/format'
+
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 
 const TEXTAREA_CLASS =
   'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100'
@@ -23,19 +26,53 @@ export function AboutPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [description, setDescription] = useState('')
   const [ownerBio, setOwnerBio] = useState('')
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (data) {
       setDescription(data.description ?? '')
       setOwnerBio(data.ownerBio ?? '')
+      setLogoUrl(data.logoUrl)
     }
   }, [data])
 
+  async function handleLogoSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      setServerError('Please choose a JPEG, PNG, WEBP, or GIF image.')
+      return
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setServerError('Images must be 5MB or smaller.')
+      return
+    }
+
+    setServerError(null)
+    setIsUploadingLogo(true)
+    try {
+      const { url } = await uploadBusinessLogo(file)
+      setLogoUrl(url)
+    } catch (err) {
+      setServerError(err instanceof ApiError ? err.message : 'Unable to upload that image. Please try again.')
+    } finally {
+      setIsUploadingLogo(false)
+    }
+  }
+
   const mutation = useMutation({
     mutationFn: () =>
-      updateBusinessAbout({ description: description.trim() || null, ownerBio: ownerBio.trim() || null }),
+      updateBusinessAbout({
+        description: description.trim() || null,
+        ownerBio: ownerBio.trim() || null,
+        logoUrl,
+      }),
     onSuccess: () => {
       setServerError(null)
       setSuccessMessage('About page updated.')
@@ -91,6 +128,44 @@ export function AboutPage() {
             }}
             className="flex flex-col gap-4"
           >
+            <div className="flex items-center gap-4">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
+                {logoUrl ? (
+                  <img src={resolveUploadUrl(logoUrl)} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <Store className="h-6 w-6 text-slate-300 dark:text-slate-600" />
+                )}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  aria-label="Upload shop photo"
+                  accept={ALLOWED_IMAGE_TYPES.join(',')}
+                  className="hidden"
+                  onChange={handleLogoSelected}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    isLoading={isUploadingLogo}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    {logoUrl ? 'Change photo' : 'Upload photo'}
+                  </Button>
+                  {logoUrl && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setLogoUrl(null)}>
+                      <X className="h-3.5 w-3.5" />
+                      Remove
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-slate-400">JPEG, PNG, WEBP, or GIF. Up to 5MB.</p>
+              </div>
+            </div>
             <div>
               <label
                 htmlFor="description"
@@ -126,7 +201,7 @@ export function AboutPage() {
               <Button type="button" variant="secondary" onClick={() => setIsEditing(false)}>
                 Cancel
               </Button>
-              <Button type="submit" isLoading={mutation.isPending}>
+              <Button type="submit" isLoading={mutation.isPending} disabled={isUploadingLogo}>
                 Save
               </Button>
             </div>
