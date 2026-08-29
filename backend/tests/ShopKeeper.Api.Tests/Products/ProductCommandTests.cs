@@ -23,7 +23,7 @@ public class ProductCommandTests : IDisposable
 
         var handler = new CreateProductCommandHandler(context, owner, new PlanLimitService(context));
         var result = await handler.Handle(
-            new CreateProductCommand("Coca-Cola 500ml", "SKU-001", "5449000000996", null, null, null, 5.00m, 3.00m, 10, 20, true, 50, seeded.BranchId),
+            new CreateProductCommand("Coca-Cola 500ml", "SKU-001", "5449000000996", null, null, null, 5.00m, 3.00m, 20, true, 50, seeded.BranchId),
             CancellationToken.None);
 
         Assert.Equal(50, result.QuantityOnHand);
@@ -46,7 +46,7 @@ public class ProductCommandTests : IDisposable
         var context = _db.CreateContext(owner);
 
         await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Service Fee", "SKU-SVC", null, null, null, null, 10m, 0m, 0, 0, false, 0, null),
+            new CreateProductCommand("Service Fee", "SKU-SVC", null, null, null, null, 10m, 0m, 0, false, 0, null),
             CancellationToken.None);
 
         Assert.Empty(context.InventoryTransactions);
@@ -61,11 +61,11 @@ public class ProductCommandTests : IDisposable
         var handler = new CreateProductCommandHandler(context, owner, new PlanLimitService(context));
 
         await handler.Handle(
-            new CreateProductCommand("Product A", "DUP-SKU", null, null, null, null, 5m, 3m, 0, 0, false, 0, null),
+            new CreateProductCommand("Product A", "DUP-SKU", null, null, null, null, 5m, 3m, 0, false, 0, null),
             CancellationToken.None);
 
         await Assert.ThrowsAsync<ConflictException>(() => handler.Handle(
-            new CreateProductCommand("Product B", "DUP-SKU", null, null, null, null, 8m, 4m, 0, 0, false, 0, null),
+            new CreateProductCommand("Product B", "DUP-SKU", null, null, null, null, 8m, 4m, 0, false, 0, null),
             CancellationToken.None));
     }
 
@@ -77,7 +77,7 @@ public class ProductCommandTests : IDisposable
         var context = _db.CreateContext(cashier);
 
         await Assert.ThrowsAsync<ForbiddenAccessException>(() => new CreateProductCommandHandler(context, cashier, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Product A", "SKU-X", null, null, null, null, 5m, 3m, 0, 0, false, 0, null),
+            new CreateProductCommand("Product A", "SKU-X", null, null, null, null, 5m, 3m, 0, false, 0, null),
             CancellationToken.None));
     }
 
@@ -89,7 +89,7 @@ public class ProductCommandTests : IDisposable
         var context = _db.CreateContext(owner);
 
         var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
-            new CreateProductCommand("Product A", "SKU-DEL", null, null, null, null, 5m, 3m, 0, 0, false, 0, null),
+            new CreateProductCommand("Product A", "SKU-DEL", null, null, null, null, 5m, 3m, 0, false, 0, null),
             CancellationToken.None);
 
         await new DeleteProductCommandHandler(context, owner).Handle(new DeleteProductCommand(product.Id), CancellationToken.None);

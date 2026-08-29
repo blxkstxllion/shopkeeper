@@ -85,7 +85,7 @@ public class AuditLoggingPiiRedactionTests : IDisposable
         var sender = BuildSender(context, owner);
 
         await sender.Send(
-            new CreateProductCommand("Widget", "SKU-PII-1", null, null, null, null, 10m, 6m, 0, 0, true, 5, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-PII-1", null, null, null, null, 10m, 6m, 0, true, 5, seeded.BranchId),
             CancellationToken.None);
 
         // Proves the fix is scoped to the [SensitiveData] attribute on specific Customer/Supplier

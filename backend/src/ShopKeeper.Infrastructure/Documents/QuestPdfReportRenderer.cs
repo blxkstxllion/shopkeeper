@@ -148,7 +148,7 @@ public class QuestPdfReportRenderer : IReportDocumentRenderer
                             {
                                 DataCell(table, p.ProductName);
                                 DataCell(table, p.QuantityOnHand.ToString());
-                                DataCell(table, p.ReorderLevel.ToString());
+                                DataCell(table, p.MinimumStock.ToString());
                             }
                         });
                     }

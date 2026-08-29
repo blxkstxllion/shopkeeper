@@ -27,8 +27,11 @@ public class Product : BaseEntity, ITenantEntity
     public decimal SellingPrice { get; set; }
     public decimal CostPrice { get; set; }
 
-    public int MinStock { get; set; }
-    public int ReorderLevel { get; set; }
+    /// <summary>Stock falls to this number or below -> the dashboard/inventory page flags it
+    /// as low stock and a one-time notification fires (see AdjustStockCommand/CreateSaleCommand).
+    /// Was two separate, confusing fields ("Minimum stock" and "Reorder level") until a real
+    /// user found the unused one impossible to tell apart from this one - consolidated.</summary>
+    public int MinimumStock { get; set; }
 
     /// <summary>False for services/non-stock items - inventory transactions and stock checks are skipped.</summary>
     public bool TrackInventory { get; set; } = true;

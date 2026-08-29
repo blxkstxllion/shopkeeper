@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Search } from 'lucide-react'
+import { Search, ShoppingCart } from 'lucide-react'
 import { getSellableProducts } from '@/api/sales'
 import { getProductCategories } from '@/api/products'
 import { useActiveBranch } from '@/hooks/useActiveBranch'
@@ -15,12 +15,14 @@ import {
 } from '@/offline/catalogCache'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
+import { Modal } from '@/components/ui/Modal'
+import { formatMoney } from '@/lib/format'
 import type { QueuedSale, Sale, SellableProduct } from '@/types/sale'
 import { ProductGrid } from './ProductGrid'
 import { CartPanel } from './CartPanel'
 import { CheckoutModal } from './CheckoutModal'
 import { ReceiptModal } from './ReceiptModal'
-import type { CartLine } from './cart'
+import { cartLineDiscountTotal, cartSubtotal, type CartLine } from './cart'
 
 export function PosPage() {
   const { branch, isLoading: isBranchLoading } = useActiveBranch()
@@ -33,6 +35,9 @@ export function PosPage() {
   const [discountAmount, setDiscountAmount] = useState(0)
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
   const [completedSale, setCompletedSale] = useState<Sale | QueuedSale | null>(null)
+  // Below md:, the sidebar CartPanel is hidden entirely (see the `hidden ... md:block` Card
+  // below) - this is the only way to reach the cart/checkout on a phone.
+  const [isMobileCartOpen, setIsMobileCartOpen] = useState(false)
 
   const { data: categories } = useQuery({
     queryKey: ['product-categories'],
@@ -121,6 +126,9 @@ export function PosPage() {
     return <p className="p-6 text-sm text-slate-400">No branch found for this business yet.</p>
   }
 
+  const cartItemCount = cart.reduce((sum, l) => sum + l.quantity, 0)
+  const cartTotal = Math.max(cartSubtotal(cart) - cartLineDiscountTotal(cart) - discountAmount, 0)
+
   return (
     <div className="flex h-[calc(100vh-8rem)] gap-4">
       <div className="flex flex-1 flex-col overflow-hidden">
@@ -165,11 +173,15 @@ export function PosPage() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto pr-1">
+        <div className="flex-1 overflow-y-auto pr-1 pb-16 md:pb-0">
           {isLoading ? (
             <p className="p-6 text-sm text-slate-400">Loading products…</p>
           ) : (
-            <ProductGrid products={products ?? []} onSelect={handleSelectProduct} />
+            <ProductGrid
+              products={products ?? []}
+              onSelect={handleSelectProduct}
+              hasActiveFilter={Boolean(search || categoryId)}
+            />
           )}
         </div>
       </div>
@@ -184,6 +196,36 @@ export function PosPage() {
           onCharge={() => setIsCheckoutOpen(true)}
         />
       </Card>
+
+      {/* md: and up already has the cart sidebar above - this is the phone-width entry point
+          to the same cart, since the sidebar is hidden entirely below that breakpoint. */}
+      <button
+        type="button"
+        onClick={() => setIsMobileCartOpen(true)}
+        className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between bg-primary-600 px-5 py-3.5 text-white shadow-lg md:hidden"
+      >
+        <span className="flex items-center gap-2 text-sm font-medium">
+          <ShoppingCart className="h-4 w-4" />
+          {cartItemCount > 0 ? `${cartItemCount} item${cartItemCount === 1 ? '' : 's'}` : 'Cart'}
+        </span>
+        <span className="text-sm font-semibold">
+          {cartItemCount > 0 ? `View cart · ${formatMoney(cartTotal)}` : 'View cart'}
+        </span>
+      </button>
+
+      <Modal isOpen={isMobileCartOpen} onClose={() => setIsMobileCartOpen(false)} title="Cart" size="sm">
+        <CartPanel
+          lines={cart}
+          onUpdateQuantity={handleUpdateQuantity}
+          onRemove={handleRemove}
+          discountAmount={discountAmount}
+          onDiscountChange={setDiscountAmount}
+          onCharge={() => {
+            setIsMobileCartOpen(false)
+            setIsCheckoutOpen(true)
+          }}
+        />
+      </Modal>
 
       <CheckoutModal
         isOpen={isCheckoutOpen}

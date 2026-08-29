@@ -101,7 +101,7 @@ public class AuditLoggingBehaviorTests : IDisposable
         var sender = BuildSender(context, owner);
 
         var product = await sender.Send(
-            new CreateProductCommand("Widget", "SKU-AUDIT", null, null, null, null, 10m, 6m, 0, 0, true, 5, seeded.BranchId),
+            new CreateProductCommand("Widget", "SKU-AUDIT", null, null, null, null, 10m, 6m, 0, true, 5, seeded.BranchId),
             CancellationToken.None);
 
         await sender.Send(
@@ -126,7 +126,7 @@ public class AuditLoggingBehaviorTests : IDisposable
         // throws every time here, but the command's own business save is unaffected - proving a
         // broken audit write can never surface as if the real operation failed.
         var product = await sender.Send(
-            new CreateProductCommand("Gadget", "SKU-AUDIT-2", null, null, null, null, 10m, 6m, 0, 0, true, 3, seeded.BranchId),
+            new CreateProductCommand("Gadget", "SKU-AUDIT-2", null, null, null, null, 10m, 6m, 0, true, 3, seeded.BranchId),
             CancellationToken.None);
 
         Assert.NotEqual(Guid.Empty, product.Id);

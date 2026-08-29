@@ -29,8 +29,8 @@ public class GetProductByIdQueryHandler(IAppDbContext db, ICurrentUserService cu
         return new ProductDto(
             product.Id, product.Name, product.Sku, product.Barcode, product.Description, product.ImageUrl,
             product.CategoryId, product.Category?.Name, product.SupplierId, product.Supplier?.Name,
-            product.SellingPrice, product.CostPrice, product.MinStock,
-            product.ReorderLevel, product.TrackInventory, product.IsActive, quantityOnHand,
-            quantityOnHand.HasValue && quantityOnHand.Value <= product.ReorderLevel);
+            product.SellingPrice, product.CostPrice, product.MinimumStock,
+            product.TrackInventory, product.IsActive, quantityOnHand,
+            quantityOnHand.HasValue && quantityOnHand.Value <= product.MinimumStock);
     }
 }
