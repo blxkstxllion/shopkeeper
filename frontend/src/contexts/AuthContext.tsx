@@ -1,10 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import * as authApi from '@/api/auth'
-import { dedupedRefresh } from '@/lib/api-client'
+import { checkInitialSession } from '@/lib/api-client'
 import { setAccessToken, onAccessTokenChange } from '@/lib/token-store'
 import { clearOfflineDb } from '@/offline/db'
 import { setActiveCurrencyCode } from '@/lib/format'
 import { applyColorTheme } from '@/lib/colorTheme'
+import { loadSessionSnapshot, saveSessionSnapshot, clearSessionSnapshot } from '@/lib/session-cache'
 import type { AuthResult, User, UserBusiness } from '@/types/auth'
 import type { Business } from '@/types/business'
 
@@ -47,15 +48,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false
 
-    // dedupedRefresh (not authApi.refresh directly) because React.StrictMode double-invokes
-    // this effect in development: two independent refresh calls would race to redeem the
-    // same (rotating) refresh token, and the loser looks identical to token theft to the
-    // API, which revokes the whole session - see the comment on dedupedRefresh itself.
-    dedupedRefresh()
-      .then((result) => {
-        if (cancelled || !result) return
-        setUser(result.user)
-        setActiveBusinessId(resolveActiveBusiness(result.user)?.businessId ?? null)
+    // Read the cached session first (fast - a local file/localStorage read, not a network
+    // call) and render from it the moment it resolves, without waiting for the network check
+    // below at all - "sign in once, stay signed in" rather than re-verifying against the
+    // server on every cold start. Async because the desktop build's cache is backed by
+    // tauri-plugin-store (see session-cache.ts for why), not synchronous localStorage.
+    loadSessionSnapshot().then((cached) => {
+      if (cancelled || !cached) return
+      setUser(cached.user)
+      setActiveBusinessId(cached.activeBusinessId)
+      setIsInitializing(false)
+    })
+
+    // checkInitialSession (not authApi.refresh directly) because React.StrictMode
+    // double-invokes this effect in development: two independent refresh calls would race
+    // to redeem the same (rotating) refresh token, and the loser looks identical to token
+    // theft to the API, which revokes the whole session - see dedupedRefresh's own comment.
+    //
+    // This always runs, even when a cache already let the app render above - it's the
+    // background reconciliation that rotates the token and picks up any real change
+    // (including a genuine remote logout) once connectivity is actually there.
+    checkInitialSession()
+      .then((outcome) => {
+        if (cancelled) return
+        if (outcome.kind === 'authenticated') {
+          setUser(outcome.result.user)
+          setActiveBusinessId(resolveActiveBusiness(outcome.result.user)?.businessId ?? null)
+          return
+        }
+        if (outcome.kind === 'unauthenticated') {
+          // The server actually said no (missing/expired/revoked refresh token) - a real
+          // logout, even if a cached session was already rendered above. Not a connectivity
+          // problem, so this does override the cache (the sync effect below clears it once
+          // `user` goes null).
+          setUser(null)
+          setActiveBusinessId(null)
+          return
+        }
+        // outcome.kind === 'network-error': couldn't reach the server to check - stay on
+        // whatever was already rendered (the cached session, or signed-out if there was none).
       })
       .finally(() => {
         if (!cancelled) setIsInitializing(false)
@@ -65,6 +96,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cancelled = true
     }
   }, [])
+
+  // Single place that keeps the local session snapshot in sync with whatever login,
+  // selectBusiness, completeOnboarding, refreshUser, or this same mount effect just set -
+  // covers every path that changes `user`/`activeBusinessId` without duplicating a save
+  // call at each call site. Clears on logout (user becomes null) so a shared terminal never
+  // offers up the previous cashier's cached identity on the next offline cold start.
+  //
+  // Gated on `!isInitializing`: `user` starts as `null` before the mount effect above has
+  // resolved, which is "don't know yet," not "signed out" - without this guard, this effect
+  // fires on that transient null during every cold start and wipes the very snapshot the
+  // mount effect is about to try reading on a network error, before it gets the chance.
+  useEffect(() => {
+    if (isInitializing) return
+    if (user) {
+      void saveSessionSnapshot(user, activeBusinessId)
+    } else {
+      void clearSessionSnapshot()
+    }
+  }, [user, activeBusinessId, isInitializing])
 
   useEffect(
     () =>
