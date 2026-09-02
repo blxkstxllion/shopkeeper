@@ -5,6 +5,7 @@ using Amazon.SimpleEmailV2;
 using Amazon.SimpleEmailV2.Model;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using MimeKit;
 using ShopKeeper.Application.Common.Interfaces;
 
 /// <summary>
@@ -65,6 +66,50 @@ public class SesEmailSender(
                 "Accept invite",
                 link),
             ct);
+    }
+
+    public async Task SendReportEmailAsync(
+        string toEmail, string businessName, byte[] attachment, string attachmentFileName, string contentType,
+        CancellationToken ct = default)
+    {
+        // SES's "Simple" content (used by every other method here) has no attachment support -
+        // only "Raw" (a full RFC 2045 MIME message) does, so this is the one email that needs
+        // to actually build MIME instead of handing SES a subject/body pair.
+        var encodedBusiness = WebUtility.HtmlEncode(businessName);
+        var body = BuildBody(
+            null,
+            $"Your scheduled report for <strong>{encodedBusiness}</strong> is attached.",
+            "Open The Shop Keeper",
+            _settings.FrontendBaseUrl);
+
+        var message = new MimeMessage();
+        message.From.Add(MailboxAddress.Parse($"{_settings.FromName} <{_settings.FromAddress}>"));
+        message.To.Add(MailboxAddress.Parse(toEmail));
+        message.Subject = $"Your {businessName} report";
+
+        var builder = new BodyBuilder { HtmlBody = body.Html, TextBody = body.Text };
+        builder.Attachments.Add(attachmentFileName, attachment, ContentType.Parse(contentType));
+        message.Body = builder.ToMessageBody();
+
+        using var stream = new MemoryStream();
+        await message.WriteToAsync(stream, ct);
+
+        try
+        {
+            await client.SendEmailAsync(
+                new SendEmailRequest
+                {
+                    Destination = new Destination { ToAddresses = [toEmail] },
+                    Content = new EmailContent { Raw = new RawMessage { Data = stream } },
+                },
+                ct);
+        }
+        catch (Exception ex)
+        {
+            // Same "never fail the caller" contract as SendAsync below - a scheduled report
+            // that fails to deliver should be retried next cycle, not crash the runner.
+            logger.LogError(ex, "Failed to send scheduled report email to {Email} via SES", toEmail);
+        }
     }
 
     private async Task SendAsync(string toEmail, string subject, (string Html, string Text) body, CancellationToken ct)

@@ -1,5 +1,6 @@
 import { apiClient } from '@/lib/api-client'
 import type { ExpenseReport, InventoryReport, ProfitabilityReport } from '@/types/reports'
+import type { ScheduledReport, ScheduledReportFrequency } from '@/types/reports'
 
 export interface ReportParams {
   from: string
@@ -33,4 +34,23 @@ export async function exportBusinessReport(
   const format = params.format === 'Pdf' ? 'pdf' : 'docx'
   const filename = match?.[1] ?? `business-report-${params.from}-to-${params.to}.${format}`
   return { blob: response.data as Blob, filename }
+}
+
+export async function getScheduledReports(): Promise<ScheduledReport[]> {
+  const { data } = await apiClient.get<ScheduledReport[]>('/reports/scheduled')
+  return data
+}
+
+export async function createScheduledReport(payload: {
+  branchId?: string
+  frequency: ScheduledReportFrequency
+  format: ReportExportFormat
+  recipientEmails: string[]
+}): Promise<ScheduledReport> {
+  const { data } = await apiClient.post<ScheduledReport>('/reports/scheduled', payload)
+  return data
+}
+
+export async function deleteScheduledReport(id: string): Promise<void> {
+  await apiClient.delete(`/reports/scheduled/${id}`)
 }
