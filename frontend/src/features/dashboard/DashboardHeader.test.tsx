@@ -23,6 +23,7 @@ function mockAuthValue(overrides: Partial<AuthContextValue> = {}) {
       firstName: 'Ama',
       lastName: 'Owusu',
       isEmailVerified: true,
+      mustVerifyEmail: false,
       photoUrl: null,
       businesses: [],
     },
