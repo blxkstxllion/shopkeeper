@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Package, AlertTriangle, PackageX, Wallet, Download } from 'lucide-react'
+import { Package, AlertTriangle, PackageX, Wallet, ArrowLeftRight, Download } from 'lucide-react'
 import { getInventoryReport } from '@/api/reports'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -10,13 +10,32 @@ import { UpgradePrompt } from '@/components/ui/UpgradePrompt'
 import { ApiError } from '@/lib/api-client'
 import { formatMoney } from '@/lib/format'
 import { downloadCsv } from '@/lib/csv'
+import { useReportComparison } from './useReportComparison'
+import { ReportCompareControl } from './ReportCompareControl'
 import type { DateRange } from '@/components/ui/DateRangePicker'
 import type { StockAlertProduct } from '@/types/reports'
 
+function totalUnitsSold(turnover: { unitsSoldInRange: number }[]): number {
+  return turnover.reduce((sum, t) => sum + t.unitsSoldInRange, 0)
+}
+
 export function InventoryTab({ range, branchId }: { range: DateRange; branchId?: string }) {
+  const compare = useReportComparison()
+  const { compareRange, delta } = compare
+
   const { data, isLoading, error } = useQuery({
     queryKey: ['reports-inventory', range, branchId],
     queryFn: () => getInventoryReport({ from: range.from, to: range.to, branchId }),
+  })
+
+  // Only turnover (units sold in the range) is actually range-dependent - valuation and
+  // stock counts below are point-in-time snapshots of current inventory, not filtered by
+  // range, so comparing them against a "previous period" would just show 0% change every
+  // time (same current numbers on both sides) rather than anything meaningful.
+  const { data: compareData } = useQuery({
+    queryKey: ['reports-inventory', compareRange, branchId],
+    queryFn: () => getInventoryReport({ from: compareRange!.from, to: compareRange!.to, branchId }),
+    enabled: compareRange !== null,
   })
 
   if (error instanceof ApiError && error.status === 403) {
@@ -31,8 +50,8 @@ export function InventoryTab({ range, branchId }: { range: DateRange; branchId?:
   if (isLoading || !data) {
     return (
       <div className="flex flex-col gap-6">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, i) => (
             <StatTileSkeleton key={i} />
           ))}
         </div>
@@ -55,8 +74,12 @@ export function InventoryTab({ range, branchId }: { range: DateRange; branchId?:
 
   return (
     <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <ReportCompareControl range={range} {...compare} />
+      </div>
+
       <div className="flex items-center justify-between">
-        <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-5">
           <StatTile label="Total products" icon={Package} value={String(valuation.totalProducts)} />
           <StatTile
             label="Low stock"
@@ -71,6 +94,12 @@ export function InventoryTab({ range, branchId }: { range: DateRange; branchId?:
             tone={valuation.outOfStockCount > 0 ? 'critical' : undefined}
           />
           <StatTile label="Inventory value" icon={Wallet} value={formatMoney(valuation.inventoryValue)} />
+          <StatTile
+            label="Units sold"
+            icon={ArrowLeftRight}
+            value={String(totalUnitsSold(data.turnover))}
+            delta={compareData && delta(totalUnitsSold(data.turnover), totalUnitsSold(compareData.turnover))}
+          />
         </div>
         <Button
           variant="secondary"
