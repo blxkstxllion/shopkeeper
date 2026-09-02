@@ -1,11 +1,10 @@
-import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Wallet, TrendingUp, TrendingDown, Receipt, Percent, Award, LayoutGrid, Download, Plus, X } from 'lucide-react'
+import { Wallet, TrendingUp, TrendingDown, Receipt, Percent, Award, LayoutGrid, Download } from 'lucide-react'
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend } from 'recharts'
 import { getProfitabilityReport } from '@/api/reports'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { StatTile, type StatDelta } from '@/components/ui/StatTile'
+import { StatTile } from '@/components/ui/StatTile'
 import { Skeleton, StatTileSkeleton, ChartSkeleton, ListSkeleton } from '@/components/ui/Skeleton'
 import { CategoryBreakdown } from '@/components/ui/CategoryBreakdown'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -13,15 +12,14 @@ import { UpgradePrompt } from '@/components/ui/UpgradePrompt'
 import { ApiError } from '@/lib/api-client'
 import { formatMoney } from '@/lib/format'
 import { downloadCsv } from '@/lib/csv'
-import { computePercentChange, getComparisonPresets } from '@/lib/reportComparison'
-import { DateRangePicker, type DateRange } from '@/components/ui/DateRangePicker'
+import { useReportComparison } from './useReportComparison'
+import { ReportCompareControl } from './ReportCompareControl'
+import type { DateRange } from '@/components/ui/DateRangePicker'
 import type { ProductProfit } from '@/types/reports'
 
 export function ProfitabilityTab({ range, branchId }: { range: DateRange; branchId?: string }) {
-  const [compareRange, setCompareRange] = useState<DateRange | null>(null)
-  const [compareLabel, setCompareLabel] = useState('comparison range')
-  const [showCompareOptions, setShowCompareOptions] = useState(false)
-  const [showCustomComparePicker, setShowCustomComparePicker] = useState(false)
+  const compare = useReportComparison()
+  const { compareRange, delta } = compare
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['reports-profitability', range, branchId],
@@ -78,89 +76,11 @@ export function ProfitabilityTab({ range, branchId }: { range: DateRange; branch
   const { totals } = data
   const isNetPositive = totals.netProfit >= 0
   const compareTotals = compareData?.totals
-  const vsLabel = `vs ${compareLabel.toLowerCase()}`
-
-  function delta(current: number, previous: number | undefined, goodDirection?: 'up' | 'down'): StatDelta | undefined {
-    if (previous === undefined) return undefined
-    return { percent: computePercentChange(current, previous), label: vsLabel, goodDirection }
-  }
-
-  function selectCompareRange(selected: DateRange, label: string) {
-    setCompareRange(selected)
-    setCompareLabel(label)
-    setShowCompareOptions(false)
-    setShowCustomComparePicker(false)
-  }
-
-  function clearCompare() {
-    setCompareRange(null)
-    setShowCompareOptions(false)
-    setShowCustomComparePicker(false)
-  }
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          {compareRange ? (
-            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-              <span>
-                Comparing to <span className="font-medium text-slate-700 dark:text-slate-300">{compareLabel}</span> (
-                {compareRange.from} – {compareRange.to})
-              </span>
-              <button
-                type="button"
-                onClick={clearCompare}
-                className="flex items-center gap-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                <X className="h-3.5 w-3.5" />
-                Clear
-              </button>
-            </div>
-          ) : showCompareOptions ? (
-            <div className="flex flex-wrap items-center gap-2">
-              {getComparisonPresets(range).map((p) => (
-                <button
-                  key={p.label}
-                  type="button"
-                  onClick={() => selectCompareRange(p.range, p.label)}
-                  className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:border-primary-400 hover:text-primary-700 dark:border-slate-700 dark:text-slate-300 dark:hover:border-primary-500 dark:hover:text-primary-400"
-                >
-                  {p.label}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => setShowCustomComparePicker((s) => !s)}
-                className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:border-primary-400 hover:text-primary-700 dark:border-slate-700 dark:text-slate-300 dark:hover:border-primary-500 dark:hover:text-primary-400"
-              >
-                Custom range
-              </button>
-              {showCustomComparePicker && (
-                <DateRangePicker
-                  value={compareRange ?? range}
-                  onChange={(r) => selectCompareRange(r, 'Custom range')}
-                />
-              )}
-              <button
-                type="button"
-                onClick={() => setShowCompareOptions(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                Cancel
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowCompareOptions(true)}
-              className="flex items-center gap-1 rounded-full border border-dashed border-slate-300 px-3 py-1 text-xs font-medium text-slate-500 hover:border-primary-400 hover:text-primary-700 dark:border-slate-600 dark:text-slate-400 dark:hover:border-primary-500 dark:hover:text-primary-400"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Compare
-            </button>
-          )}
-        </div>
+        <ReportCompareControl range={range} {...compare} />
 
         <Button
           variant="secondary"
