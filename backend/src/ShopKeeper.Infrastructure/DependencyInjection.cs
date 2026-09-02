@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Net.Http.Headers;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Infrastructure.Ai;
+using ShopKeeper.Infrastructure.BackgroundJobs;
 using ShopKeeper.Infrastructure.Documents;
 using ShopKeeper.Infrastructure.Identity;
 using ShopKeeper.Infrastructure.Payments;
@@ -122,6 +123,8 @@ public static class DependencyInjection
             services.AddSingleton<IConnectionMultiplexer>(_ =>
                 ConnectionMultiplexer.Connect(redisConnectionString));
         }
+
+        services.AddHostedService<ScheduledReportRunner>();
 
         return services;
     }

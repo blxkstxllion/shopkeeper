@@ -13,4 +13,11 @@ public interface IEmailSender
 
     Task SendBusinessInviteAsync(
         string toEmail, string businessName, string inviterName, string inviteToken, CancellationToken ct = default);
+
+    /// <summary>Delivers a scheduled report's generated document (see ScheduledReportRunner) as
+    /// an email attachment - the one email type here that isn't a plain templated link, since
+    /// the whole point is the recipient gets the file without visiting the app at all.</summary>
+    Task SendReportEmailAsync(
+        string toEmail, string businessName, byte[] attachment, string attachmentFileName, string contentType,
+        CancellationToken ct = default);
 }
