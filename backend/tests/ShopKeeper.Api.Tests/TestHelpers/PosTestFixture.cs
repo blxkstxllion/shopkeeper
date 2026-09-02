@@ -33,6 +33,13 @@ public static class PosTestFixture
         var registerResult = await new RegisterCommandHandler(context, hasher, tokenIssuer, new TestEmailSender()).Handle(
             new RegisterCommand(ownerEmail, "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
 
+        // A "fully onboarded business" is realistically already past email verification -
+        // tests that specifically exercise RequireVerifiedEmailBehavior seed their own user
+        // directly rather than through this fixture, so this doesn't hide that behavior.
+        var owner = await context.Users.SingleAsync(u => u.Id == registerResult.User.Id);
+        owner.IsEmailVerified = true;
+        await context.SaveChangesAsync(CancellationToken.None);
+
         var business = await new CompleteOnboardingCommandHandler(context, tokenIssuer).Handle(
             new CompleteOnboardingCommand(
                 registerResult.User.Id, "Ama's Shop", BusinessType.Retail, null, "Ghana", "GHS", null,

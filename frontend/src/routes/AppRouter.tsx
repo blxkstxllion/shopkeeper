@@ -25,7 +25,7 @@ import { AboutPage } from '@/features/about/AboutPage'
 import { BillingCallbackPage } from '@/features/settings/BillingCallbackPage'
 import { AuditLogsPage } from '@/features/audit-logs/AuditLogsPage'
 import { AdvisorPage } from '@/features/advisor/AdvisorPage'
-import { RequireActiveBusiness, RequireAuth, RedirectIfAuthed, RequirePermission } from './guards'
+import { RequireActiveBusiness, RequireAuth, RedirectIfAuthed, RequirePermission, RequireVerifiedEmail } from './guards'
 
 export function AppRouter() {
   return (
@@ -77,7 +77,9 @@ export function AppRouter() {
       <Route
         element={
           <RequireActiveBusiness>
-            <AppLayout />
+            <RequireVerifiedEmail>
+              <AppLayout />
+            </RequireVerifiedEmail>
           </RequireActiveBusiness>
         }
       >

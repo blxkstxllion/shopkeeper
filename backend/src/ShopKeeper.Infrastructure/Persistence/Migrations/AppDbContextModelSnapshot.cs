@@ -1538,6 +1538,9 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<bool>("EmailVerificationEnforced")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTimeOffset?>("EmailVerificationExpiresAt")
                         .HasColumnType("timestamp with time zone");
 

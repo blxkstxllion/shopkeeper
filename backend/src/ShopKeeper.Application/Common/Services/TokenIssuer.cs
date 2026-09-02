@@ -91,6 +91,7 @@ public class TokenIssuer(IAppDbContext db, IJwtTokenService jwt)
             user.FirstName,
             user.LastName,
             user.IsEmailVerified,
+            user.EmailVerificationEnforced && !user.IsEmailVerified,
             user.PhotoUrl,
             memberships.Select(m => new UserBusinessDto(
                 m.BusinessId, m.Business.Name, m.Role.Name, m.IsOwner, m.Business.OnboardingCompleted,

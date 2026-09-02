@@ -11,12 +11,23 @@ import { UpgradePrompt } from '@/components/ui/UpgradePrompt'
 import { ApiError } from '@/lib/api-client'
 import { formatMoney } from '@/lib/format'
 import { downloadCsv } from '@/lib/csv'
+import { useReportComparison } from './useReportComparison'
+import { ReportCompareControl } from './ReportCompareControl'
 import type { DateRange } from '@/components/ui/DateRangePicker'
 
 export function ExpensesTab({ range, branchId }: { range: DateRange; branchId?: string }) {
+  const compare = useReportComparison()
+  const { compareRange, delta } = compare
+
   const { data, isLoading, error } = useQuery({
     queryKey: ['reports-expenses', range, branchId],
     queryFn: () => getExpenseReport({ from: range.from, to: range.to, branchId }),
+  })
+
+  const { data: compareData } = useQuery({
+    queryKey: ['reports-expenses', compareRange, branchId],
+    queryFn: () => getExpenseReport({ from: compareRange!.from, to: compareRange!.to, branchId }),
+    enabled: compareRange !== null,
   })
 
   if (error instanceof ApiError && error.status === 403) {
@@ -50,8 +61,8 @@ export function ExpensesTab({ range, branchId }: { range: DateRange; branchId?: 
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <StatTile label="Total expenses" icon={Receipt} value={formatMoney(data.totalAmount)} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <ReportCompareControl range={range} {...compare} />
         <Button
           variant="secondary"
           size="sm"
@@ -66,6 +77,15 @@ export function ExpensesTab({ range, branchId }: { range: DateRange; branchId?: 
           <Download className="h-3.5 w-3.5" />
           Export CSV
         </Button>
+      </div>
+
+      <div className="max-w-xs">
+        <StatTile
+          label="Total expenses"
+          icon={Receipt}
+          value={formatMoney(data.totalAmount)}
+          delta={delta(data.totalAmount, compareData?.totalAmount, 'down')}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
