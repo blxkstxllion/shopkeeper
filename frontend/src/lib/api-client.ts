@@ -35,20 +35,31 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
-let refreshPromise: Promise<AuthResult | null> | null = null
+export type SessionCheckOutcome =
+  | { kind: 'authenticated'; result: AuthResult }
+  | { kind: 'unauthenticated' } // the server actually said no - refresh token missing/expired/revoked
+  | { kind: 'network-error' } // couldn't reach the server at all - offline, DNS failure, timeout
 
-async function refreshAuthSession(): Promise<AuthResult | null> {
+let refreshPromise: Promise<SessionCheckOutcome> | null = null
+
+async function refreshAuthSession(): Promise<SessionCheckOutcome> {
   try {
     const response = await axios.post<AuthResult>(
       `${import.meta.env.VITE_API_BASE_URL}/auth/refresh`,
       {},
-      { withCredentials: true },
+      { withCredentials: true, timeout: 8000 },
     )
     setAccessToken(response.data.accessToken)
-    return response.data
-  } catch {
+    return { kind: 'authenticated', result: response.data }
+  } catch (err) {
+    // No response at all (offline/timeout/DNS/CORS) means we genuinely don't know whether
+    // the session is still valid - don't clear the access token or force a logout on what
+    // might just be a cold start with no network yet (see AuthContext's mount effect).
+    if (!(err as AxiosError).response) {
+      return { kind: 'network-error' }
+    }
     setAccessToken(null)
-    return null
+    return { kind: 'unauthenticated' }
   }
 }
 
@@ -60,11 +71,24 @@ async function refreshAuthSession(): Promise<AuthResult | null> {
  * token, and the second one hitting an already-rotated token trips the API's token-theft
  * detection, revoking the whole session and logging the user straight back out.
  */
-export async function dedupedRefresh(): Promise<AuthResult | null> {
+function dedupedRefreshOutcome(): Promise<SessionCheckOutcome> {
   refreshPromise ??= refreshAuthSession().finally(() => {
     refreshPromise = null
   })
   return refreshPromise
+}
+
+/** Used by the 401-retry interceptor below, which only cares whether the retry can proceed. */
+export async function dedupedRefresh(): Promise<AuthResult | null> {
+  const outcome = await dedupedRefreshOutcome()
+  return outcome.kind === 'authenticated' ? outcome.result : null
+}
+
+/** Used once at app boot (AuthContext), which needs to tell a real "you're logged out" apart
+ * from "couldn't check, we're offline" - a native app cold-starting with no network yet must
+ * not be treated the same as an actually-expired session. */
+export function checkInitialSession(): Promise<SessionCheckOutcome> {
+  return dedupedRefreshOutcome()
 }
 
 interface RetryableConfig extends InternalAxiosRequestConfig {

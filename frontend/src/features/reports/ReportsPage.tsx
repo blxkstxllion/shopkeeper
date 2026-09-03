@@ -6,6 +6,7 @@ import { ProfitabilityTab } from './ProfitabilityTab'
 import { ExpensesTab } from './ExpensesTab'
 import { InventoryTab } from './InventoryTab'
 import { GenerateReportButton } from './GenerateReportButton'
+import { ScheduledReportsButton } from './ScheduledReportsButton'
 import { DateRangePicker, type DateRange } from '@/components/ui/DateRangePicker'
 
 type TabId = 'profitability' | 'expenses' | 'inventory'
@@ -72,7 +73,10 @@ export function ReportsPage() {
             </select>
           )}
         </div>
-        <GenerateReportButton range={range} branchId={branchId} />
+        <div className="flex items-center gap-2">
+          <ScheduledReportsButton />
+          <GenerateReportButton range={range} branchId={branchId} />
+        </div>
       </div>
 
       <div

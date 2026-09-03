@@ -96,6 +96,6 @@ public class AcceptInvitationCommandHandler(IAppDbContext db, IPasswordHasher ha
 
         await db.SaveChangesAsync(cancellationToken);
 
-        return await tokenIssuer.IssueAsync(user, invitation.BusinessId, request.IpAddress, request.UserAgent, cancellationToken);
+        return await tokenIssuer.IssueAsync(user, invitation.BusinessId, rememberMe: false, request.IpAddress, request.UserAgent, cancellationToken);
     }
 }
