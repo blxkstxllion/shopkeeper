@@ -21,6 +21,7 @@ const testUser: User = {
   firstName: 'Ama',
   lastName: 'Owusu',
   isEmailVerified: true,
+  mustVerifyEmail: false,
   photoUrl: null,
   businesses: [],
 }
