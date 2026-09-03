@@ -14,6 +14,10 @@ export interface User {
   firstName: string
   lastName: string
   isEmailVerified: boolean
+  /** True only for accounts created after verification enforcement shipped and still
+   * unverified - use this (not isEmailVerified alone) to decide whether to block the app,
+   * since existing pre-enforcement accounts stay usable regardless of verification status. */
+  mustVerifyEmail: boolean
   photoUrl: string | null
   businesses: UserBusiness[]
 }

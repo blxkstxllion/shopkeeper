@@ -20,6 +20,12 @@ public class User : BaseEntity
     public string? EmailVerificationToken { get; set; }
     public DateTimeOffset? EmailVerificationExpiresAt { get; set; }
 
+    /// <summary>Whether an unverified email actually blocks this user from using the app
+    /// (see RequireVerifiedEmailBehavior). Only true for accounts created after this gate
+    /// shipped - the migration backfills existing rows to false so verification, previously
+    /// purely cosmetic, doesn't retroactively lock out anyone already using the app.</summary>
+    public bool EmailVerificationEnforced { get; set; }
+
     public string? PasswordResetToken { get; set; }
     public DateTimeOffset? PasswordResetExpiresAt { get; set; }
 

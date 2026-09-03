@@ -13,10 +13,16 @@ using ShopKeeper.Domain.Entities;
 public class TokenIssuer(IAppDbContext db, IJwtTokenService jwt)
 {
     private const int AccessTokenLifetimeMinutes = 15;
-    private const int RefreshTokenLifetimeDays = 30;
+    private const int RefreshTokenLifetimeDaysRemembered = 30;
+    // Applies when the user did NOT check "Keep me signed in". The refresh-token cookie itself
+    // is a browser session cookie (no Expires - see HttpResponseExtensions.SetRefreshTokenCookie)
+    // and normally disappears when the browser fully closes; this is a server-side backstop in
+    // case a browser is configured to restore session cookies across restarts, so an unattended
+    // "not remembered" login can't stay valid indefinitely.
+    private const int RefreshTokenLifetimeHoursNotRemembered = 24;
 
     public async Task<AuthResultDto> IssueAsync(
-        User user, Guid? activeBusinessId, string? ipAddress, string? userAgent, CancellationToken ct)
+        User user, Guid? activeBusinessId, bool rememberMe, string? ipAddress, string? userAgent, CancellationToken ct)
     {
         var (accessToken, userDto, resolvedBusinessId) = await BuildAccessTokenAsync(user, activeBusinessId, ct);
         var refreshTokenValue = jwt.GenerateRefreshTokenValue();
@@ -26,7 +32,10 @@ public class TokenIssuer(IAppDbContext db, IJwtTokenService jwt)
             UserId = user.Id,
             ActiveBusinessId = resolvedBusinessId,
             TokenHash = jwt.Hash(refreshTokenValue),
-            ExpiresAt = DateTimeOffset.UtcNow.AddDays(RefreshTokenLifetimeDays),
+            ExpiresAt = rememberMe
+                ? DateTimeOffset.UtcNow.AddDays(RefreshTokenLifetimeDaysRemembered)
+                : DateTimeOffset.UtcNow.AddHours(RefreshTokenLifetimeHoursNotRemembered),
+            RememberMe = rememberMe,
             CreatedByIp = ipAddress,
             UserAgent = userAgent,
         });
@@ -36,6 +45,7 @@ public class TokenIssuer(IAppDbContext db, IJwtTokenService jwt)
             accessToken,
             refreshTokenValue,
             DateTimeOffset.UtcNow.AddMinutes(AccessTokenLifetimeMinutes),
+            rememberMe,
             userDto);
     }
 
@@ -48,7 +58,9 @@ public class TokenIssuer(IAppDbContext db, IJwtTokenService jwt)
     public async Task<AuthResultDto> IssueAccessTokenOnlyAsync(User user, Guid? activeBusinessId, CancellationToken ct)
     {
         var (accessToken, userDto, _) = await BuildAccessTokenAsync(user, activeBusinessId, ct);
-        return new AuthResultDto(accessToken, string.Empty, DateTimeOffset.UtcNow.AddMinutes(AccessTokenLifetimeMinutes), userDto);
+        // RememberMe is irrelevant here - RefreshToken is empty, and callers (AuthController.Refresh)
+        // only touch the cookie when RefreshToken is non-empty, so this value is never read.
+        return new AuthResultDto(accessToken, string.Empty, DateTimeOffset.UtcNow.AddMinutes(AccessTokenLifetimeMinutes), false, userDto);
     }
 
     private async Task<(string AccessToken, UserDto UserDto, Guid? ResolvedBusinessId)> BuildAccessTokenAsync(
@@ -91,6 +103,7 @@ public class TokenIssuer(IAppDbContext db, IJwtTokenService jwt)
             user.FirstName,
             user.LastName,
             user.IsEmailVerified,
+            user.EmailVerificationEnforced && !user.IsEmailVerified,
             user.PhotoUrl,
             memberships.Select(m => new UserBusinessDto(
                 m.BusinessId, m.Business.Name, m.Role.Name, m.IsOwner, m.Business.OnboardingCompleted,
