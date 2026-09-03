@@ -84,7 +84,7 @@ public class TwoFactorCommandTests : IDisposable
             new EnableTwoFactorCommand(user.Id, ComputeValidCode(setup.Secret)), CancellationToken.None);
 
         var loginResult = await new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
-            new LoginCommand("2fa-login@shop.test", "Passw0rd!", null, null), CancellationToken.None);
+            new LoginCommand("2fa-login@shop.test", "Passw0rd!", null, false, null), CancellationToken.None);
 
         Assert.True(loginResult.RequiresTwoFactor);
         Assert.NotEmpty(loginResult.ChallengeToken!);
@@ -100,7 +100,7 @@ public class TwoFactorCommandTests : IDisposable
             new EnableTwoFactorCommand(user.Id, ComputeValidCode(setup.Secret)), CancellationToken.None);
 
         var loginResult = await new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
-            new LoginCommand("2fa-verify@shop.test", "Passw0rd!", null, null), CancellationToken.None);
+            new LoginCommand("2fa-verify@shop.test", "Passw0rd!", null, false, null), CancellationToken.None);
 
         var verifyHandler = new VerifyTwoFactorCommandHandler(context, _jwt, _totp, _hasher, tokenIssuer);
         var auth = await verifyHandler.Handle(
@@ -119,7 +119,7 @@ public class TwoFactorCommandTests : IDisposable
             new EnableTwoFactorCommand(user.Id, ComputeValidCode(setup.Secret)), CancellationToken.None);
 
         var loginResult = await new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
-            new LoginCommand("2fa-wrongcode@shop.test", "Passw0rd!", null, null), CancellationToken.None);
+            new LoginCommand("2fa-wrongcode@shop.test", "Passw0rd!", null, false, null), CancellationToken.None);
 
         var verifyHandler = new VerifyTwoFactorCommandHandler(context, _jwt, _totp, _hasher, tokenIssuer);
 
@@ -137,7 +137,7 @@ public class TwoFactorCommandTests : IDisposable
         var recoveryCode = recoveryCodes[0];
 
         var loginResult = await new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
-            new LoginCommand("2fa-recovery@shop.test", "Passw0rd!", null, null), CancellationToken.None);
+            new LoginCommand("2fa-recovery@shop.test", "Passw0rd!", null, false, null), CancellationToken.None);
 
         var verifyHandler = new VerifyTwoFactorCommandHandler(context, _jwt, _totp, _hasher, tokenIssuer);
         var auth = await verifyHandler.Handle(
@@ -146,7 +146,7 @@ public class TwoFactorCommandTests : IDisposable
 
         // The same recovery code must not work a second time.
         var secondLoginResult = await new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
-            new LoginCommand("2fa-recovery@shop.test", "Passw0rd!", null, null), CancellationToken.None);
+            new LoginCommand("2fa-recovery@shop.test", "Passw0rd!", null, false, null), CancellationToken.None);
 
         await Assert.ThrowsAsync<AuthenticationException>(() => verifyHandler.Handle(
             new VerifyTwoFactorCommand(secondLoginResult.ChallengeToken!, recoveryCode, null), CancellationToken.None));

@@ -26,7 +26,7 @@ public class SessionCommandTests : IDisposable
         currentUser.UserId = first.User.Id;
 
         var second = await new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
-            new LoginCommand("sessions@shop.test", "Passw0rd!", null, "10.0.0.1", "Safari/iPhone"), CancellationToken.None);
+            new LoginCommand("sessions@shop.test", "Passw0rd!", null, false, "10.0.0.1", "Safari/iPhone"), CancellationToken.None);
 
         var sessions = await new GetActiveSessionsQueryHandler(context, currentUser, _jwt).Handle(
             new GetActiveSessionsQuery(second.Auth!.RefreshToken), CancellationToken.None);
@@ -49,7 +49,7 @@ public class SessionCommandTests : IDisposable
         currentUser.UserId = registerResult.User.Id;
 
         var login2 = await new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
-            new LoginCommand("revoke@shop.test", "Passw0rd!", null, null, "Device B"), CancellationToken.None);
+            new LoginCommand("revoke@shop.test", "Passw0rd!", null, false, null, "Device B"), CancellationToken.None);
 
         var sessionsBefore = await new GetActiveSessionsQueryHandler(context, currentUser, _jwt).Handle(
             new GetActiveSessionsQuery(null), CancellationToken.None);
@@ -99,9 +99,9 @@ public class SessionCommandTests : IDisposable
         currentUser.UserId = registerResult.User.Id;
 
         await new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
-            new LoginCommand("revokeall@shop.test", "Passw0rd!", null, null, "Device B"), CancellationToken.None);
+            new LoginCommand("revokeall@shop.test", "Passw0rd!", null, false, null, "Device B"), CancellationToken.None);
         var login3 = await new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
-            new LoginCommand("revokeall@shop.test", "Passw0rd!", null, null, "Device C"), CancellationToken.None);
+            new LoginCommand("revokeall@shop.test", "Passw0rd!", null, false, null, "Device C"), CancellationToken.None);
 
         await new RevokeAllOtherSessionsCommandHandler(context, currentUser, _jwt).Handle(
             new RevokeAllOtherSessionsCommand(login3.Auth!.RefreshToken), CancellationToken.None);

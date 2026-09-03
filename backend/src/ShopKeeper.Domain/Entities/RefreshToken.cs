@@ -18,6 +18,11 @@ public class RefreshToken : BaseEntity
     public string TokenHash { get; set; } = default!;
     public DateTimeOffset ExpiresAt { get; set; }
 
+    /// <summary>Whether the user checked "Keep me signed in" - carried forward through rotation
+    /// (see RefreshTokenCommandHandler) so a session started as persistent stays persistent, and
+    /// vice versa, without the client having to resend the choice on every refresh.</summary>
+    public bool RememberMe { get; set; }
+
     public string? CreatedByIp { get; set; }
     public string? UserAgent { get; set; }
     public DateTimeOffset? RevokedAt { get; set; }

@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSessionClaims } from '@/hooks/useSessionClaims'
+import { VerificationRequiredPage } from '@/features/auth/VerificationRequiredPage'
 
 function FullScreenLoader() {
   return (
@@ -38,6 +39,18 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   if (isInitializing) return <FullScreenLoader />
   if (!user) return <Navigate to="/login" replace />
+
+  return <>{children}</>
+}
+
+/** Blocks accounts where email verification is enforced and still unverified - see
+ * User.EmailVerificationEnforced on the backend. Nested inside RequireActiveBusiness so it
+ * only ever evaluates once we already know there's a real authenticated user; an
+ * unauthenticated visitor should still land on /login, not this screen. */
+export function RequireVerifiedEmail({ children }: { children: ReactNode }) {
+  const { user } = useAuth()
+
+  if (user?.mustVerifyEmail) return <VerificationRequiredPage />
 
   return <>{children}</>
 }
