@@ -93,6 +93,10 @@ jobs:
             export API_IMAGE_TAG="${{ needs.build-and-push.outputs.api-tag }}"
             export FRONTEND_IMAGE_TAG="${{ needs.build-and-push.outputs.frontend-tag }}"
             cd /opt/shopkeeper
-            docker compose -f docker/docker-compose.yml -f docker/docker-compose.prod.yml pull
-            docker compose -f docker/docker-compose.yml -f docker/docker-compose.prod.yml up -d
+            # --env-file is explicit, not left to Compose's auto-discovery: the project
+            # directory Compose infers .env from is derived from the -f paths (docker/),
+            # not from cwd, so without this it can't find /opt/shopkeeper/.env at all -
+            # a real bug production.yml's identical script caught the first time it ever ran.
+            docker compose --env-file .env -f docker/docker-compose.yml -f docker/docker-compose.prod.yml pull
+            docker compose --env-file .env -f docker/docker-compose.yml -f docker/docker-compose.prod.yml up -d
             docker image prune -f
