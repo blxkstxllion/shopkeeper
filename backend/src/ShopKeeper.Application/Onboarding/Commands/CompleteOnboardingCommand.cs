@@ -144,7 +144,7 @@ public class CompleteOnboardingCommandHandler(IAppDbContext db, TokenIssuer toke
 
         await db.SaveChangesAsync(cancellationToken);
 
-        var tokens = await tokenIssuer.IssueAsync(owner, business.Id, request.IpAddress, request.UserAgent, cancellationToken);
+        var tokens = await tokenIssuer.IssueAsync(owner, business.Id, rememberMe: false, request.IpAddress, request.UserAgent, cancellationToken);
 
         return new BusinessDto(
             business.Id,

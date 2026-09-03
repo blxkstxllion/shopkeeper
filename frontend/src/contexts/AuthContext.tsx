@@ -17,7 +17,7 @@ export interface AuthContextValue {
   /** The business the current access token is scoped to, or null if the user hasn't picked one yet (e.g. multi-business login). */
   activeBusiness: UserBusiness | null
   isInitializing: boolean
-  login: (email: string, password: string, businessId?: string) => Promise<LoginOutcome>
+  login: (email: string, password: string, businessId?: string, rememberMe?: boolean) => Promise<LoginOutcome>
   completeTwoFactorLogin: (challengeToken: string, code: string) => Promise<User>
   register: (email: string, password: string, firstName: string, lastName: string) => Promise<User>
   logout: () => Promise<void>
@@ -134,8 +134,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = useCallback(
-    async (email: string, password: string, businessId?: string): Promise<LoginOutcome> => {
-      const result = await authApi.login({ email, password, businessId })
+    async (email: string, password: string, businessId?: string, rememberMe?: boolean): Promise<LoginOutcome> => {
+      const result = await authApi.login({ email, password, businessId, rememberMe })
 
       if (result.requiresTwoFactor) {
         return { requiresTwoFactor: true, challengeToken: result.challengeToken }

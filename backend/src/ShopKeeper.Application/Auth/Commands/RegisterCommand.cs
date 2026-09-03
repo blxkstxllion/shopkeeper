@@ -81,6 +81,6 @@ public class RegisterCommandHandler(IAppDbContext db, IPasswordHasher hasher, To
 
         await emailSender.SendEmailVerificationAsync(user.Email, user.FirstName, user.EmailVerificationToken!, cancellationToken);
 
-        return await tokenIssuer.IssueAsync(user, activeBusinessId: null, request.IpAddress, request.UserAgent, cancellationToken);
+        return await tokenIssuer.IssueAsync(user, activeBusinessId: null, rememberMe: false, request.IpAddress, request.UserAgent, cancellationToken);
     }
 }

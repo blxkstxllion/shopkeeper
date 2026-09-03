@@ -12,6 +12,7 @@ export interface LoginPayload {
   email: string
   password: string
   businessId?: string | null
+  rememberMe?: boolean
 }
 
 export async function register(payload: RegisterPayload): Promise<AuthResult> {
