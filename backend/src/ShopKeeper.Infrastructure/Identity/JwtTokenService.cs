@@ -63,7 +63,7 @@ public class JwtTokenService(IOptions<JwtSettings> options) : IJwtTokenService
     private const int TwoFactorChallengeLifetimeMinutes = 5;
     private const string TwoFactorChallengePurpose = "2fa_challenge";
 
-    public string GenerateTwoFactorChallengeToken(Guid userId, Guid? businessId)
+    public string GenerateTwoFactorChallengeToken(Guid userId, Guid? businessId, bool rememberMe)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Secret));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -73,6 +73,7 @@ public class JwtTokenService(IOptions<JwtSettings> options) : IJwtTokenService
             new(JwtRegisteredClaimNames.Sub, userId.ToString()),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new("purpose", TwoFactorChallengePurpose),
+            new("remember_me", rememberMe ? "true" : "false"),
         };
 
         if (businessId.HasValue)
@@ -90,7 +91,7 @@ public class JwtTokenService(IOptions<JwtSettings> options) : IJwtTokenService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    public (Guid UserId, Guid? BusinessId)? ValidateTwoFactorChallengeToken(string token)
+    public (Guid UserId, Guid? BusinessId, bool RememberMe)? ValidateTwoFactorChallengeToken(string token)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Secret));
         // Without this, the handler remaps "sub" -> ClaimTypes.NameIdentifier (same gotcha as
@@ -122,8 +123,9 @@ public class JwtTokenService(IOptions<JwtSettings> options) : IJwtTokenService
 
             var businessIdClaim = principal.FindFirst("business_id")?.Value;
             var businessId = businessIdClaim is null ? (Guid?)null : Guid.Parse(businessIdClaim);
+            var rememberMe = principal.FindFirst("remember_me")?.Value == "true";
 
-            return (Guid.Parse(sub), businessId);
+            return (Guid.Parse(sub), businessId, rememberMe);
         }
         catch
         {

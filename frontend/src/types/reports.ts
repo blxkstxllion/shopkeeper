@@ -98,3 +98,17 @@ export interface InventoryReport {
   outOfStockProducts: StockAlertProduct[]
   turnover: ProductTurnover[]
 }
+
+export type ScheduledReportFrequency = 'Daily' | 'Weekly' | 'Monthly'
+
+export interface ScheduledReport {
+  id: string
+  branchId: string | null
+  branchName: string | null
+  frequency: ScheduledReportFrequency
+  format: 'Pdf' | 'Word'
+  recipientEmails: string[]
+  isActive: boolean
+  nextRunAt: string
+  lastRunAt: string | null
+}

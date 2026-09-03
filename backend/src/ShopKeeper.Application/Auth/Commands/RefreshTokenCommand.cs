@@ -55,7 +55,7 @@ public class RefreshTokenCommandHandler(IAppDbContext db, IJwtTokenService jwt, 
             throw new AuthenticationException("Refresh token has expired. Please log in again.");
         }
 
-        var result = await tokenIssuer.IssueAsync(existing.User, existing.ActiveBusinessId, request.IpAddress, request.UserAgent, cancellationToken);
+        var result = await tokenIssuer.IssueAsync(existing.User, existing.ActiveBusinessId, existing.RememberMe, request.IpAddress, request.UserAgent, cancellationToken);
 
         existing.RevokedAt = DateTimeOffset.UtcNow;
         existing.RevokedByIp = request.IpAddress;

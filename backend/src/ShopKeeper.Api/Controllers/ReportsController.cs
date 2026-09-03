@@ -36,4 +36,30 @@ public class ReportsController(ISender mediator) : ControllerBase
         var result = await mediator.Send(new GenerateBusinessReportCommand(from, to, branchId, format), ct);
         return File(result.Content, result.ContentType, result.FileName);
     }
+
+    [HttpGet("scheduled")]
+    public async Task<ActionResult<IReadOnlyList<ScheduledReportDto>>> GetScheduled(CancellationToken ct) =>
+        Ok(await mediator.Send(new GetScheduledReportsQuery(), ct));
+
+    [HttpPost("scheduled")]
+    public async Task<ActionResult<ScheduledReportDto>> CreateScheduled(
+        [FromBody] CreateScheduledReportRequest request, CancellationToken ct)
+    {
+        var result = await mediator.Send(
+            new CreateScheduledReportCommand(request.BranchId, request.Frequency, request.Format, request.RecipientEmails), ct);
+        return Ok(result);
+    }
+
+    [HttpDelete("scheduled/{id:guid}")]
+    public async Task<IActionResult> DeleteScheduled(Guid id, CancellationToken ct)
+    {
+        await mediator.Send(new DeleteScheduledReportCommand(id), ct);
+        return NoContent();
+    }
 }
+
+public record CreateScheduledReportRequest(
+    Guid? BranchId,
+    Domain.Entities.ScheduledReportFrequency Frequency,
+    Domain.Entities.ReportExportFormat Format,
+    IReadOnlyList<string> RecipientEmails);

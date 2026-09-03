@@ -87,10 +87,59 @@ public class AuthCommandTests : IDisposable
             new RegisterCommand("login@shop.test", "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
 
         var loginHandler = new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt);
-        var result = await loginHandler.Handle(new LoginCommand("login@shop.test", "Passw0rd!", null, null), CancellationToken.None);
+        var result = await loginHandler.Handle(new LoginCommand("login@shop.test", "Passw0rd!", null, false, null), CancellationToken.None);
 
         Assert.False(result.RequiresTwoFactor);
         Assert.Equal("login@shop.test", result.Auth!.User.Email);
+    }
+
+    [Fact]
+    public async Task Login_WithoutRememberMe_IssuesShortLivedRefreshToken()
+    {
+        var currentUser = new TestCurrentUserService();
+        var context = _db.CreateContext(currentUser);
+        var tokenIssuer = new TokenIssuer(context, _jwt);
+        await new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender()).Handle(
+            new RegisterCommand("not-remembered@shop.test", "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
+
+        var loginHandler = new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt);
+        var result = await loginHandler.Handle(
+            new LoginCommand("not-remembered@shop.test", "Passw0rd!", null, RememberMe: false, null), CancellationToken.None);
+
+        Assert.False(result.Auth!.RememberMe);
+        var stored = await context.RefreshTokens.SingleAsync(rt => rt.TokenHash == _jwt.Hash(result.Auth.RefreshToken));
+        Assert.False(stored.RememberMe);
+        // Comfortably inside 24h but well past 30 days would be a real bug - loose bounds to
+        // avoid flaking on clock skew while still catching "accidentally always 30 days".
+        Assert.True(stored.ExpiresAt < DateTimeOffset.UtcNow.AddDays(2));
+    }
+
+    [Fact]
+    public async Task Login_WithRememberMe_IssuesThirtyDayRefreshTokenThatSurvivesRotation()
+    {
+        var currentUser = new TestCurrentUserService();
+        var context = _db.CreateContext(currentUser);
+        var tokenIssuer = new TokenIssuer(context, _jwt);
+        await new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender()).Handle(
+            new RegisterCommand("remembered@shop.test", "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
+
+        var loginHandler = new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt);
+        var result = await loginHandler.Handle(
+            new LoginCommand("remembered@shop.test", "Passw0rd!", null, RememberMe: true, null), CancellationToken.None);
+
+        Assert.True(result.Auth!.RememberMe);
+        var stored = await context.RefreshTokens.SingleAsync(rt => rt.TokenHash == _jwt.Hash(result.Auth.RefreshToken));
+        Assert.True(stored.ExpiresAt > DateTimeOffset.UtcNow.AddDays(20));
+
+        // Rotating the token (a normal refresh) must carry RememberMe forward - otherwise every
+        // 15-minute access-token refresh would silently downgrade a remembered session.
+        var refreshHandler = new RefreshTokenCommandHandler(context, _jwt, tokenIssuer);
+        var rotated = await refreshHandler.Handle(
+            new RefreshTokenCommand(result.Auth.RefreshToken, null), CancellationToken.None);
+
+        Assert.True(rotated.RememberMe);
+        var rotatedStored = await context.RefreshTokens.SingleAsync(rt => rt.TokenHash == _jwt.Hash(rotated.RefreshToken));
+        Assert.True(rotatedStored.ExpiresAt > DateTimeOffset.UtcNow.AddDays(20));
     }
 
     [Fact]
@@ -105,7 +154,7 @@ public class AuthCommandTests : IDisposable
         var loginHandler = new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt);
 
         await Assert.ThrowsAsync<AuthenticationException>(() =>
-            loginHandler.Handle(new LoginCommand("wrongpw@shop.test", "TotallyWrong1!", null, null), CancellationToken.None));
+            loginHandler.Handle(new LoginCommand("wrongpw@shop.test", "TotallyWrong1!", null, false, null), CancellationToken.None));
     }
 
     [Fact]
@@ -116,7 +165,7 @@ public class AuthCommandTests : IDisposable
         var loginHandler = new LoginCommandHandler(context, _hasher, new TokenIssuer(context, _jwt), _jwt);
 
         await Assert.ThrowsAsync<AuthenticationException>(() =>
-            loginHandler.Handle(new LoginCommand("nobody@shop.test", "Passw0rd!", null, null), CancellationToken.None));
+            loginHandler.Handle(new LoginCommand("nobody@shop.test", "Passw0rd!", null, false, null), CancellationToken.None));
     }
 
     [Fact]
@@ -252,7 +301,7 @@ public class AuthCommandTests : IDisposable
         // A second, independent session - e.g. logging in from another device.
         var loginHandler = new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt);
         var secondSession = await loginHandler.Handle(
-            new LoginCommand("multi-device@shop.test", "Passw0rd!", null, "127.0.0.2"), CancellationToken.None);
+            new LoginCommand("multi-device@shop.test", "Passw0rd!", null, false, "127.0.0.2"), CancellationToken.None);
 
         var refreshHandler = new RefreshTokenCommandHandler(context, _jwt, tokenIssuer);
         await refreshHandler.Handle(new RefreshTokenCommand(registerResult.RefreshToken, "127.0.0.1"), CancellationToken.None);
