@@ -10,6 +10,8 @@ public class TestEmailSender : IEmailSender
 
     public (string ToEmail, string FirstName, string VerificationToken)? LastVerification { get; private set; }
 
+    public (string ToEmail, string BusinessName, byte[] Attachment, string AttachmentFileName, string ContentType)? LastReportEmail { get; private set; }
+
     public Task SendEmailVerificationAsync(string toEmail, string firstName, string verificationToken, CancellationToken ct = default)
     {
         LastVerification = (toEmail, firstName, verificationToken);
@@ -23,6 +25,14 @@ public class TestEmailSender : IEmailSender
         string toEmail, string businessName, string inviterName, string inviteToken, CancellationToken ct = default)
     {
         LastInvite = (toEmail, businessName, inviterName, inviteToken);
+        return Task.CompletedTask;
+    }
+
+    public Task SendReportEmailAsync(
+        string toEmail, string businessName, byte[] attachment, string attachmentFileName, string contentType,
+        CancellationToken ct = default)
+    {
+        LastReportEmail = (toEmail, businessName, attachment, attachmentFileName, contentType);
         return Task.CompletedTask;
     }
 }

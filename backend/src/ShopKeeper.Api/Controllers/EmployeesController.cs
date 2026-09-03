@@ -49,7 +49,7 @@ public class EmployeesController(ISender mediator, IWebHostEnvironment env) : Co
             token, request.Password, request.FirstName, request.LastName,
             HttpContext.Connection.RemoteIpAddress?.ToString(), Request.Headers.UserAgent.ToString()), ct);
 
-        Response.SetRefreshTokenCookie(result.RefreshToken, env);
+        Response.SetRefreshTokenCookie(result.RefreshToken, env, result.RememberMe);
         return Ok(result with { RefreshToken = string.Empty });
     }
 
@@ -60,7 +60,7 @@ public class EmployeesController(ISender mediator, IWebHostEnvironment env) : Co
         var result = await mediator.Send(new AcceptInvitationForExistingUserCommand(
             token, HttpContext.Connection.RemoteIpAddress?.ToString(), Request.Headers.UserAgent.ToString()), ct);
 
-        Response.SetRefreshTokenCookie(result.RefreshToken, env);
+        Response.SetRefreshTokenCookie(result.RefreshToken, env, result.RememberMe);
         return Ok(result with { RefreshToken = string.Empty });
     }
 

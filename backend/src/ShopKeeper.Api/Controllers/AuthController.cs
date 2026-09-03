@@ -15,7 +15,7 @@ using ShopKeeper.Application.Common.Interfaces;
 public class AuthController(ISender mediator, IWebHostEnvironment env, ICurrentUserService currentUser) : ControllerBase
 {
     public record RegisterRequest(string Email, string Password, string FirstName, string LastName);
-    public record LoginRequest(string Email, string Password, Guid? BusinessId);
+    public record LoginRequest(string Email, string Password, Guid? BusinessId, bool RememberMe = false);
     public record ForgotPasswordRequest(string Email);
     public record ResetPasswordRequest(string Token, string NewPassword);
     public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
@@ -33,7 +33,7 @@ public class AuthController(ISender mediator, IWebHostEnvironment env, ICurrentU
             request.Email, request.Password, request.FirstName, request.LastName,
             HttpContext.Connection.RemoteIpAddress?.ToString(), Request.Headers.UserAgent.ToString()), ct);
 
-        Response.SetRefreshTokenCookie(result.RefreshToken, env);
+        Response.SetRefreshTokenCookie(result.RefreshToken, env, result.RememberMe);
         return Ok(result with { RefreshToken = string.Empty });
     }
 
@@ -42,7 +42,7 @@ public class AuthController(ISender mediator, IWebHostEnvironment env, ICurrentU
     public async Task<IActionResult> Login(LoginRequest request, CancellationToken ct)
     {
         var result = await mediator.Send(new LoginCommand(
-            request.Email, request.Password, request.BusinessId,
+            request.Email, request.Password, request.BusinessId, request.RememberMe,
             HttpContext.Connection.RemoteIpAddress?.ToString(), Request.Headers.UserAgent.ToString()), ct);
 
         if (result.RequiresTwoFactor)
@@ -50,7 +50,7 @@ public class AuthController(ISender mediator, IWebHostEnvironment env, ICurrentU
             return Ok(new { requiresTwoFactor = true, challengeToken = result.ChallengeToken });
         }
 
-        Response.SetRefreshTokenCookie(result.Auth!.RefreshToken, env);
+        Response.SetRefreshTokenCookie(result.Auth!.RefreshToken, env, result.Auth.RememberMe);
         return Ok(new { requiresTwoFactor = false, auth = result.Auth with { RefreshToken = string.Empty } });
     }
 
@@ -61,7 +61,7 @@ public class AuthController(ISender mediator, IWebHostEnvironment env, ICurrentU
             request.ChallengeToken, request.Code,
             HttpContext.Connection.RemoteIpAddress?.ToString(), Request.Headers.UserAgent.ToString()), ct);
 
-        Response.SetRefreshTokenCookie(result.RefreshToken, env);
+        Response.SetRefreshTokenCookie(result.RefreshToken, env, result.RememberMe);
         return Ok(result with { RefreshToken = string.Empty });
     }
 
@@ -108,7 +108,7 @@ public class AuthController(ISender mediator, IWebHostEnvironment env, ICurrentU
         // set the cookie to the real successor token, so this response must not overwrite it.
         if (!string.IsNullOrEmpty(result.RefreshToken))
         {
-            Response.SetRefreshTokenCookie(result.RefreshToken, env);
+            Response.SetRefreshTokenCookie(result.RefreshToken, env, result.RememberMe);
         }
 
         return Ok(result with { RefreshToken = string.Empty });
@@ -172,10 +172,10 @@ public class AuthController(ISender mediator, IWebHostEnvironment env, ICurrentU
     public async Task<ActionResult<AuthResultDto>> SwitchBusiness(SwitchBusinessRequest request, CancellationToken ct)
     {
         var result = await mediator.Send(new SwitchBusinessCommand(
-            currentUser.UserId!.Value, request.BusinessId,
+            currentUser.UserId!.Value, request.BusinessId, Request.GetRefreshTokenCookie(),
             HttpContext.Connection.RemoteIpAddress?.ToString(), Request.Headers.UserAgent.ToString()), ct);
 
-        Response.SetRefreshTokenCookie(result.RefreshToken, env);
+        Response.SetRefreshTokenCookie(result.RefreshToken, env, result.RememberMe);
         return Ok(result with { RefreshToken = string.Empty });
     }
 

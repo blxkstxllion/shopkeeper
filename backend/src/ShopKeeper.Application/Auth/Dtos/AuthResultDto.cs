@@ -4,6 +4,9 @@ public record AuthResultDto(
     string AccessToken,
     string RefreshToken,
     DateTimeOffset AccessTokenExpiresAt,
+    // Whether this session's refresh-token cookie should be persistent (30 days) or
+    // session-only - see TokenIssuer and HttpResponseExtensions.SetRefreshTokenCookie.
+    bool RememberMe,
     UserDto User);
 
 public record UserDto(
@@ -12,6 +15,11 @@ public record UserDto(
     string FirstName,
     string LastName,
     bool IsEmailVerified,
+    // True only for accounts created after email verification enforcement shipped (see
+    // User.EmailVerificationEnforced) and still unverified - the frontend uses this, not
+    // IsEmailVerified alone, to decide whether to block the app. Existing accounts from
+    // before this shipped stay usable regardless of verification status.
+    bool MustVerifyEmail,
     string? PhotoUrl,
     IReadOnlyList<UserBusinessDto> Businesses);
 

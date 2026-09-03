@@ -8,7 +8,8 @@ using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Application.Common.Services;
 
-public record LoginCommand(string Email, string Password, Guid? BusinessId, string? IpAddress, string? UserAgent = null)
+public record LoginCommand(
+    string Email, string Password, Guid? BusinessId, bool RememberMe, string? IpAddress, string? UserAgent = null)
     : IRequest<LoginResultDto>;
 
 public class LoginCommandValidator : AbstractValidator<LoginCommand>
@@ -44,11 +45,11 @@ public class LoginCommandHandler(IAppDbContext db, IPasswordHasher hasher, Token
         if (user.TwoFactorEnabled)
         {
             // Password check passed, but no tokens are issued yet - see LoginResultDto.
-            var challengeToken = jwt.GenerateTwoFactorChallengeToken(user.Id, request.BusinessId);
+            var challengeToken = jwt.GenerateTwoFactorChallengeToken(user.Id, request.BusinessId, request.RememberMe);
             return new LoginResultDto(true, challengeToken, null);
         }
 
-        var auth = await tokenIssuer.IssueAsync(user, request.BusinessId, request.IpAddress, request.UserAgent, cancellationToken);
+        var auth = await tokenIssuer.IssueAsync(user, request.BusinessId, request.RememberMe, request.IpAddress, request.UserAgent, cancellationToken);
         return new LoginResultDto(false, null, auth);
     }
 }

@@ -53,6 +53,9 @@ public class RegisterCommandHandler(IAppDbContext db, IPasswordHasher hasher, To
             IsEmailVerified = false,
             EmailVerificationToken = Guid.NewGuid().ToString("N"),
             EmailVerificationExpiresAt = DateTimeOffset.UtcNow.AddDays(2),
+            // New accounts only - existing users are grandfathered in via the migration's
+            // backfill default (false), so this gate doesn't retroactively lock anyone out.
+            EmailVerificationEnforced = true,
         };
 
         db.Users.Add(user);
@@ -78,6 +81,6 @@ public class RegisterCommandHandler(IAppDbContext db, IPasswordHasher hasher, To
 
         await emailSender.SendEmailVerificationAsync(user.Email, user.FirstName, user.EmailVerificationToken!, cancellationToken);
 
-        return await tokenIssuer.IssueAsync(user, activeBusinessId: null, request.IpAddress, request.UserAgent, cancellationToken);
+        return await tokenIssuer.IssueAsync(user, activeBusinessId: null, rememberMe: false, request.IpAddress, request.UserAgent, cancellationToken);
     }
 }

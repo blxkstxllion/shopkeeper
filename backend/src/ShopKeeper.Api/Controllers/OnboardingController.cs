@@ -52,7 +52,9 @@ public class OnboardingController(ISender mediator, ICurrentUserService currentU
             Request.Headers.UserAgent.ToString(),
             request.ColorTheme), ct);
 
-        Response.SetRefreshTokenCookie(result.RefreshToken, env);
+        // Always session-only here - onboarding completion issues a fresh session right after
+        // registration, which is already session-only (see RegisterCommand's rememberMe: false).
+        Response.SetRefreshTokenCookie(result.RefreshToken, env, persistent: false);
         return Ok(result with { RefreshToken = string.Empty });
     }
 }
