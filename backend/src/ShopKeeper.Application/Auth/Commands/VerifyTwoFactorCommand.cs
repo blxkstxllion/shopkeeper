@@ -53,7 +53,7 @@ public class VerifyTwoFactorCommandHandler(
             await db.SaveChangesAsync(cancellationToken);
         }
 
-        return await tokenIssuer.IssueAsync(user, challenge.BusinessId, request.IpAddress, request.UserAgent, cancellationToken);
+        return await tokenIssuer.IssueAsync(user, challenge.BusinessId, challenge.RememberMe, request.IpAddress, request.UserAgent, cancellationToken);
     }
 
     private bool TryConsumeRecoveryCode(User user, string code)

@@ -289,10 +289,12 @@ export function LoginPage() {
     }
   }
 
+  const [rememberMe, setRememberMe] = useState(false)
+
   const onSubmitCredentials = async (values: CredentialsFormValues) => {
     setServerError(null)
     try {
-      const outcome = await login(values.email, values.password)
+      const outcome = await login(values.email, values.password, undefined, rememberMe)
       if (outcome.requiresTwoFactor) {
         setChallengeToken(outcome.challengeToken)
       } else {
@@ -508,6 +510,17 @@ export function LoginPage() {
                     <p className="text-xs text-red-600">{credentialsForm.formState.errors.password.message}</p>
                   )}
                 </div>
+
+                <label htmlFor="remember-me" className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+                  <input
+                    id="remember-me"
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-2 focus:ring-primary-500/40"
+                  />
+                  Keep me signed in
+                </label>
 
                 <SignInButton isLoading={credentialsForm.formState.isSubmitting}>Sign in</SignInButton>
               </form>

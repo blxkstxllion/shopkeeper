@@ -4,6 +4,9 @@ public record AuthResultDto(
     string AccessToken,
     string RefreshToken,
     DateTimeOffset AccessTokenExpiresAt,
+    // Whether this session's refresh-token cookie should be persistent (30 days) or
+    // session-only - see TokenIssuer and HttpResponseExtensions.SetRefreshTokenCookie.
+    bool RememberMe,
     UserDto User);
 
 public record UserDto(
