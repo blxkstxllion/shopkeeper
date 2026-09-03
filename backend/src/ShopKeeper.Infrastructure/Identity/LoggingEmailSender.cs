@@ -34,4 +34,14 @@ public class LoggingEmailSender(ILogger<LoggingEmailSender> logger) : IEmailSend
             inviterName, toEmail, businessName, inviteToken);
         return Task.CompletedTask;
     }
+
+    public Task SendReportEmailAsync(
+        string toEmail, string businessName, byte[] attachment, string attachmentFileName, string contentType,
+        CancellationToken ct = default)
+    {
+        logger.LogInformation(
+            "[DEV EMAIL] Scheduled report for {BusinessName} to {Email}. Attachment: {FileName} ({Size} bytes)",
+            businessName, toEmail, attachmentFileName, attachment.Length);
+        return Task.CompletedTask;
+    }
 }

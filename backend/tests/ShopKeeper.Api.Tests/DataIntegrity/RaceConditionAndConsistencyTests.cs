@@ -143,7 +143,7 @@ public class RaceConditionAndConsistencyTests
         // include the business they were just removed from.
         var loginHandler = new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt);
         var loginResult = await loginHandler.Handle(
-            new LoginCommand("removeme@shop.test", "Passw0rd!", null, null), CancellationToken.None);
+            new LoginCommand("removeme@shop.test", "Passw0rd!", null, false, null), CancellationToken.None);
 
         Assert.False(loginResult.RequiresTwoFactor);
         Assert.DoesNotContain(loginResult.Auth!.User.Businesses, b => b.BusinessId == seeded.BusinessId);
