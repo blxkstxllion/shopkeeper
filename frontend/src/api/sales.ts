@@ -36,13 +36,13 @@ export async function getSales(params: {
   return data
 }
 
-export async function voidSale(id: string, reason: string): Promise<void> {
-  await apiClient.post(`/sales/${id}/void`, { reason })
+export async function voidSale(id: string, reason: string, clientRequestId?: string): Promise<void> {
+  await apiClient.post(`/sales/${id}/void`, { reason, clientRequestId })
 }
 
 export async function refundSale(
   id: string,
-  payload: { items: { saleItemId: string; quantity: number }[]; reason: string },
+  payload: { items: { saleItemId: string; quantity: number }[]; reason: string; clientRequestId?: string },
 ): Promise<Refund> {
   const { data } = await apiClient.post<Refund>(`/sales/${id}/refund`, payload)
   return data

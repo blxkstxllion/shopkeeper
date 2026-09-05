@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Check, Sparkles } from 'lucide-react'
 import { getPlanUsage, initiateCheckout, setInventoryAddOn, setPlanTier } from '@/api/plans'
 import { useAuth } from '@/contexts/AuthContext'
@@ -8,7 +8,9 @@ import { Button } from '@/components/ui/Button'
 import { Alert } from '@/components/ui/Alert'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { ApiError } from '@/lib/api-client'
-import type { PlanTier } from '@/types/plans'
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'
+import { useOfflineSingletonQuery } from '@/offline/useOfflineQuery'
+import type { PlanTier, PlanUsage } from '@/types/plans'
 
 const TIERS: { id: PlanTier; label: string; price: string; blurb: string }[] = [
   { id: 'Free', label: 'Free', price: 'GH₵0/mo', blurb: 'Up to 2 branches, 25 products, 2 staff. No reports.' },
@@ -64,10 +66,13 @@ function UsageRow({ label, used, max }: { label: string; used: number; max: numb
 export function PlanBillingSection() {
   const { activeBusiness } = useAuth()
   const queryClient = useQueryClient()
+  const isOnline = useOnlineStatus()
   const [serverError, setServerError] = useState<string | null>(null)
   const isOwner = activeBusiness?.isOwner ?? false
 
-  const { data: usage, isLoading } = useQuery({ queryKey: ['plan-usage'], queryFn: getPlanUsage })
+  // Read-only offline (a cached GET) - changing plan/billing itself is payment-adjacent and
+  // stays online-only, same boundary as Paystack checkout and the AI Advisor.
+  const { data: usage, isLoading } = useOfflineSingletonQuery<PlanUsage>(['plan-usage'], 'planUsage', getPlanUsage)
 
   const tierMutation = useMutation({
     mutationFn: setPlanTier,
@@ -146,6 +151,11 @@ export function PlanBillingSection() {
           )}
         </p>
 
+        {!isOnline && (
+          <Alert tone="info">
+            Your plan and usage shown here are from your last sync. Changing plans needs internet.
+          </Alert>
+        )}
         {serverError && <Alert tone="error">{serverError}</Alert>}
 
         <div className="mb-4 flex flex-col gap-3">
@@ -159,7 +169,7 @@ export function PlanBillingSection() {
             <input
               type="checkbox"
               checked={usage.hasUnlimitedInventoryAddOn}
-              disabled={addOnMutation.isPending}
+              disabled={addOnMutation.isPending || !isOnline}
               onChange={(e) => addOnMutation.mutate(e.target.checked)}
               className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
             />
@@ -193,7 +203,7 @@ export function PlanBillingSection() {
                     (tierMutation.isPending && tierMutation.variables === tier.id) ||
                     (checkoutMutation.isPending && checkoutMutation.variables === tier.id)
                   }
-                  disabled={tierMutation.isPending || checkoutMutation.isPending}
+                  disabled={tierMutation.isPending || checkoutMutation.isPending || !isOnline}
                   onClick={() => {
                     // Free never needs checkout, whether or not billing is enabled - and once
                     // billing is enabled, going through checkout for a paid tier is what keeps

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { Ban, RotateCcw } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
@@ -7,8 +7,10 @@ import { Input } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
 import { ApiError } from '@/lib/api-client'
 import { formatMoney, formatDateTime } from '@/lib/format'
-import { getSale, refundSale, voidSale } from '@/api/sales'
-import type { SaleStatus } from '@/types/sale'
+import { getSale } from '@/api/sales'
+import { useOfflineMutation } from '@/offline/useOfflineMutation'
+import { useOfflineSingletonQuery } from '@/offline/useOfflineQuery'
+import type { Sale, SaleStatus } from '@/types/sale'
 
 const statusTone: Record<SaleStatus, string> = {
   Completed: 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300',
@@ -24,37 +26,52 @@ export function SaleDetailModal({ saleId, onClose }: { saleId: string | null; on
   const [refundQuantities, setRefundQuantities] = useState<Record<string, number>>({})
   const [error, setError] = useState<string | null>(null)
 
-  const { data: sale } = useQuery({
-    queryKey: ['sale', saleId],
-    queryFn: () => getSale(saleId!),
-    enabled: Boolean(saleId),
-  })
+  const { data: sale } = useOfflineSingletonQuery<Sale>(
+    ['sale', saleId],
+    `sale-${saleId}`,
+    () => getSale(saleId!),
+    Boolean(saleId),
+  )
 
-  const voidMutation = useMutation({
-    mutationFn: () => voidSale(saleId!, reason),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sales'] })
-      queryClient.invalidateQueries({ queryKey: ['sale', saleId] })
-      handleClose()
-    },
-    onError: (err) => setError(err instanceof ApiError ? err.message : 'Unable to void this sale.'),
-  })
+  const voidMutation = useOfflineMutation<{ saleId: string; reason: string }>(
+    'void',
+    () => `Void sale ${sale?.saleNumber ?? ''}`,
+  )
+  const refundMutation = useOfflineMutation<{
+    saleId: string
+    reason: string
+    items: { saleItemId: string; quantity: number }[]
+  }>('refund', () => `Refund on sale ${sale?.saleNumber ?? ''}`)
 
-  const refundMutation = useMutation({
-    mutationFn: () =>
-      refundSale(saleId!, {
-        reason,
-        items: Object.entries(refundQuantities)
-          .filter(([, qty]) => qty > 0)
-          .map(([saleItemId, quantity]) => ({ saleItemId, quantity })),
-      }),
-    onSuccess: () => {
+  async function handleVoid() {
+    setError(null)
+    try {
+      await voidMutation.mutateAsync({ payload: { saleId: saleId!, reason } })
       queryClient.invalidateQueries({ queryKey: ['sales'] })
-      queryClient.invalidateQueries({ queryKey: ['sale', saleId] })
       handleClose()
-    },
-    onError: (err) => setError(err instanceof ApiError ? err.message : 'Unable to process this refund.'),
-  })
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Unable to void this sale.')
+    }
+  }
+
+  async function handleRefund() {
+    setError(null)
+    try {
+      await refundMutation.mutateAsync({
+        payload: {
+          saleId: saleId!,
+          reason,
+          items: Object.entries(refundQuantities)
+            .filter(([, qty]) => qty > 0)
+            .map(([saleItemId, quantity]) => ({ saleItemId, quantity })),
+        },
+      })
+      queryClient.invalidateQueries({ queryKey: ['sales'] })
+      handleClose()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Unable to process this refund.')
+    }
+  }
 
   function handleClose() {
     setMode('view')
@@ -168,7 +185,7 @@ export function SaleDetailModal({ saleId, onClose }: { saleId: string | null; on
                   className="flex-1"
                   disabled={!reason.trim()}
                   isLoading={voidMutation.isPending}
-                  onClick={() => voidMutation.mutate()}
+                  onClick={() => void handleVoid()}
                 >
                   Confirm void
                 </Button>
@@ -177,7 +194,7 @@ export function SaleDetailModal({ saleId, onClose }: { saleId: string | null; on
                   className="flex-1"
                   disabled={!reason.trim() || Object.values(refundQuantities).every((q) => !q)}
                   isLoading={refundMutation.isPending}
-                  onClick={() => refundMutation.mutate()}
+                  onClick={() => void handleRefund()}
                 >
                   Confirm refund
                 </Button>

@@ -19,15 +19,15 @@ export async function getCustomer(id: string): Promise<CustomerDetail> {
   return data
 }
 
-export async function createCustomer(payload: CreateCustomerPayload): Promise<Customer> {
+export async function createCustomer(payload: CreateCustomerPayload & { clientRequestId?: string }): Promise<Customer> {
   const { data } = await apiClient.post<Customer>('/customers', payload)
   return data
 }
 
-export async function updateCustomer(payload: UpdateCustomerPayload): Promise<void> {
+export async function updateCustomer(payload: UpdateCustomerPayload & { clientRequestId?: string }): Promise<void> {
   await apiClient.put(`/customers/${payload.id}`, payload)
 }
 
-export async function deleteCustomer(id: string): Promise<void> {
-  await apiClient.delete(`/customers/${id}`)
+export async function deleteCustomer(id: string, clientRequestId?: string): Promise<void> {
+  await apiClient.delete(`/customers/${id}`, { params: { clientRequestId } })
 }

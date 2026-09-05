@@ -29,9 +29,9 @@ public class BranchesController(ISender mediator) : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    public async Task<IActionResult> Delete(Guid id, [FromQuery] Guid? clientRequestId, CancellationToken ct)
     {
-        await mediator.Send(new DeleteBranchCommand(id), ct);
+        await mediator.Send(new DeleteBranchCommand(id, clientRequestId), ct);
         return NoContent();
     }
 }

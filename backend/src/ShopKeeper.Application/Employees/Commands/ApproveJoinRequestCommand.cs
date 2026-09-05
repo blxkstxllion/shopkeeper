@@ -3,6 +3,7 @@ namespace ShopKeeper.Application.Employees.Commands;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
@@ -13,7 +14,8 @@ using ShopKeeper.Domain.Enums;
 
 /// <summary>Creates the real BusinessUser - the same tail-end shape as AcceptInvitationCommand's
 /// membership creation, just fed by a JoinRequest instead of a PendingInvitation.</summary>
-public record ApproveJoinRequestCommand(Guid JoinRequestId, Guid RoleId, Guid? BranchId) : IRequest;
+public record ApproveJoinRequestCommand(Guid JoinRequestId, Guid RoleId, Guid? BranchId, Guid? ClientRequestId = null)
+    : IRequest, ISupportsClientRequestId;
 
 public class ApproveJoinRequestCommandValidator : AbstractValidator<ApproveJoinRequestCommand>
 {

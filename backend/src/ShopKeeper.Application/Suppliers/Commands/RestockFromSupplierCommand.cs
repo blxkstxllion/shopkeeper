@@ -3,6 +3,7 @@ namespace ShopKeeper.Application.Suppliers.Commands;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
@@ -17,8 +18,14 @@ using ShopKeeper.Domain.Entities;
 /// PurchaseOrder subsystem this app doesn't otherwise have a use for yet. If UnitCost is given
 /// and differs from the product's current cost, updates it too - a restock is the natural
 /// moment a per-unit cost actually changes.
+///
+/// Doesn't forward ClientRequestId to the inner AdjustStockCommand call - IdempotencyBehavior
+/// already short-circuits a replay of this whole command before that inner call is ever
+/// reached, so the inner command doesn't need its own key here.
 /// </summary>
-public record RestockFromSupplierCommand(Guid SupplierId, Guid ProductId, Guid BranchId, int Quantity, decimal? UnitCost) : IRequest<int>;
+public record RestockFromSupplierCommand(
+    Guid SupplierId, Guid ProductId, Guid BranchId, int Quantity, decimal? UnitCost, Guid? ClientRequestId = null)
+    : IRequest<int>, ISupportsClientRequestId;
 
 public class RestockFromSupplierCommandValidator : AbstractValidator<RestockFromSupplierCommand>
 {

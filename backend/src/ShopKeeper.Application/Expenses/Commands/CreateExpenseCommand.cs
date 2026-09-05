@@ -3,6 +3,7 @@ namespace ShopKeeper.Application.Expenses.Commands;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
@@ -15,7 +16,8 @@ public record CreateExpenseCommand(
     Guid ExpenseCategoryId,
     decimal Amount,
     DateOnly ExpenseDate,
-    string? Description) : IRequest<ExpenseDto>;
+    string? Description,
+    Guid? ClientRequestId = null) : IRequest<ExpenseDto>, ISupportsClientRequestId;
 
 public class CreateExpenseCommandValidator : AbstractValidator<CreateExpenseCommand>
 {

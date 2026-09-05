@@ -3,6 +3,7 @@ namespace ShopKeeper.Application.Products.Commands;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
@@ -25,7 +26,8 @@ public record CreateProductCommand(
     bool TrackInventory,
     int InitialQuantity,
     Guid? BranchId,
-    Guid? SupplierId = null) : IRequest<ProductDto>;
+    Guid? SupplierId = null,
+    Guid? ClientRequestId = null) : IRequest<ProductDto>, ISupportsClientRequestId;
 
 public class CreateProductCommandValidator : AbstractValidator<CreateProductCommand>
 {

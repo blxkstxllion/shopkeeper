@@ -29,9 +29,9 @@ public class SuppliersController(ISender mediator) : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    public async Task<IActionResult> Delete(Guid id, [FromQuery] Guid? clientRequestId, CancellationToken ct)
     {
-        await mediator.Send(new DeleteSupplierCommand(id), ct);
+        await mediator.Send(new DeleteSupplierCommand(id, clientRequestId), ct);
         return NoContent();
     }
 
