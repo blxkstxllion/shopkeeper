@@ -2,15 +2,17 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, FormField } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
-import { createExpense, createExpenseCategory, getExpenseCategories, updateExpense } from '@/api/expenses'
+import { getExpenseCategories } from '@/api/expenses'
 import { ApiError } from '@/lib/api-client'
-import type { Expense } from '@/types/expense'
+import { useOfflineMutation } from '@/offline/useOfflineMutation'
+import { useOfflineListQuery } from '@/offline/useOfflineQuery'
+import type { Expense, ExpenseCategory } from '@/types/expense'
 
 const schema = z.object({
   expenseCategoryId: z.string().min(1, 'Choose a category'),
@@ -47,7 +49,11 @@ export function ExpenseFormModal({
   const [newCategoryName, setNewCategoryName] = useState('')
   const isEditing = Boolean(expense)
 
-  const { data: categories } = useQuery({ queryKey: ['expense-categories'], queryFn: getExpenseCategories })
+  const { data: categories } = useOfflineListQuery<ExpenseCategory>(
+    ['expense-categories'],
+    'expenseCategories',
+    getExpenseCategories,
+  )
 
   const {
     register,
@@ -76,47 +82,67 @@ export function ExpenseFormModal({
     }
   }, [isOpen])
 
-  const categoryMutation = useMutation({
-    mutationFn: () => createExpenseCategory({ name: newCategoryName }),
-    onSuccess: async (category) => {
-      await queryClient.invalidateQueries({ queryKey: ['expense-categories'] })
-      setValue('expenseCategoryId', category.id, { shouldValidate: true })
+  const categoryMutation = useOfflineMutation<{ name: string }>(
+    'expenseCategory',
+    (payload) => `New category: ${payload.name}`,
+  )
+  async function handleAddCategory() {
+    setServerError(null)
+    try {
+      const result = await categoryMutation.mutateAsync({ payload: { name: newCategoryName } })
+      if (!result.queued) {
+        await queryClient.invalidateQueries({ queryKey: ['expense-categories'] })
+        setValue('expenseCategoryId', (result.data as { id: string }).id, { shouldValidate: true })
+      }
       setIsAddingCategory(false)
       setNewCategoryName('')
-    },
-    onError: (err) => {
+    } catch (err) {
       setServerError(err instanceof ApiError ? err.message : 'Unable to create that category. Please try again.')
-    },
-  })
+    }
+  }
 
-  const mutation = useMutation({
-    mutationFn: async (values: FormValues) => {
-      const payload = {
-        branchId: values.businessWide ? null : branchId,
-        expenseCategoryId: values.expenseCategoryId,
-        amount: values.amount,
-        expenseDate: values.expenseDate,
-        description: values.description || null,
-      }
+  const createMutation = useOfflineMutation<{
+    branchId: string | null
+    expenseCategoryId: string
+    amount: number
+    expenseDate: string
+    description: string | null
+  }>('expense', (payload) => `New expense: ${payload.amount.toFixed(2)}`)
+  const updateMutation = useOfflineMutation<{
+    branchId: string | null
+    expenseCategoryId: string
+    amount: number
+    expenseDate: string
+    description: string | null
+    id: string
+  }>('expenseUpdate', (payload) => `Update expense: ${payload.amount.toFixed(2)}`)
+  const isSaving = createMutation.isPending || updateMutation.isPending
+
+  async function onSubmit(values: FormValues) {
+    setServerError(null)
+    const payload = {
+      branchId: values.businessWide ? null : branchId,
+      expenseCategoryId: values.expenseCategoryId,
+      amount: values.amount,
+      expenseDate: values.expenseDate,
+      description: values.description || null,
+    }
+    try {
       if (isEditing && expense) {
-        await updateExpense({ ...payload, id: expense.id })
+        await updateMutation.mutateAsync({ payload: { ...payload, id: expense.id } })
       } else {
-        await createExpense(payload)
+        await createMutation.mutateAsync({ payload })
       }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['expenses'] })
       reset(defaults)
       onClose()
-    },
-    onError: (err) => {
+    } catch (err) {
       setServerError(err instanceof ApiError ? err.message : 'Unable to save this expense. Please try again.')
-    },
-  })
+    }
+  }
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEditing ? 'Edit expense' : 'Add expense'}>
-      <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         {serverError && <Alert tone="error">{serverError}</Alert>}
 
         <FormField label="Category" htmlFor="expenseCategoryId" error={errors.expenseCategoryId?.message}>
@@ -133,7 +159,7 @@ export function ExpenseFormModal({
                 size="sm"
                 isLoading={categoryMutation.isPending}
                 disabled={!newCategoryName.trim()}
-                onClick={() => categoryMutation.mutate()}
+                onClick={() => void handleAddCategory()}
               >
                 Add
               </Button>
@@ -195,7 +221,7 @@ export function ExpenseFormModal({
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" isLoading={isSubmitting || mutation.isPending}>
+          <Button type="submit" isLoading={isSubmitting || isSaving}>
             {isEditing ? 'Save changes' : 'Add expense'}
           </Button>
         </div>

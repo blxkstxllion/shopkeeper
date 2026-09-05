@@ -8,8 +8,12 @@ using ShopKeeper.Api.Tests.TestHelpers;
 using ShopKeeper.Application;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Interfaces;
+using ShopKeeper.Application.Auth.Commands;
 using ShopKeeper.Application.Auth.Queries;
 using ShopKeeper.Application.Businesses.Queries;
+using ShopKeeper.Application.Common.Services;
+using ShopKeeper.Application.Onboarding.Commands;
+using ShopKeeper.Domain.Enums;
 using ShopKeeper.Infrastructure.Identity;
 
 /// <summary>
@@ -34,6 +38,7 @@ public class RequireVerifiedEmailBehaviorTests : IDisposable
         services.AddApplication();
         services.AddSingleton(context);
         services.AddSingleton(currentUser);
+        services.AddSingleton<IJwtTokenService>(_jwt); // CompleteOnboardingCommand needs TokenIssuer, which needs this
         return services.BuildServiceProvider().GetRequiredService<ISender>();
     }
 
@@ -107,6 +112,46 @@ public class RequireVerifiedEmailBehaviorTests : IDisposable
 
         var branches = await sender.Send(new GetBranchesQuery(), CancellationToken.None);
         Assert.NotNull(branches);
+    }
+
+    [Fact]
+    public async Task UnverifiedAndEnforced_CanStillCompleteOnboarding()
+    {
+        // A brand-new registration is unverified-and-enforced by default (RegisterCommand) -
+        // if onboarding weren't exempt, nobody could ever get past this screen: the frontend's
+        // own RequireVerifiedEmail route guard only wraps /app/*, not /onboarding, so a user
+        // who's never verified would see a working onboarding UI whose final submit always 403s.
+        var context = _db.CreateContext(new TestCurrentUserService());
+        var tokenIssuer = new TokenIssuer(context, _jwt);
+        var registerHandler = new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender());
+        var registered = await registerHandler.Handle(
+            new RegisterCommand("newcomer@shop.test", "Passw0rd!", "Kofi", "Mensah", null), CancellationToken.None);
+
+        var user = await context.Users.SingleAsync(u => u.Id == registered.User.Id);
+        Assert.True(user.EmailVerificationEnforced);
+        Assert.False(user.IsEmailVerified);
+
+        var currentUser = new TestCurrentUserService { UserId = user.Id };
+        var sender = BuildSender(context, currentUser);
+
+        var business = await sender.Send(new CompleteOnboardingCommand(
+            OwnerUserId: user.Id,
+            BusinessName: "Kofi's Shop",
+            BusinessType: BusinessType.Retail,
+            BusinessTypeOther: null,
+            Country: "Ghana",
+            CurrencyCode: "GHS",
+            LogoUrl: null,
+            TaxEnabled: false,
+            TaxRatePercent: 0,
+            TaxInclusivePricing: false,
+            Goals: [BusinessGoal.IncreaseProfit],
+            FirstBranchName: "Main Store",
+            FirstBranchAddress: null,
+            FirstBranchCity: null,
+            IpAddress: null), CancellationToken.None);
+
+        Assert.Equal("Kofi's Shop", business.Name);
     }
 
     public void Dispose() => _db.Dispose();

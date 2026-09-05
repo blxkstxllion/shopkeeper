@@ -2,13 +2,15 @@ namespace ShopKeeper.Application.Expenses.Commands;
 
 using FluentValidation;
 using MediatR;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Application.Expenses.Dtos;
 using ShopKeeper.Domain.Constants;
 using ShopKeeper.Domain.Entities;
 
-public record CreateExpenseCategoryCommand(string Name, string? Description) : IRequest<ExpenseCategoryDto>;
+public record CreateExpenseCategoryCommand(string Name, string? Description, Guid? ClientRequestId = null)
+    : IRequest<ExpenseCategoryDto>, ISupportsClientRequestId;
 
 public class CreateExpenseCategoryCommandValidator : AbstractValidator<CreateExpenseCategoryCommand>
 {

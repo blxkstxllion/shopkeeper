@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useOfflineSingletonQuery } from '@/offline/useOfflineQuery'
 import {
   Package,
   Plus,
@@ -21,7 +21,8 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { StatTile } from '@/components/ui/StatTile'
 import { StatTileSkeleton, TableSkeleton } from '@/components/ui/Skeleton'
 import { formatMoney, resolveUploadUrl } from '@/lib/format'
-import type { Product } from '@/types/product'
+import type { PagedResult, Product } from '@/types/product'
+import type { InventoryStats } from '@/api/inventory'
 import { ProductFormModal } from './ProductFormModal'
 import { StockAdjustModal } from './StockAdjustModal'
 
@@ -39,9 +40,13 @@ export function InventoryPage() {
     setPage(1)
   }, [search, lowStockOnly, branch?.id])
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['products', { search, lowStockOnly, branchId: branch?.id, page }],
-    queryFn: () =>
+  // Cached/served offline as one snapshot per branch, ignoring search/lowStockOnly/page in the
+  // cache key - offline browsing shows "your inventory as of last sync" rather than trying to
+  // preserve exact filter/pagination state, matching how Dashboard's summary is cached.
+  const { data, isLoading } = useOfflineSingletonQuery<PagedResult<Product>>(
+    ['products', { search, lowStockOnly, branchId: branch?.id, page }],
+    `products:${branch?.id ?? 'all'}`,
+    () =>
       getProducts({
         search: search || undefined,
         lowStockOnly,
@@ -50,14 +55,15 @@ export function InventoryPage() {
         page,
         pageSize: PAGE_SIZE,
       }),
-    enabled: Boolean(branch),
-  })
+    Boolean(branch),
+  )
 
-  const { data: stats } = useQuery({
-    queryKey: ['inventory-stats', branch?.id],
-    queryFn: () => getInventoryStats(branch?.id),
-    enabled: Boolean(branch),
-  })
+  const { data: stats } = useOfflineSingletonQuery<InventoryStats>(
+    ['inventory-stats', branch?.id],
+    `inventoryStats:${branch?.id ?? 'all'}`,
+    () => getInventoryStats(branch?.id),
+    Boolean(branch),
+  )
 
   const products = data?.items ?? []
   const totalPages = data?.totalPages ?? 1

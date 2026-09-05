@@ -2,6 +2,7 @@ namespace ShopKeeper.Application.Employees.Commands;
 
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
@@ -12,7 +13,7 @@ using ShopKeeper.Domain.Enums;
 /// <summary>Soft removal (Status = Removed) rather than a hard delete, so their historical
 /// sales/audit trail stays attributable. The business's last active owner can never be removed -
 /// that would leave the business with nobody able to manage it.</summary>
-public record RemoveEmployeeCommand(Guid BusinessUserId) : IRequest;
+public record RemoveEmployeeCommand(Guid BusinessUserId, Guid? ClientRequestId = null) : IRequest, ISupportsClientRequestId;
 
 public class RemoveEmployeeCommandHandler(IAppDbContext db, ICurrentUserService currentUser) : IRequestHandler<RemoveEmployeeCommand>
 {
