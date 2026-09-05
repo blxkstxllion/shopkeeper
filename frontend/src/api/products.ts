@@ -21,17 +21,17 @@ export async function getProduct(id: string, branchId?: string): Promise<Product
   return data
 }
 
-export async function createProduct(payload: CreateProductPayload): Promise<Product> {
+export async function createProduct(payload: CreateProductPayload & { clientRequestId?: string }): Promise<Product> {
   const { data } = await apiClient.post<Product>('/products', payload)
   return data
 }
 
-export async function updateProduct(payload: UpdateProductPayload): Promise<void> {
+export async function updateProduct(payload: UpdateProductPayload & { clientRequestId?: string }): Promise<void> {
   await apiClient.put(`/products/${payload.id}`, payload)
 }
 
-export async function deleteProduct(id: string): Promise<void> {
-  await apiClient.delete(`/products/${id}`)
+export async function deleteProduct(id: string, clientRequestId?: string): Promise<void> {
+  await apiClient.delete(`/products/${id}`, { params: { clientRequestId } })
 }
 
 export async function getProductCategories(): Promise<ProductCategory[]> {
@@ -42,14 +42,16 @@ export async function getProductCategories(): Promise<ProductCategory[]> {
 export async function createProductCategory(payload: {
   name: string
   description?: string | null
+  clientRequestId?: string
 }): Promise<ProductCategory> {
   const { data } = await apiClient.post<ProductCategory>('/products/categories', payload)
   return data
 }
 
-export async function uploadProductImage(file: File): Promise<{ url: string }> {
+export async function uploadProductImage(file: File | Blob, clientRequestId?: string): Promise<{ url: string }> {
   const formData = new FormData()
   formData.append('file', file)
+  if (clientRequestId) formData.append('clientRequestId', clientRequestId)
   const { data } = await apiClient.post<{ url: string }>('/uploads/product-image', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })

@@ -1,5 +1,5 @@
 import { createContext, useContext, type ReactNode } from 'react'
-import { useSyncOutbox } from './useSyncOutbox'
+import { useSyncQueue } from './useSyncQueue'
 
 interface OfflineSyncValue {
   syncNow: () => Promise<void>
@@ -8,12 +8,12 @@ interface OfflineSyncValue {
 
 const OfflineSyncContext = createContext<OfflineSyncValue | null>(null)
 
-/** Runs useSyncOutbox exactly once for the whole app and shares it - both the
+/** Runs useSyncQueue exactly once for the whole app and shares it - both the
  * always-mounted auto-sync-on-reconnect behavior and the manual "sync now" button in
  * OfflineStatusIndicator need the *same* running sync, not two independent instances
- * racing each other to replay the same outbox. */
+ * racing each other to replay the same queue. */
 export function OfflineSyncProvider({ children }: { children: ReactNode }) {
-  const sync = useSyncOutbox()
+  const sync = useSyncQueue()
   return <OfflineSyncContext.Provider value={sync}>{children}</OfflineSyncContext.Provider>
 }
 

@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { getBranches } from '@/api/branches'
 import { useSessionClaims } from '@/hooks/useSessionClaims'
+import { useOfflineListQuery } from '@/offline/useOfflineQuery'
 import type { Branch } from '@/types/business'
 
 interface BranchContextValue {
@@ -23,11 +23,12 @@ function storageKey(businessId: string) {
 
 export function BranchProvider({ children }: { children: ReactNode }) {
   const claims = useSessionClaims()
-  const { data: branches, isLoading } = useQuery({
-    queryKey: ['branches'],
-    queryFn: getBranches,
-    enabled: Boolean(claims?.businessId),
-  })
+  const { data: branches, isLoading } = useOfflineListQuery<Branch>(
+    ['branches'],
+    'branches',
+    getBranches,
+    Boolean(claims?.businessId),
+  )
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
 

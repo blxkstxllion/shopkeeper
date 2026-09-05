@@ -37,9 +37,9 @@ public class ExpensesController(ISender mediator) : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    public async Task<IActionResult> Delete(Guid id, [FromQuery] Guid? clientRequestId, CancellationToken ct)
     {
-        await mediator.Send(new DeleteExpenseCommand(id), ct);
+        await mediator.Send(new DeleteExpenseCommand(id, clientRequestId), ct);
         return NoContent();
     }
 
