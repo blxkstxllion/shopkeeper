@@ -6,10 +6,14 @@ export async function getBusinessSettings(): Promise<BusinessSettings> {
   return data
 }
 
-export async function updateBusinessProfile(payload: UpdateBusinessProfilePayload): Promise<void> {
+export async function updateBusinessProfile(
+  payload: UpdateBusinessProfilePayload & { clientRequestId?: string },
+): Promise<void> {
   await apiClient.put('/business-settings/profile', payload)
 }
 
-export async function updateTaxSettings(payload: UpdateTaxSettingsPayload): Promise<void> {
+export async function updateTaxSettings(
+  payload: UpdateTaxSettingsPayload & { clientRequestId?: string },
+): Promise<void> {
   await apiClient.put('/business-settings/tax', payload)
 }

@@ -3,6 +3,7 @@ namespace ShopKeeper.Application.Inventory.Commands;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
@@ -22,7 +23,8 @@ public record AdjustStockCommand(
     int QuantityChange,
     string Reason,
     string? ReferenceType = null,
-    Guid? ReferenceId = null) : IRequest<int>;
+    Guid? ReferenceId = null,
+    Guid? ClientRequestId = null) : IRequest<int>, ISupportsClientRequestId;
 
 public class AdjustStockCommandValidator : AbstractValidator<AdjustStockCommand>
 {

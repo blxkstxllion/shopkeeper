@@ -3,6 +3,7 @@ namespace ShopKeeper.Application.Employees.Commands;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
@@ -16,7 +17,8 @@ using ShopKeeper.Domain.Enums;
 /// silently grant them access here without an explicit accept step (see
 /// AcceptInvitationForExistingUserCommand for that step).
 /// </summary>
-public record InviteEmployeeCommand(string Email, Guid RoleId, Guid? BranchId) : IRequest<Guid>;
+public record InviteEmployeeCommand(string Email, Guid RoleId, Guid? BranchId, Guid? ClientRequestId = null)
+    : IRequest<Guid>, ISupportsClientRequestId;
 
 public class InviteEmployeeCommandValidator : AbstractValidator<InviteEmployeeCommand>
 {

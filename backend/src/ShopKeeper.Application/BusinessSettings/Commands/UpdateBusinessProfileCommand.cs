@@ -3,6 +3,7 @@ namespace ShopKeeper.Application.BusinessSettings.Commands;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
@@ -14,7 +15,8 @@ using ShopKeeper.Domain.Entities;
 /// choices made at onboarding that historical financial records (sales, prices) already
 /// depend on, so this endpoint never lets them silently drift after the fact.
 /// </summary>
-public record UpdateBusinessProfileCommand(string Name, string? LegalName, string TimeZone, string ColorTheme) : IRequest;
+public record UpdateBusinessProfileCommand(string Name, string? LegalName, string TimeZone, string ColorTheme, Guid? ClientRequestId = null)
+    : IRequest, ISupportsClientRequestId;
 
 public class UpdateBusinessProfileCommandValidator : AbstractValidator<UpdateBusinessProfileCommand>
 {

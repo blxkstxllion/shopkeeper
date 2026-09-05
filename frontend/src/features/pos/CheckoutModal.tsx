@@ -12,7 +12,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { ApiError, isNetworkError } from '@/lib/api-client'
 import { cacheCustomers, getCachedCustomers } from '@/offline/customerCache'
-import { enqueueSale } from '@/offline/outbox'
+import { enqueueMutation } from '@/offline/mutationQueue'
 import type { PaymentMethod, QueuedSale, Sale } from '@/types/sale'
 import { cartLineDiscountTotal, cartSubtotal, type CartLine } from './cart'
 
@@ -152,7 +152,14 @@ export function CheckoutModal({
         lineRevenue: l.product.sellingPrice * l.quantity - l.discountAmount,
       }))
       const queuedAt = new Date().toISOString()
-      await enqueueSale(businessId, { payload, queuedAt, branchName, displayItems })
+      const itemCount = displayItems.reduce((sum, i) => sum + i.quantity, 0)
+      await enqueueMutation(businessId, {
+        id: payload.clientRequestId,
+        entityType: 'sale',
+        payload,
+        queuedAt,
+        displaySummary: `Sale at ${branchName}: ${itemCount} item${itemCount === 1 ? '' : 's'}`,
+      })
 
       return {
         queued: true,
@@ -168,7 +175,7 @@ export function CheckoutModal({
     },
     onSuccess: (result) => {
       if ('queued' in result) {
-        queryClient.invalidateQueries({ queryKey: ['outbox-count', businessId] })
+        queryClient.invalidateQueries({ queryKey: ['sync-queue-count', businessId] })
       } else {
         queryClient.invalidateQueries({ queryKey: ['sellable-products'] })
         queryClient.invalidateQueries({ queryKey: ['sales'] })

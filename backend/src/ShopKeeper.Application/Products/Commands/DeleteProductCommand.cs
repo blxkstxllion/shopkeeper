@@ -2,6 +2,7 @@ namespace ShopKeeper.Application.Products.Commands;
 
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
@@ -13,7 +14,7 @@ using ShopKeeper.Domain.Entities;
 /// InventoryTransactions, and ProductStocks reference this product and its historical
 /// data must remain intact. See section 40: avoid deleting financial records.
 /// </summary>
-public record DeleteProductCommand(Guid Id) : IRequest;
+public record DeleteProductCommand(Guid Id, Guid? ClientRequestId = null) : IRequest, ISupportsClientRequestId;
 
 public class DeleteProductCommandHandler(IAppDbContext db, ICurrentUserService currentUser) : IRequestHandler<DeleteProductCommand>
 {

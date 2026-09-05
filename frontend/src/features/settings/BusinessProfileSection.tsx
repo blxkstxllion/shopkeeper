@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { getBusinessSettings, updateBusinessProfile } from '@/api/businessSettings'
+import { getBusinessSettings } from '@/api/businessSettings'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input, FormField } from '@/components/ui/Input'
@@ -11,6 +11,9 @@ import { Alert } from '@/components/ui/Alert'
 import { FormSkeleton } from '@/components/ui/Skeleton'
 import { ApiError } from '@/lib/api-client'
 import { applyColorTheme } from '@/lib/colorTheme'
+import { useOfflineSingletonQuery } from '@/offline/useOfflineQuery'
+import { useOfflineMutation } from '@/offline/useOfflineMutation'
+import type { BusinessSettings } from '@/types/businessSettings'
 
 const schema = z.object({
   name: z.string().min(1, 'Business name is required').max(200),
@@ -29,7 +32,11 @@ const COLOR_THEME_OPTIONS: { value: FormValues['colorTheme']; label: string; swa
 
 export function BusinessProfileSection() {
   const queryClient = useQueryClient()
-  const { data, isLoading, isError } = useQuery({ queryKey: ['business-settings'], queryFn: getBusinessSettings })
+  const { data, isLoading, isError } = useOfflineSingletonQuery<BusinessSettings>(
+    ['business-settings'],
+    'businessSettings',
+    getBusinessSettings,
+  )
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -50,21 +57,26 @@ export function BusinessProfileSection() {
 
   const colorTheme = watch('colorTheme')
 
-  const mutation = useMutation({
-    mutationFn: (values: FormValues) => updateBusinessProfile({ ...values, legalName: values.legalName || null }),
-    onSuccess: (_, values) => {
-      setServerError(null)
+  const mutation = useOfflineMutation<{ name: string; legalName: string | null; timeZone: string; colorTheme: string }>(
+    'businessProfile',
+    () => 'Update business profile',
+  )
+
+  async function onSubmit(values: FormValues) {
+    setServerError(null)
+    try {
+      await mutation.mutateAsync({ payload: { ...values, legalName: values.legalName || null } })
       setSuccessMessage('Business profile updated.')
       // AuthContext only re-applies the color theme when activeBusiness changes (login/business
       // switch) - a Settings save doesn't refetch that snapshot, so apply it directly here too,
       // otherwise "saved" would be true but the page wouldn't visibly reflect it until next login.
       applyColorTheme(values.colorTheme)
-      queryClient.invalidateQueries({ queryKey: ['business-settings'] })
+      await queryClient.invalidateQueries({ queryKey: ['business-settings'] })
       setTimeout(() => setSuccessMessage(null), 3000)
-    },
-    onError: (err) =>
-      setServerError(err instanceof ApiError ? err.message : 'Unable to save changes. Please try again.'),
-  })
+    } catch (err) {
+      setServerError(err instanceof ApiError ? err.message : 'Unable to save changes. Please try again.')
+    }
+  }
 
   if (isLoading) {
     return (
@@ -90,7 +102,7 @@ export function BusinessProfileSection() {
         transactions already depend on them.
       </p>
 
-      <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         {serverError && <Alert tone="error">{serverError}</Alert>}
         {successMessage && <Alert tone="success">{successMessage}</Alert>}
 

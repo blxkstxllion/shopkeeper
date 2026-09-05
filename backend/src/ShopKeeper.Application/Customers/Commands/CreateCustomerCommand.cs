@@ -3,6 +3,7 @@ namespace ShopKeeper.Application.Customers.Commands;
 using FluentValidation;
 using MediatR;
 using ShopKeeper.Application.Common.Attributes;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Application.Customers.Dtos;
@@ -13,7 +14,8 @@ public record CreateCustomerCommand(
     [property: SensitiveData] string Name,
     [property: SensitiveData] string? Phone,
     [property: SensitiveData] string? Email,
-    [property: SensitiveData] string? Address) : IRequest<CustomerDto>;
+    [property: SensitiveData] string? Address,
+    Guid? ClientRequestId = null) : IRequest<CustomerDto>, ISupportsClientRequestId;
 
 public class CreateCustomerCommandValidator : AbstractValidator<CreateCustomerCommand>
 {

@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { UserCircle, Plus, Search, ChevronLeft, ChevronRight } from 'lucide-react'
-import { getCustomers, deleteCustomer } from '@/api/customers'
+import { getCustomers } from '@/api/customers'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { TableSkeleton } from '@/components/ui/Skeleton'
+import { useOfflineSingletonQuery } from '@/offline/useOfflineQuery'
+import { useOfflineMutation } from '@/offline/useOfflineMutation'
+import type { PagedResult } from '@/types/product'
 import type { Customer } from '@/types/customer'
 import { CustomerFormModal } from './CustomerFormModal'
 import { CustomerDetailModal } from './CustomerDetailModal'
@@ -14,7 +16,6 @@ import { CustomerDetailModal } from './CustomerDetailModal'
 const PAGE_SIZE = 20
 
 export function CustomersPage() {
-  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [formModal, setFormModal] = useState<{ open: boolean; customer?: Customer | null }>({ open: false })
@@ -24,15 +25,13 @@ export function CustomersPage() {
     setPage(1)
   }, [search])
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['customers', { search, page }],
-    queryFn: () => getCustomers({ search: search || undefined, activeOnly: true, page, pageSize: PAGE_SIZE }),
-  })
+  const { data, isLoading } = useOfflineSingletonQuery<PagedResult<Customer>>(
+    ['customers', { search, page }],
+    'customers',
+    () => getCustomers({ search: search || undefined, activeOnly: true, page, pageSize: PAGE_SIZE }),
+  )
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteCustomer,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['customers'] }),
-  })
+  const deleteMutation = useOfflineMutation<{ id: string }>('customerDelete', () => 'Deactivate customer')
 
   const customers = data?.items ?? []
   const totalPages = data?.totalPages ?? 1
@@ -103,8 +102,8 @@ export function CustomersPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => deleteMutation.mutate(c.id)}
-                          isLoading={deleteMutation.isPending && deleteMutation.variables === c.id}
+                          onClick={() => deleteMutation.mutate({ payload: { id: c.id } })}
+                          isLoading={deleteMutation.isPending && deleteMutation.variables?.payload.id === c.id}
                         >
                           Deactivate
                         </Button>

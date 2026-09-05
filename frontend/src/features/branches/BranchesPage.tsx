@@ -1,25 +1,22 @@
 import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Building2, Plus, BarChart3 } from 'lucide-react'
-import { getBranches, deleteBranch } from '@/api/branches'
+import { getBranches } from '@/api/branches'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { TableSkeleton } from '@/components/ui/Skeleton'
+import { useOfflineListQuery } from '@/offline/useOfflineQuery'
+import { useOfflineMutation } from '@/offline/useOfflineMutation'
 import type { Branch } from '@/types/business'
 import { BranchFormModal } from './BranchFormModal'
 
 export function BranchesPage() {
-  const queryClient = useQueryClient()
   const [formModal, setFormModal] = useState<{ open: boolean; branch?: Branch | null }>({ open: false })
 
-  const { data: branches, isLoading } = useQuery({ queryKey: ['branches'], queryFn: getBranches })
+  const { data: branches, isLoading } = useOfflineListQuery<Branch>(['branches'], 'branches', getBranches)
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteBranch,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['branches'] }),
-  })
+  const deleteMutation = useOfflineMutation<{ id: string }>('branchDelete', () => 'Deactivate branch')
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -91,8 +88,8 @@ export function BranchesPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => deleteMutation.mutate(b.id)}
-                            isLoading={deleteMutation.isPending && deleteMutation.variables === b.id}
+                            onClick={() => deleteMutation.mutate({ payload: { id: b.id } })}
+                            isLoading={deleteMutation.isPending && deleteMutation.variables?.payload.id === b.id}
                           >
                             Deactivate
                           </Button>

@@ -6,6 +6,7 @@ export interface AdjustStockPayload {
   branchId: string
   quantityChange: number
   reason: string
+  clientRequestId?: string
 }
 
 export async function adjustStock(payload: AdjustStockPayload): Promise<{ quantityOnHand: number }> {

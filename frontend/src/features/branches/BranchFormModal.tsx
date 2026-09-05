@@ -2,13 +2,12 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, FormField } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
-import { createBranch, updateBranch } from '@/api/branches'
 import { ApiError } from '@/lib/api-client'
+import { useOfflineMutation } from '@/offline/useOfflineMutation'
 import type { Branch } from '@/types/business'
 
 const schema = z.object({
@@ -44,7 +43,6 @@ export function BranchFormModal({
   onClose: () => void
   branch?: Branch | null
 }) {
-  const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
   const isEditing = Boolean(branch)
 
@@ -69,36 +67,58 @@ export function BranchFormModal({
       : defaults,
   })
 
-  const mutation = useMutation({
-    mutationFn: async (values: FormValues) => {
-      const payload = {
-        name: values.name,
-        code: values.code,
-        address: values.address || null,
-        city: values.city || null,
-        country: values.country || null,
-        phone: values.phone || null,
-        email: values.email || null,
-      }
+  const createMutation = useOfflineMutation<{
+    name: string
+    code: string
+    address: string | null
+    city: string | null
+    country: string | null
+    phone: string | null
+    email: string | null
+  }>('branch', (payload) => `New branch: ${payload.name}`)
+  const updateMutation = useOfflineMutation<{
+    name: string
+    code: string
+    address: string | null
+    city: string | null
+    country: string | null
+    phone: string | null
+    email: string | null
+    id: string
+    isMain: boolean
+    isActive: boolean
+  }>('branchUpdate', (payload) => `Update branch: ${payload.name}`)
+  const isSaving = createMutation.isPending || updateMutation.isPending
+
+  async function onSubmit(values: FormValues) {
+    setServerError(null)
+    const payload = {
+      name: values.name,
+      code: values.code,
+      address: values.address || null,
+      city: values.city || null,
+      country: values.country || null,
+      phone: values.phone || null,
+      email: values.email || null,
+    }
+    try {
       if (isEditing && branch) {
-        await updateBranch({ ...payload, id: branch.id, isMain: values.isMain, isActive: branch.isActive })
+        await updateMutation.mutateAsync({
+          payload: { ...payload, id: branch.id, isMain: values.isMain, isActive: branch.isActive },
+        })
       } else {
-        await createBranch(payload)
+        await createMutation.mutateAsync({ payload })
       }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['branches'] })
       reset(defaults)
       onClose()
-    },
-    onError: (err) => {
+    } catch (err) {
       setServerError(err instanceof ApiError ? err.message : 'Unable to save this branch. Please try again.')
-    },
-  })
+    }
+  }
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEditing ? 'Edit branch' : 'Add branch'} size="lg">
-      <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         {serverError && <Alert tone="error">{serverError}</Alert>}
 
         <div className="grid grid-cols-2 gap-3">
@@ -147,7 +167,7 @@ export function BranchFormModal({
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" isLoading={isSubmitting || mutation.isPending}>
+          <Button type="submit" isLoading={isSubmitting || isSaving}>
             {isEditing ? 'Save changes' : 'Add branch'}
           </Button>
         </div>
