@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { Store, Trophy, TrendingDown, Pencil, Upload, X } from 'lucide-react'
-import { getBusinessAbout, updateBusinessAbout, uploadBusinessLogo } from '@/api/about'
+import { getBusinessAbout, uploadBusinessLogo } from '@/api/about'
 import { useSessionClaims } from '@/hooks/useSessionClaims'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -10,6 +10,10 @@ import { Alert } from '@/components/ui/Alert'
 import { FormSkeleton } from '@/components/ui/Skeleton'
 import { ApiError } from '@/lib/api-client'
 import { formatMoney, resolveUploadUrl } from '@/lib/format'
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'
+import { useOfflineSingletonQuery } from '@/offline/useOfflineQuery'
+import { useOfflineMutation } from '@/offline/useOfflineMutation'
+import type { BusinessAbout } from '@/types/about'
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
@@ -21,7 +25,12 @@ export function AboutPage() {
   const claims = useSessionClaims()
   const canEdit = Boolean(claims?.isOwner || claims?.permissions.includes('settings:manage'))
   const queryClient = useQueryClient()
-  const { data, isLoading } = useQuery({ queryKey: ['business-about'], queryFn: getBusinessAbout })
+  const isOnline = useOnlineStatus()
+  const { data, isLoading } = useOfflineSingletonQuery<BusinessAbout>(
+    ['business-about'],
+    'businessAbout',
+    getBusinessAbout,
+  )
 
   const [isEditing, setIsEditing] = useState(false)
   const [description, setDescription] = useState('')
@@ -66,23 +75,25 @@ export function AboutPage() {
     }
   }
 
-  const mutation = useMutation({
-    mutationFn: () =>
-      updateBusinessAbout({
-        description: description.trim() || null,
-        ownerBio: ownerBio.trim() || null,
-        logoUrl,
-      }),
-    onSuccess: () => {
-      setServerError(null)
+  const mutation = useOfflineMutation<{ description: string | null; ownerBio: string | null; logoUrl: string | null }>(
+    'businessAbout',
+    () => 'Update About page',
+  )
+
+  async function handleSave() {
+    setServerError(null)
+    try {
+      await mutation.mutateAsync({
+        payload: { description: description.trim() || null, ownerBio: ownerBio.trim() || null, logoUrl },
+      })
       setSuccessMessage('About page updated.')
       setIsEditing(false)
-      queryClient.invalidateQueries({ queryKey: ['business-about'] })
+      await queryClient.invalidateQueries({ queryKey: ['business-about'] })
       setTimeout(() => setSuccessMessage(null), 3000)
-    },
-    onError: (err) =>
-      setServerError(err instanceof ApiError ? err.message : 'Unable to save changes. Please try again.'),
-  })
+    } catch (err) {
+      setServerError(err instanceof ApiError ? err.message : 'Unable to save changes. Please try again.')
+    }
+  }
 
   if (isLoading || !data) {
     return (
@@ -124,7 +135,7 @@ export function AboutPage() {
           <form
             onSubmit={(e) => {
               e.preventDefault()
-              mutation.mutate()
+              void handleSave()
             }}
             className="flex flex-col gap-4"
           >
@@ -151,6 +162,7 @@ export function AboutPage() {
                     variant="secondary"
                     size="sm"
                     isLoading={isUploadingLogo}
+                    disabled={!isOnline}
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <Upload className="h-3.5 w-3.5" />
@@ -163,7 +175,11 @@ export function AboutPage() {
                     </Button>
                   )}
                 </div>
-                <p className="text-xs text-slate-400">JPEG, PNG, WEBP, or GIF. Up to 5MB.</p>
+                <p className="text-xs text-slate-400">
+                  {isOnline
+                    ? 'JPEG, PNG, WEBP, or GIF. Up to 5MB.'
+                    : 'Photo upload needs internet - you can add one later.'}
+                </p>
               </div>
             </div>
             <div>

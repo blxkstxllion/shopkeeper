@@ -1,4 +1,5 @@
 import { getOfflineDb } from './db'
+import { cacheList, getCachedList } from './cache'
 import type { SellableProduct } from '@/types/sale'
 import type { ProductCategory } from '@/types/product'
 
@@ -42,14 +43,9 @@ export function filterCatalog(products: SellableProduct[], search: string | unde
 }
 
 export async function cacheCategories(businessId: string, categories: ProductCategory[]): Promise<void> {
-  const db = await getOfflineDb(businessId)
-  const tx = db.transaction('categories', 'readwrite')
-  await tx.store.clear()
-  await Promise.all(categories.map((c) => tx.store.put(c)))
-  await tx.done
+  await cacheList('categories', businessId, categories)
 }
 
 export async function getCachedCategories(businessId: string): Promise<ProductCategory[]> {
-  const db = await getOfflineDb(businessId)
-  return db.getAll('categories')
+  return getCachedList<ProductCategory>('categories', businessId)
 }

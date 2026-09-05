@@ -10,9 +10,12 @@ using ShopKeeper.Application.Common.Interfaces;
 /// enforced (see User.EmailVerificationEnforced) - opt-OUT rather than opt-in like
 /// RequirePlanTierBehavior, since the intent here is "block essentially everything until
 /// verified," not "block a specific handful of features." The exemption is by namespace
-/// (ShopKeeper.Application.Auth.*) rather than a marker interface on ~17 individual
-/// commands/queries, so a new auth command added later is automatically exempt without
-/// anyone having to remember to opt it out.
+/// (ShopKeeper.Application.Auth.*, .Onboarding.Commands) rather than a marker interface on ~17
+/// individual commands/queries, so a new auth command added later is automatically exempt
+/// without anyone having to remember to opt it out. Onboarding is exempted too because the
+/// frontend's own route guard (AppRouter's RequireVerifiedEmail) only wraps /app/*, not
+/// /onboarding - a brand-new, unverified user must still be able to create their business
+/// before hitting the verification wall, or registration would be a dead end.
 ///
 /// Runs before the handler, like RequirePlanTierBehavior - a verification rejection should
 /// never let the handler's own work start. No-op for unauthenticated requests (nothing to
@@ -25,9 +28,10 @@ public class RequireVerifiedEmailBehavior<TRequest, TResponse>(IAppDbContext db,
     public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         var ns = typeof(TRequest).Namespace;
-        var isAuthRequest = ns is "ShopKeeper.Application.Auth.Commands" or "ShopKeeper.Application.Auth.Queries";
+        var isExempt = ns is "ShopKeeper.Application.Auth.Commands" or "ShopKeeper.Application.Auth.Queries"
+            or "ShopKeeper.Application.Onboarding.Commands";
 
-        if (!isAuthRequest && currentUser.UserId is Guid userId)
+        if (!isExempt && currentUser.UserId is Guid userId)
         {
             var blocked = await db.Users
                 .Where(u => u.Id == userId)

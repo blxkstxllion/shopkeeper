@@ -2,6 +2,7 @@ namespace ShopKeeper.Application.Employees.Commands;
 
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
@@ -12,7 +13,7 @@ using ShopKeeper.Domain.Enums;
 /// <summary>Leaves the dormant User row alone (soft, like everything else in this codebase) -
 /// if they resubmit later, the email now belongs to a real account so it naturally routes
 /// through the existing-user path instead of creating a duplicate.</summary>
-public record RejectJoinRequestCommand(Guid JoinRequestId) : IRequest;
+public record RejectJoinRequestCommand(Guid JoinRequestId, Guid? ClientRequestId = null) : IRequest, ISupportsClientRequestId;
 
 public class RejectJoinRequestCommandHandler(IAppDbContext db, ICurrentUserService currentUser)
     : IRequestHandler<RejectJoinRequestCommand>

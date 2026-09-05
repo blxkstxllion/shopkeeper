@@ -13,9 +13,10 @@ using ShopKeeper.Application.Employees.Queries;
 [Route("api/employees")]
 public class EmployeesController(ISender mediator, IWebHostEnvironment env) : ControllerBase
 {
-    public record InviteRequest(string Email, Guid RoleId, Guid? BranchId);
+    public record InviteRequest(string Email, Guid RoleId, Guid? BranchId, Guid? ClientRequestId = null);
     public record AcceptInvitationRequest(string Password, string FirstName, string LastName);
-    public record ApproveJoinRequestRequest(Guid RoleId, Guid? BranchId);
+    public record ApproveJoinRequestRequest(Guid RoleId, Guid? BranchId, Guid? ClientRequestId = null);
+    public record RejectJoinRequestRequest(Guid? ClientRequestId = null);
 
     [Authorize]
     [HttpGet]
@@ -26,15 +27,15 @@ public class EmployeesController(ISender mediator, IWebHostEnvironment env) : Co
     [HttpPost("invite")]
     public async Task<IActionResult> Invite(InviteRequest request, CancellationToken ct)
     {
-        await mediator.Send(new InviteEmployeeCommand(request.Email, request.RoleId, request.BranchId), ct);
+        await mediator.Send(new InviteEmployeeCommand(request.Email, request.RoleId, request.BranchId, request.ClientRequestId), ct);
         return Ok(new { message = "Invitation sent." });
     }
 
     [Authorize]
     [HttpDelete("{businessUserId:guid}")]
-    public async Task<IActionResult> Remove(Guid businessUserId, CancellationToken ct)
+    public async Task<IActionResult> Remove(Guid businessUserId, [FromQuery] Guid? clientRequestId, CancellationToken ct)
     {
-        await mediator.Send(new RemoveEmployeeCommand(businessUserId), ct);
+        await mediator.Send(new RemoveEmployeeCommand(businessUserId, clientRequestId), ct);
         return NoContent();
     }
 
@@ -86,15 +87,15 @@ public class EmployeesController(ISender mediator, IWebHostEnvironment env) : Co
     [HttpPost("join-requests/{id:guid}/approve")]
     public async Task<IActionResult> ApproveJoinRequest(Guid id, ApproveJoinRequestRequest request, CancellationToken ct)
     {
-        await mediator.Send(new ApproveJoinRequestCommand(id, request.RoleId, request.BranchId), ct);
+        await mediator.Send(new ApproveJoinRequestCommand(id, request.RoleId, request.BranchId, request.ClientRequestId), ct);
         return NoContent();
     }
 
     [Authorize]
     [HttpPost("join-requests/{id:guid}/reject")]
-    public async Task<IActionResult> RejectJoinRequest(Guid id, CancellationToken ct)
+    public async Task<IActionResult> RejectJoinRequest(Guid id, RejectJoinRequestRequest request, CancellationToken ct)
     {
-        await mediator.Send(new RejectJoinRequestCommand(id), ct);
+        await mediator.Send(new RejectJoinRequestCommand(id, request.ClientRequestId), ct);
         return NoContent();
     }
 }
