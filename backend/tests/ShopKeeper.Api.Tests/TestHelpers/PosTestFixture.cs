@@ -30,7 +30,7 @@ public static class PosTestFixture
         var context = db.CreateContext(setupUser);
         var tokenIssuer = new TokenIssuer(context, jwt);
 
-        var registerResult = await new RegisterCommandHandler(context, hasher, tokenIssuer, new TestEmailSender()).Handle(
+        var registerResult = await new RegisterCommandHandler(context, hasher, tokenIssuer).Handle(
             new RegisterCommand(ownerEmail, "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
 
         // A "fully onboarded business" is realistically already past email verification -
