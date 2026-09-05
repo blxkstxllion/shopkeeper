@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { getBusinessSettings, updateTaxSettings } from '@/api/businessSettings'
+import { getBusinessSettings } from '@/api/businessSettings'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input, FormField } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
 import { FormSkeleton } from '@/components/ui/Skeleton'
 import { ApiError } from '@/lib/api-client'
+import { useOfflineSingletonQuery } from '@/offline/useOfflineQuery'
+import { useOfflineMutation } from '@/offline/useOfflineMutation'
+import type { BusinessSettings } from '@/types/businessSettings'
 
 const schema = z.object({
   taxEnabled: z.boolean(),
@@ -22,7 +25,11 @@ type FormValues = z.infer<typeof schema>
 
 export function TaxSettingsSection() {
   const queryClient = useQueryClient()
-  const { data, isLoading, isError } = useQuery({ queryKey: ['business-settings'], queryFn: getBusinessSettings })
+  const { data, isLoading, isError } = useOfflineSingletonQuery<BusinessSettings>(
+    ['business-settings'],
+    'businessSettings',
+    getBusinessSettings,
+  )
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -40,17 +47,24 @@ export function TaxSettingsSection() {
     }
   }, [data, reset])
 
-  const mutation = useMutation({
-    mutationFn: (values: FormValues) => updateTaxSettings({ ...values, taxIdNumber: values.taxIdNumber || null }),
-    onSuccess: () => {
-      setServerError(null)
+  const mutation = useOfflineMutation<{
+    taxEnabled: boolean
+    taxIdNumber: string | null
+    taxRatePercent: number
+    taxInclusivePricing: boolean
+  }>('taxSettings', () => 'Update tax settings')
+
+  async function onSubmit(values: FormValues) {
+    setServerError(null)
+    try {
+      await mutation.mutateAsync({ payload: { ...values, taxIdNumber: values.taxIdNumber || null } })
       setSuccessMessage('Tax settings updated.')
-      queryClient.invalidateQueries({ queryKey: ['business-settings'] })
+      await queryClient.invalidateQueries({ queryKey: ['business-settings'] })
       setTimeout(() => setSuccessMessage(null), 3000)
-    },
-    onError: (err) =>
-      setServerError(err instanceof ApiError ? err.message : 'Unable to save changes. Please try again.'),
-  })
+    } catch (err) {
+      setServerError(err instanceof ApiError ? err.message : 'Unable to save changes. Please try again.')
+    }
+  }
 
   if (isLoading) {
     return (
@@ -77,7 +91,7 @@ export function TaxSettingsSection() {
         onboarding.
       </p>
 
-      <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         {serverError && <Alert tone="error">{serverError}</Alert>}
         {successMessage && <Alert tone="success">{successMessage}</Alert>}
 

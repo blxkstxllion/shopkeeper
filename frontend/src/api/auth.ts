@@ -101,9 +101,10 @@ export async function getCurrentUser(): Promise<User> {
   return data
 }
 
-export async function uploadProfilePhoto(file: File): Promise<{ url: string }> {
+export async function uploadProfilePhoto(file: File | Blob, clientRequestId?: string): Promise<{ url: string }> {
   const formData = new FormData()
   formData.append('file', file)
+  if (clientRequestId) formData.append('clientRequestId', clientRequestId)
   const { data } = await apiClient.post<{ url: string }>('/uploads/profile-photo', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })

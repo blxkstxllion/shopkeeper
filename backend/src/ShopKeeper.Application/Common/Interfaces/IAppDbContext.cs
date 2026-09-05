@@ -40,6 +40,7 @@ public interface IAppDbContext
     DbSet<NotificationPreference> NotificationPreferences { get; }
     DbSet<PaystackWebhookEvent> PaystackWebhookEvents { get; }
     DbSet<ScheduledReport> ScheduledReports { get; }
+    DbSet<IdempotencyKey> IdempotencyKeys { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

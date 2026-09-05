@@ -10,8 +10,8 @@ using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Domain.Constants;
 using ShopKeeper.Domain.Entities;
 
-public record CreateRoleCommand(string Name, string? Description, List<string> PermissionKeys)
-    : IRequest<Guid>, IRequirePlanFeature
+public record CreateRoleCommand(string Name, string? Description, List<string> PermissionKeys, Guid? ClientRequestId = null)
+    : IRequest<Guid>, IRequirePlanFeature, ISupportsClientRequestId
 {
     public bool RequiresReports => false;
     public bool RequiresAi => false;

@@ -4,6 +4,7 @@ using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using ShopKeeper.Application.Common.Attributes;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
@@ -17,7 +18,8 @@ public record UpdateSupplierCommand(
     [property: SensitiveData] string? Phone,
     [property: SensitiveData] string? Email,
     [property: SensitiveData] string? Address,
-    bool IsActive) : IRequest;
+    bool IsActive,
+    Guid? ClientRequestId = null) : IRequest, ISupportsClientRequestId;
 
 public class UpdateSupplierCommandValidator : AbstractValidator<UpdateSupplierCommand>
 {

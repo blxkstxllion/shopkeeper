@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Users, Plus, Clock } from 'lucide-react'
-import { getBusinessUsers, removeEmployee } from '@/api/employees'
+import { getBusinessUsers } from '@/api/employees'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Alert } from '@/components/ui/Alert'
@@ -9,27 +8,24 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { TableSkeleton } from '@/components/ui/Skeleton'
 import { ApiError } from '@/lib/api-client'
 import { formatDateTime } from '@/lib/format'
+import { useOfflineSingletonQuery } from '@/offline/useOfflineQuery'
+import { useOfflineMutation } from '@/offline/useOfflineMutation'
+import type { BusinessUsersResponse } from '@/types/employee'
 import { InviteEmployeeModal } from './InviteEmployeeModal'
 import { JoinCodeCard } from './JoinCodeCard'
 import { JoinRequestsSection } from './JoinRequestsSection'
 
 export function EmployeesPage() {
-  const queryClient = useQueryClient()
   const [inviteOpen, setInviteOpen] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
 
-  const { data, isLoading } = useQuery({ queryKey: ['business-users'], queryFn: getBusinessUsers })
+  const { data, isLoading } = useOfflineSingletonQuery<BusinessUsersResponse>(
+    ['business-users'],
+    'businessUsers',
+    getBusinessUsers,
+  )
 
-  const removeMutation = useMutation({
-    mutationFn: removeEmployee,
-    onSuccess: () => {
-      setActionError(null)
-      queryClient.invalidateQueries({ queryKey: ['business-users'] })
-    },
-    onError: (err) => {
-      setActionError(err instanceof ApiError ? err.message : 'Unable to remove this team member. Please try again.')
-    },
-  })
+  const removeMutation = useOfflineMutation<{ businessUserId: string }>('employeeRemove', () => 'Remove team member')
 
   const members = data?.members ?? []
   const pending = data?.pendingInvitations ?? []
@@ -105,8 +101,24 @@ export function EmployeesPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => removeMutation.mutate(m.businessUserId)}
-                          isLoading={removeMutation.isPending && removeMutation.variables === m.businessUserId}
+                          onClick={() =>
+                            removeMutation.mutate(
+                              { payload: { businessUserId: m.businessUserId } },
+                              {
+                                onSuccess: () => setActionError(null),
+                                onError: (err) =>
+                                  setActionError(
+                                    err instanceof ApiError
+                                      ? err.message
+                                      : 'Unable to remove this team member. Please try again.',
+                                  ),
+                              },
+                            )
+                          }
+                          isLoading={
+                            removeMutation.isPending &&
+                            removeMutation.variables?.payload.businessUserId === m.businessUserId
+                          }
                         >
                           Remove
                         </Button>

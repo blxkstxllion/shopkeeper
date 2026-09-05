@@ -17,15 +17,15 @@ export async function getPermissionCatalog(): Promise<PermissionCatalogItem[]> {
   return data
 }
 
-export async function createRole(payload: RolePayload): Promise<string> {
+export async function createRole(payload: RolePayload & { clientRequestId?: string }): Promise<string> {
   const { data } = await apiClient.post<string>('/roles', payload)
   return data
 }
 
-export async function updateRole(payload: RolePayload & { id: string }): Promise<void> {
+export async function updateRole(payload: RolePayload & { id: string; clientRequestId?: string }): Promise<void> {
   await apiClient.put(`/roles/${payload.id}`, payload)
 }
 
-export async function deleteRole(id: string): Promise<void> {
-  await apiClient.delete(`/roles/${id}`)
+export async function deleteRole(id: string, clientRequestId?: string): Promise<void> {
+  await apiClient.delete(`/roles/${id}`, { params: { clientRequestId } })
 }

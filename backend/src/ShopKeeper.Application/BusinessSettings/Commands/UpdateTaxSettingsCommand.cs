@@ -3,13 +3,16 @@ namespace ShopKeeper.Application.BusinessSettings.Commands;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Domain.Constants;
 using ShopKeeper.Domain.Entities;
 
-public record UpdateTaxSettingsCommand(bool TaxEnabled, string? TaxIdNumber, decimal TaxRatePercent, bool TaxInclusivePricing) : IRequest;
+public record UpdateTaxSettingsCommand(
+    bool TaxEnabled, string? TaxIdNumber, decimal TaxRatePercent, bool TaxInclusivePricing, Guid? ClientRequestId = null)
+    : IRequest, ISupportsClientRequestId;
 
 public class UpdateTaxSettingsCommandValidator : AbstractValidator<UpdateTaxSettingsCommand>
 {

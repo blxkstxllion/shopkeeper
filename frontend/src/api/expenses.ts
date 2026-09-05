@@ -15,17 +15,17 @@ export async function getExpenses(params: GetExpensesParams): Promise<PagedResul
   return data
 }
 
-export async function createExpense(payload: CreateExpensePayload): Promise<Expense> {
+export async function createExpense(payload: CreateExpensePayload & { clientRequestId?: string }): Promise<Expense> {
   const { data } = await apiClient.post<Expense>('/expenses', payload)
   return data
 }
 
-export async function updateExpense(payload: UpdateExpensePayload): Promise<void> {
+export async function updateExpense(payload: UpdateExpensePayload & { clientRequestId?: string }): Promise<void> {
   await apiClient.put(`/expenses/${payload.id}`, payload)
 }
 
-export async function deleteExpense(id: string): Promise<void> {
-  await apiClient.delete(`/expenses/${id}`)
+export async function deleteExpense(id: string, clientRequestId?: string): Promise<void> {
+  await apiClient.delete(`/expenses/${id}`, { params: { clientRequestId } })
 }
 
 export async function getExpenseCategories(): Promise<ExpenseCategory[]> {
@@ -36,6 +36,7 @@ export async function getExpenseCategories(): Promise<ExpenseCategory[]> {
 export async function createExpenseCategory(payload: {
   name: string
   description?: string | null
+  clientRequestId?: string
 }): Promise<ExpenseCategory> {
   const { data } = await apiClient.post<ExpenseCategory>('/expenses/categories', payload)
   return data
