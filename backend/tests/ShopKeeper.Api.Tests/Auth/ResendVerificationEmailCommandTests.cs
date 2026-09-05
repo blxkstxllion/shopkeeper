@@ -23,7 +23,7 @@ public class ResendVerificationEmailCommandTests : IDisposable
     {
         var currentUser = new TestCurrentUserService();
         var context = _db.CreateContext(currentUser);
-        var registerHandler = new RegisterCommandHandler(context, _hasher, new TokenIssuer(context, _jwt), new TestEmailSender());
+        var registerHandler = new RegisterCommandHandler(context, _hasher, new TokenIssuer(context, _jwt));
         var registerResult = await registerHandler.Handle(
             new RegisterCommand("resend-me@shop.test", "Passw0rd!", "Ama", "Owusu", "127.0.0.1"), CancellationToken.None);
         var originalToken = (await context.Users.SingleAsync(u => u.Id == registerResult.User.Id)).EmailVerificationToken;
@@ -44,7 +44,7 @@ public class ResendVerificationEmailCommandTests : IDisposable
     {
         var currentUser = new TestCurrentUserService();
         var context = _db.CreateContext(currentUser);
-        var registerHandler = new RegisterCommandHandler(context, _hasher, new TokenIssuer(context, _jwt), new TestEmailSender());
+        var registerHandler = new RegisterCommandHandler(context, _hasher, new TokenIssuer(context, _jwt));
         var registerResult = await registerHandler.Handle(
             new RegisterCommand("already-verified@shop.test", "Passw0rd!", "Ama", "Owusu", "127.0.0.1"), CancellationToken.None);
 
