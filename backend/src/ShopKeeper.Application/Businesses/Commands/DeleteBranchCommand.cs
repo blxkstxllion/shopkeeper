@@ -2,6 +2,7 @@ namespace ShopKeeper.Application.Businesses.Commands;
 
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
@@ -10,7 +11,7 @@ using ShopKeeper.Domain.Entities;
 
 /// <summary>Soft delete only (IsActive = false) - a branch's Sales/InventoryTransactions/ProductStocks
 /// must remain intact for historical reporting. See section 40: avoid deleting financial records.</summary>
-public record DeleteBranchCommand(Guid Id) : IRequest;
+public record DeleteBranchCommand(Guid Id, Guid? ClientRequestId = null) : IRequest, ISupportsClientRequestId;
 
 public class DeleteBranchCommandHandler(IAppDbContext db, ICurrentUserService currentUser) : IRequestHandler<DeleteBranchCommand>
 {

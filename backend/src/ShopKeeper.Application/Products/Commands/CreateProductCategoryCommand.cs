@@ -2,13 +2,15 @@ namespace ShopKeeper.Application.Products.Commands;
 
 using FluentValidation;
 using MediatR;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Application.Products.Dtos;
 using ShopKeeper.Domain.Constants;
 using ShopKeeper.Domain.Entities;
 
-public record CreateProductCategoryCommand(string Name, string? Description) : IRequest<ProductCategoryDto>;
+public record CreateProductCategoryCommand(string Name, string? Description, Guid? ClientRequestId = null)
+    : IRequest<ProductCategoryDto>, ISupportsClientRequestId;
 
 public class CreateProductCategoryCommandValidator : AbstractValidator<CreateProductCategoryCommand>
 {

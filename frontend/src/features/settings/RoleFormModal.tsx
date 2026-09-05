@@ -2,14 +2,15 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, FormField } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
-import { createRole, getPermissionCatalog, updateRole } from '@/api/roles'
+import { getPermissionCatalog } from '@/api/roles'
 import { ApiError } from '@/lib/api-client'
-import type { RoleManagement } from '@/types/role'
+import { useOfflineSingletonQuery } from '@/offline/useOfflineQuery'
+import { useOfflineMutation } from '@/offline/useOfflineMutation'
+import type { PermissionCatalogItem, RoleManagement } from '@/types/role'
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
@@ -29,16 +30,16 @@ export function RoleFormModal({
   onClose: () => void
   role?: RoleManagement | null
 }) {
-  const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
   const [permissionKeys, setPermissionKeys] = useState<string[]>([])
   const isEditing = Boolean(role)
 
-  const { data: catalog } = useQuery({
-    queryKey: ['permission-catalog'],
-    queryFn: getPermissionCatalog,
-    enabled: isOpen,
-  })
+  const { data: catalog } = useOfflineSingletonQuery<PermissionCatalogItem[]>(
+    ['permission-catalog'],
+    'permissionCatalog',
+    getPermissionCatalog,
+    isOpen,
+  )
 
   const {
     register,
@@ -60,29 +61,39 @@ export function RoleFormModal({
     }
   }, [isOpen, role])
 
-  const mutation = useMutation({
-    mutationFn: async (values: FormValues) => {
-      const payload = { name: values.name, description: values.description || null, permissionKeys }
+  const createMutation = useOfflineMutation<{ name: string; description: string | null; permissionKeys: string[] }>(
+    'role',
+    (payload) => `New role: ${payload.name}`,
+  )
+  const updateMutation = useOfflineMutation<{
+    name: string
+    description: string | null
+    permissionKeys: string[]
+    id: string
+  }>('roleUpdate', (payload) => `Update role: ${payload.name}`)
+  const isSaving = createMutation.isPending || updateMutation.isPending
+
+  async function onSubmit(values: FormValues) {
+    setServerError(null)
+    const payload = { name: values.name, description: values.description || null, permissionKeys }
+    try {
       if (isEditing && role) {
-        await updateRole({ ...payload, id: role.id })
+        await updateMutation.mutateAsync({ payload: { ...payload, id: role.id } })
       } else {
-        await createRole(payload)
+        await createMutation.mutateAsync({ payload })
       }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['role-management'] })
       reset(defaults)
       onClose()
-    },
-    onError: (err) =>
-      setServerError(err instanceof ApiError ? err.message : 'Unable to save this role. Please try again.'),
-  })
+    } catch (err) {
+      setServerError(err instanceof ApiError ? err.message : 'Unable to save this role. Please try again.')
+    }
+  }
 
   const categories = Array.from(new Set(catalog?.map((p) => p.category) ?? []))
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEditing ? 'Edit role' : 'New role'} size="lg">
-      <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         {serverError && <Alert tone="error">{serverError}</Alert>}
 
         <FormField label="Name" htmlFor="name" error={errors.name?.message}>
@@ -127,7 +138,7 @@ export function RoleFormModal({
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" isLoading={isSubmitting || mutation.isPending}>
+          <Button type="submit" isLoading={isSubmitting || isSaving}>
             {isEditing ? 'Save changes' : 'Create role'}
           </Button>
         </div>

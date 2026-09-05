@@ -172,6 +172,7 @@ public class AuditLoggingBehaviorTests : IDisposable
         public DbSet<NotificationPreference> NotificationPreferences => inner.NotificationPreferences;
         public DbSet<PaystackWebhookEvent> PaystackWebhookEvents => inner.PaystackWebhookEvents;
         public DbSet<ScheduledReport> ScheduledReports => inner.ScheduledReports;
+        public DbSet<IdempotencyKey> IdempotencyKeys => inner.IdempotencyKeys;
 
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {

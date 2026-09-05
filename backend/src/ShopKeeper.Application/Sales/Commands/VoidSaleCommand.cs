@@ -3,6 +3,7 @@ namespace ShopKeeper.Application.Sales.Commands;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
@@ -13,7 +14,7 @@ using ShopKeeper.Domain.Enums;
 /// <summary>Fully reverses a sale's stock and revenue effect. Only valid while the sale is
 /// still in its original Completed state - a partially/fully refunded sale must be corrected
 /// via further refunds, not voided.</summary>
-public record VoidSaleCommand(Guid SaleId, string Reason) : IRequest;
+public record VoidSaleCommand(Guid SaleId, string Reason, Guid? ClientRequestId = null) : IRequest, ISupportsClientRequestId;
 
 public class VoidSaleCommandValidator : AbstractValidator<VoidSaleCommand>
 {

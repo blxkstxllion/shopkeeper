@@ -2,13 +2,14 @@ namespace ShopKeeper.Application.Roles.Commands;
 
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Domain.Entities;
 using ShopKeeper.Domain.Enums;
 
-public record DeleteRoleCommand(Guid Id) : IRequest;
+public record DeleteRoleCommand(Guid Id, Guid? ClientRequestId = null) : IRequest, ISupportsClientRequestId;
 
 /// <summary>Soft delete (IsActive = false), not a real DELETE - PendingInvitation.RoleId is
 /// OnDelete(Restrict) and invitation rows are kept forever for history (see

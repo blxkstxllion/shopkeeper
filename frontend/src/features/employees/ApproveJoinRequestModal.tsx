@@ -2,16 +2,17 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { FormField } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
-import { approveJoinRequest } from '@/api/employees'
 import { getRoles } from '@/api/roles'
 import { getBranches } from '@/api/branches'
 import { ApiError } from '@/lib/api-client'
-import type { JoinRequestItem } from '@/types/employee'
+import { useOfflineListQuery } from '@/offline/useOfflineQuery'
+import { useOfflineMutation } from '@/offline/useOfflineMutation'
+import type { JoinRequestItem, Role } from '@/types/employee'
+import type { Branch } from '@/types/business'
 
 const schema = z.object({
   roleId: z.string().min(1, 'Choose a role'),
@@ -29,11 +30,10 @@ export function ApproveJoinRequestModal({
   onClose: () => void
   request: JoinRequestItem | null
 }) {
-  const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
 
-  const { data: roles } = useQuery({ queryKey: ['roles'], queryFn: getRoles, enabled: isOpen })
-  const { data: branches } = useQuery({ queryKey: ['branches'], queryFn: getBranches, enabled: isOpen })
+  const { data: roles } = useOfflineListQuery<Role>(['roles'], 'roles', getRoles, isOpen)
+  const { data: branches } = useOfflineListQuery<Branch>(['branches'], 'branches', getBranches, isOpen)
 
   const {
     register,
@@ -42,20 +42,24 @@ export function ApproveJoinRequestModal({
     reset,
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { roleId: '', branchId: '' } })
 
-  const mutation = useMutation({
-    mutationFn: (values: FormValues) => {
-      if (!request) throw new Error('Missing join request')
-      return approveJoinRequest(request.id, { roleId: values.roleId, branchId: values.branchId || null })
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['business-users'] })
+  const mutation = useOfflineMutation<{ id: string; roleId: string; branchId: string | null }>(
+    'joinRequestApprove',
+    () => `Approve join request`,
+  )
+
+  async function onSubmit(values: FormValues) {
+    if (!request) return
+    setServerError(null)
+    try {
+      await mutation.mutateAsync({
+        payload: { id: request.id, roleId: values.roleId, branchId: values.branchId || null },
+      })
       reset()
       onClose()
-    },
-    onError: (err) => {
+    } catch (err) {
       setServerError(err instanceof ApiError ? err.message : 'Unable to approve this request. Please try again.')
-    },
-  })
+    }
+  }
 
   function handleClose() {
     setServerError(null)
@@ -66,7 +70,7 @@ export function ApproveJoinRequestModal({
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title={`Approve ${request.firstName} ${request.lastName}`} size="sm">
-      <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         {serverError && <Alert tone="error">{serverError}</Alert>}
 
         <FormField label="Role" htmlFor="roleId" error={errors.roleId?.message}>

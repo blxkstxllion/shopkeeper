@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { Receipt } from 'lucide-react'
 import { getSales } from '@/api/sales'
 import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { TableSkeleton } from '@/components/ui/Skeleton'
 import { formatMoney, formatDateTime } from '@/lib/format'
-import type { SaleStatus } from '@/types/sale'
+import { useOfflineListQuery } from '@/offline/useOfflineQuery'
+import type { SaleListItem, SaleStatus } from '@/types/sale'
 import { SaleDetailModal } from './SaleDetailModal'
 
 const statusOptions: Array<SaleStatus | 'All'> = ['All', 'Completed', 'PartiallyRefunded', 'Refunded', 'Voided']
@@ -22,12 +22,16 @@ export function SalesHistoryPage() {
   const [status, setStatus] = useState<SaleStatus | 'All'>('All')
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null)
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['sales', status],
-    queryFn: () => getSales({ status: status === 'All' ? undefined : status, pageSize: 100 }),
-  })
+  // Always fetches/caches the unfiltered snapshot (matches PosPage's catalogCache convention:
+  // cache the full list once, filter client-side) - offline, switching to a status tab that was
+  // never independently fetched would otherwise show nothing instead of just filtering what's cached.
+  const { data: sales, isLoading } = useOfflineListQuery<SaleListItem>(
+    ['sales'],
+    'sales',
+    async () => (await getSales({ pageSize: 100 })).items,
+  )
 
-  const sales = data?.items ?? []
+  const filteredSales = status === 'All' ? (sales ?? []) : (sales ?? []).filter((s) => s.status === status)
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -58,7 +62,7 @@ export function SalesHistoryPage() {
       <Card className="overflow-hidden">
         {isLoading ? (
           <TableSkeleton columns={7} rows={8} />
-        ) : sales.length === 0 ? (
+        ) : filteredSales.length === 0 ? (
           <EmptyState
             icon={Receipt}
             title="No sales yet"
@@ -79,7 +83,7 @@ export function SalesHistoryPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {sales.map((sale) => (
+                {filteredSales.map((sale) => (
                   <tr
                     key={sale.id}
                     onClick={() => setSelectedSaleId(sale.id)}

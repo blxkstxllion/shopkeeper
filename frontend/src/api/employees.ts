@@ -12,12 +12,12 @@ export async function getBusinessUsers(): Promise<BusinessUsersResponse> {
   return data
 }
 
-export async function inviteEmployee(payload: InviteEmployeePayload): Promise<void> {
+export async function inviteEmployee(payload: InviteEmployeePayload & { clientRequestId?: string }): Promise<void> {
   await apiClient.post('/employees/invite', payload)
 }
 
-export async function removeEmployee(businessUserId: string): Promise<void> {
-  await apiClient.delete(`/employees/${businessUserId}`)
+export async function removeEmployee(businessUserId: string, clientRequestId?: string): Promise<void> {
+  await apiClient.delete(`/employees/${businessUserId}`, { params: { clientRequestId } })
 }
 
 export async function getInvitation(token: string): Promise<InvitationDetails> {
@@ -51,11 +51,11 @@ export async function revokeJoinCode(): Promise<void> {
 
 export async function approveJoinRequest(
   id: string,
-  payload: { roleId: string; branchId?: string | null },
+  payload: { roleId: string; branchId?: string | null; clientRequestId?: string },
 ): Promise<void> {
   await apiClient.post(`/employees/join-requests/${id}/approve`, payload)
 }
 
-export async function rejectJoinRequest(id: string): Promise<void> {
-  await apiClient.post(`/employees/join-requests/${id}/reject`)
+export async function rejectJoinRequest(id: string, clientRequestId?: string): Promise<void> {
+  await apiClient.post(`/employees/join-requests/${id}/reject`, { clientRequestId })
 }

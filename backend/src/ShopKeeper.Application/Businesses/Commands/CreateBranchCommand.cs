@@ -4,6 +4,7 @@ using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using ShopKeeper.Application.Businesses.Dtos;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
@@ -18,7 +19,8 @@ public record CreateBranchCommand(
     string? City,
     string? Country,
     string? Phone,
-    string? Email) : IRequest<BranchDto>;
+    string? Email,
+    Guid? ClientRequestId = null) : IRequest<BranchDto>, ISupportsClientRequestId;
 
 public class CreateBranchCommandValidator : AbstractValidator<CreateBranchCommand>
 {

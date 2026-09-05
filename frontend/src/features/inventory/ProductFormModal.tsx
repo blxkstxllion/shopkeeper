@@ -1,20 +1,19 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, FormField } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
-import {
-  createProduct,
-  createProductCategory,
-  getProductCategories,
-  updateProduct,
-  uploadProductImage,
-} from '@/api/products'
+import { getProductCategories, uploadProductImage } from '@/api/products'
 import { getSuppliers } from '@/api/suppliers'
 import { ApiError } from '@/lib/api-client'
 import { resolveUploadUrl } from '@/lib/format'
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'
+import { useOfflineMutation } from '@/offline/useOfflineMutation'
+import { useOfflineListQuery } from '@/offline/useOfflineQuery'
+import type { ProductCategory } from '@/types/product'
+import type { Supplier } from '@/types/supplier'
 import type { Product } from '@/types/product'
 import { Package, Plus, Upload, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
@@ -35,6 +34,7 @@ export function ProductFormModal({
   product?: Product | null
 }) {
   const queryClient = useQueryClient()
+  const isOnline = useOnlineStatus()
   const [serverError, setServerError] = useState<string | null>(null)
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [isUploadingImage, setIsUploadingImage] = useState(false)
@@ -43,8 +43,12 @@ export function ProductFormModal({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isEditing = Boolean(product)
 
-  const { data: categories } = useQuery({ queryKey: ['product-categories'], queryFn: getProductCategories })
-  const { data: suppliers } = useQuery({ queryKey: ['suppliers'], queryFn: getSuppliers })
+  const { data: categories } = useOfflineListQuery<ProductCategory>(
+    ['product-categories'],
+    'categories',
+    getProductCategories,
+  )
+  const { data: suppliers } = useOfflineListQuery<Supplier>(['suppliers'], 'suppliers', getSuppliers)
 
   const {
     register,
@@ -82,56 +86,78 @@ export function ProductFormModal({
     }
   }, [isOpen, product])
 
-  const categoryMutation = useMutation({
-    mutationFn: () => createProductCategory({ name: newCategoryName }),
-    onSuccess: async (category) => {
-      await queryClient.invalidateQueries({ queryKey: ['product-categories'] })
-      setValue('categoryId', category.id, { shouldValidate: true })
+  const categoryMutation = useOfflineMutation<{ name: string }>(
+    'productCategory',
+    (payload) => `New category: ${payload.name}`,
+  )
+  async function handleAddCategory() {
+    setServerError(null)
+    try {
+      const result = await categoryMutation.mutateAsync({ payload: { name: newCategoryName } })
+      if (!result.queued) {
+        await queryClient.invalidateQueries({ queryKey: ['product-categories'] })
+        setValue('categoryId', (result.data as { id: string }).id, { shouldValidate: true })
+      }
       setIsAddingCategory(false)
       setNewCategoryName('')
-    },
-    onError: (err) => {
+    } catch (err) {
       setServerError(err instanceof ApiError ? err.message : 'Unable to create that category. Please try again.')
-    },
-  })
+    }
+  }
 
-  const mutation = useMutation({
-    mutationFn: async (values: ProductFormValues) => {
-      const payload = {
-        name: values.name,
-        sku: values.sku,
-        barcode: values.barcode || null,
-        categoryId: values.categoryId || null,
-        supplierId: values.supplierId || null,
-        imageUrl,
-        sellingPrice: values.sellingPrice,
-        costPrice: values.costPrice,
-        minimumStock: values.minimumStock,
-        trackInventory: values.trackInventory,
-        initialQuantity: values.initialQuantity,
-        branchId,
-      }
+  const createMutation = useOfflineMutation<ReturnType<typeof buildPayload>>(
+    'product',
+    (payload) => `New product: ${payload.name}`,
+  )
+  const updateMutation = useOfflineMutation<ReturnType<typeof buildPayload> & { id: string; isActive: boolean }>(
+    'productUpdate',
+    (payload) => `Update product: ${payload.name}`,
+  )
+  const isSaving = createMutation.isPending || updateMutation.isPending
+
+  function buildPayload(values: ProductFormValues) {
+    return {
+      name: values.name,
+      sku: values.sku,
+      barcode: values.barcode || null,
+      categoryId: values.categoryId || null,
+      supplierId: values.supplierId || null,
+      imageUrl,
+      sellingPrice: values.sellingPrice,
+      costPrice: values.costPrice,
+      minimumStock: values.minimumStock,
+      trackInventory: values.trackInventory,
+      initialQuantity: values.initialQuantity,
+      branchId,
+    }
+  }
+
+  async function onSubmit(values: ProductFormValues) {
+    setServerError(null)
+    try {
+      const payload = buildPayload(values)
       if (isEditing && product) {
-        await updateProduct({ ...payload, id: product.id, isActive: product.isActive })
+        await updateMutation.mutateAsync({ payload: { ...payload, id: product.id, isActive: product.isActive } })
       } else {
-        await createProduct(payload)
+        await createMutation.mutateAsync({ payload })
       }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] })
       reset(productDefaults)
       setImageUrl(null)
       onClose()
-    },
-    onError: (err) => {
+    } catch (err) {
       setServerError(err instanceof ApiError ? err.message : 'Unable to save this product. Please try again.')
-    },
-  })
+    }
+  }
 
   async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     e.target.value = '' // allow re-selecting the same file later
     if (!file) return
+
+    if (!isOnline) {
+      setServerError('Image upload needs internet - you can add one later.')
+      return
+    }
 
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
       setServerError('Please choose a JPEG, PNG, WEBP, or GIF image.')
@@ -156,7 +182,7 @@ export function ProductFormModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEditing ? 'Edit product' : 'Add product'} size="lg">
-      <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         {serverError && <Alert tone="error">{serverError}</Alert>}
 
         <div className="flex items-center gap-4">
@@ -181,6 +207,7 @@ export function ProductFormModal({
                 variant="secondary"
                 size="sm"
                 isLoading={isUploadingImage}
+                disabled={!isOnline}
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Upload className="h-3.5 w-3.5" />
@@ -193,7 +220,11 @@ export function ProductFormModal({
                 </Button>
               )}
             </div>
-            <p className="text-xs text-slate-400">JPEG, PNG, WEBP, or GIF. Up to 5MB.</p>
+            <p className="text-xs text-slate-400">
+              {isOnline
+                ? 'JPEG, PNG, WEBP, or GIF. Up to 5MB.'
+                : 'Photo upload needs internet - you can add one later.'}
+            </p>
           </div>
         </div>
 
@@ -229,7 +260,7 @@ export function ProductFormModal({
                   size="sm"
                   isLoading={categoryMutation.isPending}
                   disabled={!newCategoryName.trim()}
-                  onClick={() => categoryMutation.mutate()}
+                  onClick={() => void handleAddCategory()}
                 >
                   Add
                 </Button>
@@ -333,7 +364,7 @@ export function ProductFormModal({
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" isLoading={isSubmitting || mutation.isPending} disabled={isUploadingImage}>
+          <Button type="submit" isLoading={isSubmitting || isSaving} disabled={isUploadingImage}>
             {isEditing ? 'Save changes' : 'Add product'}
           </Button>
         </div>
