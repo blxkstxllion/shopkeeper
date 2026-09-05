@@ -195,7 +195,7 @@ public class OnboardingCommandTests : IDisposable
     private async Task<Domain.Entities.User> RegisterOwner(
         Infrastructure.Persistence.AppDbContext context, TokenIssuer tokenIssuer)
     {
-        var registerHandler = new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender());
+        var registerHandler = new RegisterCommandHandler(context, _hasher, tokenIssuer);
         var result = await registerHandler.Handle(
             new RegisterCommand("founder@shop.test", "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
         return await context.Users.SingleAsync(u => u.Id == result.User.Id);
