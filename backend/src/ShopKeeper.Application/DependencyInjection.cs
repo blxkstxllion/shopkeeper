@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddTransient(typeof(MediatR.IPipelineBehavior<,>), typeof(RequireVerifiedEmailBehavior<,>));
         services.AddTransient(typeof(MediatR.IPipelineBehavior<,>), typeof(AuditLoggingBehavior<,>));
         services.AddTransient(typeof(MediatR.IPipelineBehavior<,>), typeof(RequirePlanTierBehavior<,>));
+        services.AddTransient(typeof(MediatR.IPipelineBehavior<,>), typeof(IdempotencyBehavior<,>));
 
         services.AddScoped<TokenIssuer>();
         services.AddScoped<NotificationDispatcher>();

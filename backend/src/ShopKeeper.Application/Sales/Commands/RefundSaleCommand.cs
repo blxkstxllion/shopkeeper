@@ -3,6 +3,7 @@ namespace ShopKeeper.Application.Sales.Commands;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
@@ -13,7 +14,8 @@ using ShopKeeper.Domain.Enums;
 
 public record RefundLineInput(Guid SaleItemId, int Quantity);
 
-public record RefundSaleCommand(Guid SaleId, IReadOnlyList<RefundLineInput> Items, string Reason) : IRequest<RefundDto>;
+public record RefundSaleCommand(Guid SaleId, IReadOnlyList<RefundLineInput> Items, string Reason, Guid? ClientRequestId = null)
+    : IRequest<RefundDto>, ISupportsClientRequestId;
 
 public class RefundSaleCommandValidator : AbstractValidator<RefundSaleCommand>
 {

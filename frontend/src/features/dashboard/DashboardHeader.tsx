@@ -6,6 +6,7 @@ import { uploadProfilePhoto, updateProfilePhoto } from '@/api/auth'
 import { Avatar } from '@/components/ui/Avatar'
 import { Alert } from '@/components/ui/Alert'
 import { ApiError } from '@/lib/api-client'
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
@@ -57,6 +58,7 @@ function QuickAction({
  * to avoid a second, redundant edit affordance for the same action. */
 export function DashboardHeader() {
   const { user, activeBusiness, refreshUser } = useAuth()
+  const isOnline = useOnlineStatus()
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -65,6 +67,11 @@ export function DashboardHeader() {
     const file = e.target.files?.[0]
     e.target.value = '' // allow re-selecting the same file later
     if (!file) return
+
+    if (!isOnline) {
+      setError("Changing your photo needs internet - you can try again once you're back online.")
+      return
+    }
 
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
       setError('Please choose a JPEG, PNG, WEBP, or GIF image.')
@@ -97,7 +104,7 @@ export function DashboardHeader() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
+              disabled={isUploading || !isOnline}
               aria-label="Change profile photo"
               className="group relative shrink-0 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:cursor-not-allowed"
             >

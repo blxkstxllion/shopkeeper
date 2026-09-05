@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Lock, Plus, Sparkles, Users } from 'lucide-react'
-import { deleteRole, getRoleManagement } from '@/api/roles'
+import { getRoleManagement } from '@/api/roles'
 import { getPlanUsage } from '@/api/plans'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -9,32 +8,30 @@ import { Alert } from '@/components/ui/Alert'
 import { ListSkeleton } from '@/components/ui/Skeleton'
 import { useAuth } from '@/contexts/AuthContext'
 import { ApiError } from '@/lib/api-client'
+import { useOfflineSingletonQuery } from '@/offline/useOfflineQuery'
+import { useOfflineMutation } from '@/offline/useOfflineMutation'
 import { RoleFormModal } from './RoleFormModal'
 import type { RoleManagement } from '@/types/role'
+import type { PlanUsage } from '@/types/plans'
 
 export function RolesSection() {
   const { activeBusiness } = useAuth()
   const isOwner = activeBusiness?.isOwner ?? false
-  const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [editingRole, setEditingRole] = useState<RoleManagement | null>(null)
 
-  const { data: roles, isLoading } = useQuery({ queryKey: ['role-management'], queryFn: getRoleManagement })
-  const { data: usage } = useQuery({ queryKey: ['plan-usage'], queryFn: getPlanUsage })
+  const { data: roles, isLoading } = useOfflineSingletonQuery<RoleManagement[]>(
+    ['role-management'],
+    'roleManagement',
+    getRoleManagement,
+  )
+  const { data: usage } = useOfflineSingletonQuery<PlanUsage>(['plan-usage'], 'planUsage', getPlanUsage)
 
   const isEnterpriseTier = usage?.currentTier === 'Enterprise' || usage?.currentTier === 'EnterpriseAi'
   const canManageRoles = isOwner && isEnterpriseTier
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteRole,
-    onSuccess: () => {
-      setServerError(null)
-      queryClient.invalidateQueries({ queryKey: ['role-management'] })
-    },
-    onError: (err) =>
-      setServerError(err instanceof ApiError ? err.message : 'Unable to delete this role. Please try again.'),
-  })
+  const deleteMutation = useOfflineMutation<{ id: string }>('roleDelete', () => 'Delete role')
 
   function openCreate() {
     setEditingRole(null)
@@ -122,8 +119,19 @@ export function RolesSection() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => deleteMutation.mutate(role.id)}
-                    isLoading={deleteMutation.isPending && deleteMutation.variables === role.id}
+                    onClick={() =>
+                      deleteMutation.mutate(
+                        { payload: { id: role.id } },
+                        {
+                          onSuccess: () => setServerError(null),
+                          onError: (err) =>
+                            setServerError(
+                              err instanceof ApiError ? err.message : 'Unable to delete this role. Please try again.',
+                            ),
+                        },
+                      )
+                    }
+                    isLoading={deleteMutation.isPending && deleteMutation.variables?.payload.id === role.id}
                   >
                     Delete
                   </Button>

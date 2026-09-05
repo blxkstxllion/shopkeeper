@@ -1,14 +1,14 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input, FormField } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
-import { adjustStock } from '@/api/inventory'
 import { ApiError } from '@/lib/api-client'
+import { useOfflineMutation } from '@/offline/useOfflineMutation'
+import type { AdjustStockPayload } from '@/api/inventory'
 import type { Product } from '@/types/product'
 
 const schema = z.object({
@@ -32,7 +32,6 @@ export function StockAdjustModal({
   product: Product | null
   branchId: string | null
 }) {
-  const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
 
   const {
@@ -42,31 +41,31 @@ export function StockAdjustModal({
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { quantityChange: 0, reason: '' } })
 
-  const mutation = useMutation({
-    mutationFn: (values: FormValues) => {
-      if (!product || !branchId) throw new Error('Missing product or branch')
-      return adjustStock({
-        productId: product.id,
-        branchId,
-        quantityChange: values.quantityChange,
-        reason: values.reason,
+  const mutation = useOfflineMutation<AdjustStockPayload>(
+    'stockAdjustment',
+    (payload) =>
+      `Stock adjustment: ${payload.quantityChange > 0 ? '+' : ''}${payload.quantityChange} (${payload.reason})`,
+  )
+
+  async function onSubmit(values: FormValues) {
+    if (!product || !branchId) return
+    setServerError(null)
+    try {
+      await mutation.mutateAsync({
+        payload: { productId: product.id, branchId, quantityChange: values.quantityChange, reason: values.reason },
       })
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] })
       reset()
       onClose()
-    },
-    onError: (err) => {
+    } catch (err) {
       setServerError(err instanceof ApiError ? err.message : 'Unable to adjust stock. Please try again.')
-    },
-  })
+    }
+  }
 
   if (!product) return null
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`Adjust stock — ${product.name}`} size="sm">
-      <form onSubmit={handleSubmit((values) => mutation.mutate(values))} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         {serverError && <Alert tone="error">{serverError}</Alert>}
 
         <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -102,7 +101,7 @@ export function StockAdjustModal({
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" isLoading={isSubmitting || mutation.isPending}>
+          <Button type="submit" isLoading={isSubmitting || mutation.isPending} disabled={!product || !branchId}>
             Save adjustment
           </Button>
         </div>

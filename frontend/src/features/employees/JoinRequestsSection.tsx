@@ -1,29 +1,18 @@
 import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Alert } from '@/components/ui/Alert'
-import { rejectJoinRequest } from '@/api/employees'
 import { ApiError } from '@/lib/api-client'
 import { formatDateTime } from '@/lib/format'
+import { useOfflineMutation } from '@/offline/useOfflineMutation'
 import type { JoinRequestItem } from '@/types/employee'
 import { ApproveJoinRequestModal } from './ApproveJoinRequestModal'
 
 export function JoinRequestsSection({ requests }: { requests: JoinRequestItem[] }) {
-  const queryClient = useQueryClient()
   const [approving, setApproving] = useState<JoinRequestItem | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
-  const rejectMutation = useMutation({
-    mutationFn: rejectJoinRequest,
-    onSuccess: () => {
-      setActionError(null)
-      queryClient.invalidateQueries({ queryKey: ['business-users'] })
-    },
-    onError: (err) => {
-      setActionError(err instanceof ApiError ? err.message : 'Unable to reject this request. Please try again.')
-    },
-  })
+  const rejectMutation = useOfflineMutation<{ id: string }>('joinRequestReject', () => 'Reject join request')
 
   if (requests.length === 0) return null
 
@@ -64,8 +53,21 @@ export function JoinRequestsSection({ requests }: { requests: JoinRequestItem[] 
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => rejectMutation.mutate(r.id)}
-                        isLoading={rejectMutation.isPending && rejectMutation.variables === r.id}
+                        onClick={() =>
+                          rejectMutation.mutate(
+                            { payload: { id: r.id } },
+                            {
+                              onSuccess: () => setActionError(null),
+                              onError: (err) =>
+                                setActionError(
+                                  err instanceof ApiError
+                                    ? err.message
+                                    : 'Unable to reject this request. Please try again.',
+                                ),
+                            },
+                          )
+                        }
+                        isLoading={rejectMutation.isPending && rejectMutation.variables?.payload.id === r.id}
                       >
                         Reject
                       </Button>
