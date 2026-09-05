@@ -3,6 +3,7 @@ namespace ShopKeeper.Application.Products.Commands;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
@@ -22,7 +23,8 @@ public record UpdateProductCommand(
     int MinimumStock,
     bool TrackInventory,
     bool IsActive,
-    Guid? SupplierId = null) : IRequest;
+    Guid? SupplierId = null,
+    Guid? ClientRequestId = null) : IRequest, ISupportsClientRequestId;
 
 public class UpdateProductCommandValidator : AbstractValidator<UpdateProductCommand>
 {

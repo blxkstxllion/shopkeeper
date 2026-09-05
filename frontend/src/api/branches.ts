@@ -6,15 +6,15 @@ export async function getBranches(): Promise<Branch[]> {
   return data
 }
 
-export async function createBranch(payload: CreateBranchPayload): Promise<Branch> {
+export async function createBranch(payload: CreateBranchPayload & { clientRequestId?: string }): Promise<Branch> {
   const { data } = await apiClient.post<Branch>('/branches', payload)
   return data
 }
 
-export async function updateBranch(payload: UpdateBranchPayload): Promise<void> {
+export async function updateBranch(payload: UpdateBranchPayload & { clientRequestId?: string }): Promise<void> {
   await apiClient.put(`/branches/${payload.id}`, payload)
 }
 
-export async function deleteBranch(id: string): Promise<void> {
-  await apiClient.delete(`/branches/${id}`)
+export async function deleteBranch(id: string, clientRequestId?: string): Promise<void> {
+  await apiClient.delete(`/branches/${id}`, { params: { clientRequestId } })
 }

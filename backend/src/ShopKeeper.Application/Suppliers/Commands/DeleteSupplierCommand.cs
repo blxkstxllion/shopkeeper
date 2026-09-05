@@ -2,6 +2,7 @@ namespace ShopKeeper.Application.Suppliers.Commands;
 
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
@@ -10,7 +11,7 @@ using ShopKeeper.Domain.Entities;
 
 /// <summary>Soft delete only (IsActive = false) - existing Products keep their SupplierId
 /// and past restock history stays intact, matching every other soft-delete in this codebase.</summary>
-public record DeleteSupplierCommand(Guid Id) : IRequest;
+public record DeleteSupplierCommand(Guid Id, Guid? ClientRequestId = null) : IRequest, ISupportsClientRequestId;
 
 public class DeleteSupplierCommandHandler(IAppDbContext db, ICurrentUserService currentUser) : IRequestHandler<DeleteSupplierCommand>
 {

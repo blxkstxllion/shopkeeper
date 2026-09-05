@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useOfflineSingletonQuery } from '@/offline/useOfflineQuery'
 import {
   Wallet,
   TrendingUp,
@@ -61,10 +61,11 @@ const STATUS_STYLES: Record<string, { label: string; className: string }> = {
 export function DashboardPage() {
   const { branch } = useActiveBranch()
 
-  const { data, isLoading, isError, refetch, isRefetching, dataUpdatedAt } = useQuery({
-    queryKey: ['dashboard-summary', branch?.id],
-    queryFn: () => getDashboardSummary(branch?.id),
-  })
+  const { data, isLoading, isError, refetch, isRefetching, dataUpdatedAt } = useOfflineSingletonQuery(
+    ['dashboard-summary', branch?.id],
+    `dashboardSummary:${branch?.id ?? 'all'}`,
+    () => getDashboardSummary(branch?.id),
+  )
 
   return (
     <div className="mx-auto max-w-6xl [--cat-0:#2a78d6] [--cat-1:#1baf7a] [--cat-2:#eda100] [--cat-3:#008300] [--cat-4:#4a3aa7] [--cat-5:#e34948] [--cat-6:#e87ba4] [--cat-7:#eb6834] dark:[--cat-0:#3987e5] dark:[--cat-1:#199e70] dark:[--cat-2:#c98500] dark:[--cat-4:#9085e9] dark:[--cat-5:#e66767] dark:[--cat-6:#d55181] dark:[--cat-7:#d95926] [--chart-revenue:#2a78d6] dark:[--chart-revenue:#3987e5] [--chart-profit:#1baf7a] dark:[--chart-profit:#199e70] [--chart-grid:#e1e0d9] dark:[--chart-grid:#2c2c2a] [--chart-axis:#898781]">

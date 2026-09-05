@@ -3,13 +3,15 @@ namespace ShopKeeper.Application.About.Commands;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Domain.Constants;
 using ShopKeeper.Domain.Entities;
 
-public record UpdateBusinessAboutCommand(string? Description, string? OwnerBio, string? LogoUrl) : IRequest;
+public record UpdateBusinessAboutCommand(string? Description, string? OwnerBio, string? LogoUrl, Guid? ClientRequestId = null)
+    : IRequest, ISupportsClientRequestId;
 
 public class UpdateBusinessAboutCommandValidator : AbstractValidator<UpdateBusinessAboutCommand>
 {

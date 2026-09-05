@@ -1,28 +1,25 @@
 import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Truck, Plus, History, PackagePlus } from 'lucide-react'
-import { getSuppliers, deleteSupplier } from '@/api/suppliers'
+import { getSuppliers } from '@/api/suppliers'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { TableSkeleton } from '@/components/ui/Skeleton'
+import { useOfflineListQuery } from '@/offline/useOfflineQuery'
+import { useOfflineMutation } from '@/offline/useOfflineMutation'
 import type { Supplier } from '@/types/supplier'
 import { SupplierFormModal } from './SupplierFormModal'
 import { RestockModal } from './RestockModal'
 import { SupplierHistoryModal } from './SupplierHistoryModal'
 
 export function SuppliersPage() {
-  const queryClient = useQueryClient()
   const [formModal, setFormModal] = useState<{ open: boolean; supplier?: Supplier | null }>({ open: false })
   const [restockSupplier, setRestockSupplier] = useState<Supplier | null>(null)
   const [historySupplier, setHistorySupplier] = useState<Supplier | null>(null)
 
-  const { data: suppliers, isLoading } = useQuery({ queryKey: ['suppliers'], queryFn: getSuppliers })
+  const { data: suppliers, isLoading } = useOfflineListQuery<Supplier>(['suppliers'], 'suppliers', getSuppliers)
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteSupplier,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['suppliers'] }),
-  })
+  const deleteMutation = useOfflineMutation<{ id: string }>('supplierDelete', () => 'Deactivate supplier')
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -83,8 +80,8 @@ export function SuppliersPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => deleteMutation.mutate(s.id)}
-                          isLoading={deleteMutation.isPending && deleteMutation.variables === s.id}
+                          onClick={() => deleteMutation.mutate({ payload: { id: s.id } })}
+                          isLoading={deleteMutation.isPending && deleteMutation.variables?.payload.id === s.id}
                         >
                           Deactivate
                         </Button>

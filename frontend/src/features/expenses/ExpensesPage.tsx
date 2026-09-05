@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Receipt, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
-import { getExpenses, getExpenseCategories, deleteExpense } from '@/api/expenses'
+import { getExpenses, getExpenseCategories } from '@/api/expenses'
 import { useActiveBranch } from '@/hooks/useActiveBranch'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -9,14 +8,16 @@ import { Input } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { TableSkeleton } from '@/components/ui/Skeleton'
 import { formatMoney } from '@/lib/format'
-import type { Expense } from '@/types/expense'
+import { useOfflineSingletonQuery, useOfflineListQuery } from '@/offline/useOfflineQuery'
+import { useOfflineMutation } from '@/offline/useOfflineMutation'
+import type { Expense, ExpenseCategory } from '@/types/expense'
+import type { PagedResult } from '@/types/product'
 import { ExpenseFormModal } from './ExpenseFormModal'
 
 const PAGE_SIZE = 20
 
 export function ExpensesPage() {
   const { branch } = useActiveBranch()
-  const queryClient = useQueryClient()
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [categoryId, setCategoryId] = useState('')
@@ -27,9 +28,10 @@ export function ExpensesPage() {
     setPage(1)
   }, [from, to, categoryId, branch?.id])
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['expenses', { from, to, categoryId, branchId: branch?.id, page }],
-    queryFn: () =>
+  const { data, isLoading } = useOfflineSingletonQuery<PagedResult<Expense>>(
+    ['expenses', { from, to, categoryId, branchId: branch?.id, page }],
+    `expenses:${branch?.id ?? 'all'}`,
+    () =>
       getExpenses({
         from: from || undefined,
         to: to || undefined,
@@ -38,15 +40,16 @@ export function ExpensesPage() {
         page,
         pageSize: PAGE_SIZE,
       }),
-    enabled: Boolean(branch),
-  })
+    Boolean(branch),
+  )
 
-  const { data: categories } = useQuery({ queryKey: ['expense-categories'], queryFn: getExpenseCategories })
+  const { data: categories } = useOfflineListQuery<ExpenseCategory>(
+    ['expense-categories'],
+    'expenseCategories',
+    getExpenseCategories,
+  )
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteExpense,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['expenses'] }),
-  })
+  const deleteMutation = useOfflineMutation<{ id: string }>('expenseDelete', () => 'Delete expense')
 
   const expenses = data?.items ?? []
   const totalPages = data?.totalPages ?? 1
@@ -139,8 +142,8 @@ export function ExpensesPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => deleteMutation.mutate(e.id)}
-                          isLoading={deleteMutation.isPending && deleteMutation.variables === e.id}
+                          onClick={() => deleteMutation.mutate({ payload: { id: e.id } })}
+                          isLoading={deleteMutation.isPending && deleteMutation.variables?.payload.id === e.id}
                         >
                           Delete
                         </Button>
