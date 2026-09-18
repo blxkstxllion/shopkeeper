@@ -9,6 +9,7 @@ import type { OfflineEntityType } from './db'
 export interface OfflineMutationResult<T> {
   data: T | null
   queued: boolean
+  clientRequestId: string
 }
 
 /** Wraps the "try online, queue on network error" pattern CheckoutModal pioneered for Sales,
@@ -19,7 +20,7 @@ export function useOfflineMutation<TPayload>(
   entityType: OfflineEntityType,
   displaySummary: (payload: TPayload) => string,
 ) {
-  const { activeBusiness } = useAuth()
+  const { activeBusiness, user } = useAuth()
   const businessId = activeBusiness?.businessId
   const isOnline = useOnlineStatus()
   const queryClient = useQueryClient()
@@ -32,7 +33,7 @@ export function useOfflineMutation<TPayload>(
       if (isOnline) {
         try {
           const data = await definition.call(payload as never, clientRequestId)
-          return { data, queued: false }
+          return { data, queued: false, clientRequestId }
         } catch (err) {
           if (!isNetworkError(err)) throw err
         }
@@ -48,11 +49,26 @@ export function useOfflineMutation<TPayload>(
         displaySummary: displaySummary(payload),
       })
 
-      return { data: null, queued: true }
+      return { data: null, queued: true, clientRequestId }
     },
-    onSuccess: async (result) => {
+    onSuccess: async (result, variables) => {
       if (result.queued) {
         await queryClient.invalidateQueries({ queryKey: ['sync-queue-count', businessId] })
+        // Writes a stand-in row into this entity's own offline cache so a queued create
+        // shows up in its list right away instead of only existing in the sync-queue popup
+        // until it actually reaches the server - see optimisticInsert's doc comment.
+        if (businessId && definition.optimisticInsert) {
+          await definition.optimisticInsert(variables.payload as never, {
+            businessId,
+            clientRequestId: result.clientRequestId,
+            userName: user ? `${user.firstName} ${user.lastName}` : '',
+          })
+          await definition.invalidate(queryClient)
+        }
+        if (businessId && definition.optimisticDelete) {
+          await definition.optimisticDelete(variables.payload as never, { businessId })
+          await definition.invalidate(queryClient)
+        }
       } else {
         await definition.invalidate(queryClient)
       }
