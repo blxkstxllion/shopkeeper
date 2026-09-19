@@ -10,28 +10,72 @@ import * as branchesApi from '@/api/branches'
 import * as businessSettingsApi from '@/api/businessSettings'
 import * as aboutApi from '@/api/about'
 import * as salesApi from '@/api/sales'
-import type { CreateProductPayload, UpdateProductPayload } from '@/types/product'
-import type { CreateCustomerPayload, UpdateCustomerPayload } from '@/types/customer'
-import type { CreateSupplierPayload, RestockFromSupplierPayload, UpdateSupplierPayload } from '@/types/supplier'
-import type { CreateExpensePayload, UpdateExpensePayload } from '@/types/expense'
+import { cacheList, cacheSingleton, getCachedList, getCachedSingleton } from './cache'
+import type { CreateProductPayload, PagedResult, Product, ProductCategory, UpdateProductPayload } from '@/types/product'
+import type { Customer, CreateCustomerPayload, UpdateCustomerPayload } from '@/types/customer'
+import type {
+  CreateSupplierPayload,
+  RestockFromSupplierPayload,
+  Supplier,
+  UpdateSupplierPayload,
+} from '@/types/supplier'
+import type { CreateExpensePayload, Expense, ExpenseCategory, UpdateExpensePayload } from '@/types/expense'
 import type { InviteEmployeePayload } from '@/types/employee'
 import type { RolePayload } from '@/types/role'
-import type { CreateBranchPayload, UpdateBranchPayload } from '@/types/business'
+import type { Branch, CreateBranchPayload, UpdateBranchPayload } from '@/types/business'
 import type { UpdateBusinessProfilePayload, UpdateTaxSettingsPayload } from '@/types/businessSettings'
 import type { UpdateBusinessAboutPayload } from '@/types/about'
 import type { AdjustStockPayload } from '@/api/inventory'
 import type { CreateSalePayload } from '@/types/sale'
 import type { OfflineEntityType } from './db'
 
+export interface OptimisticInsertContext {
+  businessId: string
+  clientRequestId: string
+  userName: string
+}
+
 export interface MutationDefinition<TPayload = unknown> {
   call: (payload: TPayload, clientRequestId: string) => Promise<unknown>
   /** Which cached queries to refresh after a successful sync - deliberately not "invalidate
    * everything," since that would refetch data the user isn't even looking at right now. */
   invalidate: (queryClient: QueryClient) => void | Promise<void>
+  /** Only for "create" mutations whose list the user is looking at right now - synthesizes a
+   * plausible row from the payload alone and writes it straight into that list's offline
+   * cache, so a queued create shows up immediately instead of only existing in the sync-queue
+   * popup until it actually reaches the server. The synthesized row (id prefixed `queued-`) is
+   * a stand-in only: the next successful online fetch for that list REPLACES the whole cached
+   * list wholesale (see cacheList/cacheSingleton), so it's automatically swapped for the real,
+   * server-assigned row once sync succeeds - no separate cleanup needed. Deliberately not
+   * implemented for every entity type - anything whose row needs a field this client can't
+   * safely fabricate (employee invites/join requests resolve role/permission display
+   * server-side; roles similarly) is left out on purpose rather than guessed at. */
+  optimisticInsert?: (payload: TPayload, ctx: OptimisticInsertContext) => Promise<void>
+  /** Same idea as optimisticInsert but for a delete/deactivate action on an EXISTING cached
+   * row - without this, clicking "Deactivate" while offline gave no visible feedback at all
+   * (the row just sat there unchanged until it actually synced), which is exactly what led a
+   * real user to click the same button 14 times thinking nothing had happened, queuing 14
+   * duplicate mutations for one action. Patching the row immediately means the button that
+   * triggered this (gated on `isActive` in every list page) stops rendering the moment it's
+   * clicked once, so it's structurally impossible to double-fire from the same click target. */
+  optimisticDelete?: (payload: TPayload, ctx: { businessId: string }) => Promise<void>
 }
 
 async function invalidateKeys(queryClient: QueryClient, keys: string[][]) {
   await Promise.all(keys.map((key) => queryClient.invalidateQueries({ queryKey: key })))
+}
+
+async function deactivateCachedItem<T extends { id: string; isActive: boolean }>(
+  store: 'branches' | 'customers' | 'suppliers',
+  businessId: string,
+  id: string,
+) {
+  const existing = await getCachedList<T>(store, businessId)
+  await cacheList(
+    store,
+    businessId,
+    existing.map((item) => (item.id === id ? { ...item, isActive: false } : item)),
+  )
 }
 
 export const mutationRegistry: Record<OfflineEntityType, MutationDefinition<never>> = {
@@ -61,6 +105,40 @@ export const mutationRegistry: Record<OfflineEntityType, MutationDefinition<neve
     call: (payload, clientRequestId) =>
       productsApi.createProduct({ ...(payload as CreateProductPayload), clientRequestId }),
     invalidate: (qc) => invalidateKeys(qc, [['products'], ['sellable-products'], ['inventory-stats']]),
+    optimisticInsert: async (payload, ctx) => {
+      const p = payload as CreateProductPayload
+      const singletonKey = `products:${p.branchId ?? 'all'}`
+      const [cached, categories, suppliers] = await Promise.all([
+        getCachedSingleton<PagedResult<Product>>(singletonKey, ctx.businessId),
+        getCachedList<ProductCategory>('categories', ctx.businessId),
+        getCachedList<Supplier>('suppliers', ctx.businessId),
+      ])
+      if (!cached) return // nothing cached for this branch yet - the next real fetch populates it normally
+      const optimistic: Product = {
+        id: `queued-${ctx.clientRequestId}`,
+        name: p.name,
+        sku: p.sku,
+        barcode: p.barcode ?? null,
+        description: p.description ?? null,
+        imageUrl: p.imageUrl ?? null,
+        categoryId: p.categoryId ?? null,
+        categoryName: categories.find((c) => c.id === p.categoryId)?.name ?? null,
+        supplierId: p.supplierId ?? null,
+        supplierName: suppliers.find((s) => s.id === p.supplierId)?.name ?? null,
+        sellingPrice: p.sellingPrice,
+        costPrice: p.costPrice,
+        minimumStock: p.minimumStock,
+        trackInventory: p.trackInventory,
+        isActive: true,
+        quantityOnHand: p.trackInventory ? p.initialQuantity : null,
+        isLowStock: p.trackInventory ? p.initialQuantity < p.minimumStock : false,
+      }
+      await cacheSingleton(singletonKey, ctx.businessId, {
+        ...cached,
+        items: [optimistic, ...cached.items],
+        totalCount: cached.totalCount + 1,
+      })
+    },
   },
   productUpdate: {
     call: (payload, clientRequestId) =>
@@ -78,6 +156,17 @@ export const mutationRegistry: Record<OfflineEntityType, MutationDefinition<neve
         clientRequestId,
       }),
     invalidate: (qc) => invalidateKeys(qc, [['product-categories']]),
+    optimisticInsert: async (payload, ctx) => {
+      const p = payload as { name: string; description?: string | null }
+      const existing = await getCachedList<ProductCategory>('categories', ctx.businessId)
+      const optimistic: ProductCategory = {
+        id: `queued-${ctx.clientRequestId}`,
+        name: p.name,
+        description: p.description ?? null,
+        isActive: true,
+      }
+      await cacheList('categories', ctx.businessId, [...existing, optimistic])
+    },
   },
   stockAdjustment: {
     call: (payload, clientRequestId) =>
@@ -88,6 +177,19 @@ export const mutationRegistry: Record<OfflineEntityType, MutationDefinition<neve
     call: (payload, clientRequestId) =>
       customersApi.createCustomer({ ...(payload as CreateCustomerPayload), clientRequestId }),
     invalidate: (qc) => invalidateKeys(qc, [['customers']]),
+    optimisticInsert: async (payload, ctx) => {
+      const p = payload as CreateCustomerPayload
+      const existing = await getCachedList<Customer>('customers', ctx.businessId)
+      const optimistic: Customer = {
+        id: `queued-${ctx.clientRequestId}`,
+        name: p.name,
+        phone: p.phone ?? null,
+        email: p.email ?? null,
+        address: p.address ?? null,
+        isActive: true,
+      }
+      await cacheList('customers', ctx.businessId, [...existing, optimistic])
+    },
   },
   customerUpdate: {
     call: (payload, clientRequestId) =>
@@ -97,11 +199,27 @@ export const mutationRegistry: Record<OfflineEntityType, MutationDefinition<neve
   customerDelete: {
     call: (payload, clientRequestId) => customersApi.deleteCustomer((payload as { id: string }).id, clientRequestId),
     invalidate: (qc) => invalidateKeys(qc, [['customers']]),
+    optimisticDelete: (payload, ctx) =>
+      deactivateCachedItem<Customer>('customers', ctx.businessId, (payload as { id: string }).id),
   },
   supplier: {
     call: (payload, clientRequestId) =>
       suppliersApi.createSupplier({ ...(payload as CreateSupplierPayload), clientRequestId }),
     invalidate: (qc) => invalidateKeys(qc, [['suppliers']]),
+    optimisticInsert: async (payload, ctx) => {
+      const p = payload as CreateSupplierPayload
+      const existing = await getCachedList<Supplier>('suppliers', ctx.businessId)
+      const optimistic: Supplier = {
+        id: `queued-${ctx.clientRequestId}`,
+        name: p.name,
+        contactName: p.contactName ?? null,
+        phone: p.phone ?? null,
+        email: p.email ?? null,
+        address: p.address ?? null,
+        isActive: true,
+      }
+      await cacheList('suppliers', ctx.businessId, [...existing, optimistic])
+    },
   },
   supplierUpdate: {
     call: (payload, clientRequestId) =>
@@ -111,6 +229,8 @@ export const mutationRegistry: Record<OfflineEntityType, MutationDefinition<neve
   supplierDelete: {
     call: (payload, clientRequestId) => suppliersApi.deleteSupplier((payload as { id: string }).id, clientRequestId),
     invalidate: (qc) => invalidateKeys(qc, [['suppliers']]),
+    optimisticDelete: (payload, ctx) =>
+      deactivateCachedItem<Supplier>('suppliers', ctx.businessId, (payload as { id: string }).id),
   },
   restock: {
     call: (payload, clientRequestId) => {
@@ -123,6 +243,27 @@ export const mutationRegistry: Record<OfflineEntityType, MutationDefinition<neve
     call: (payload, clientRequestId) =>
       expensesApi.createExpense({ ...(payload as CreateExpensePayload), clientRequestId }),
     invalidate: (qc) => invalidateKeys(qc, [['expenses']]),
+    optimisticInsert: async (payload, ctx) => {
+      const p = payload as CreateExpensePayload
+      const [existing, categories, branches] = await Promise.all([
+        getCachedList<Expense>('expenses', ctx.businessId),
+        getCachedList<ExpenseCategory>('expenseCategories', ctx.businessId),
+        getCachedList<Branch>('branches', ctx.businessId),
+      ])
+      const optimistic: Expense = {
+        id: `queued-${ctx.clientRequestId}`,
+        branchId: p.branchId ?? null,
+        branchName: p.branchId ? (branches.find((b) => b.id === p.branchId)?.name ?? null) : null,
+        expenseCategoryId: p.expenseCategoryId,
+        categoryName: categories.find((c) => c.id === p.expenseCategoryId)?.name ?? 'Uncategorized',
+        amount: p.amount,
+        expenseDate: p.expenseDate,
+        description: p.description ?? null,
+        createdByName: ctx.userName,
+        createdAt: new Date().toISOString(),
+      }
+      await cacheList('expenses', ctx.businessId, [optimistic, ...existing])
+    },
   },
   expenseUpdate: {
     call: (payload, clientRequestId) =>
@@ -132,6 +273,17 @@ export const mutationRegistry: Record<OfflineEntityType, MutationDefinition<neve
   expenseDelete: {
     call: (payload, clientRequestId) => expensesApi.deleteExpense((payload as { id: string }).id, clientRequestId),
     invalidate: (qc) => invalidateKeys(qc, [['expenses']]),
+    // Expense has no isActive field (unlike branches/customers/suppliers) - its "Delete"
+    // button really does remove the row, so the optimistic version removes it too.
+    optimisticDelete: async (payload, ctx) => {
+      const { id } = payload as { id: string }
+      const existing = await getCachedList<Expense>('expenses', ctx.businessId)
+      await cacheList(
+        'expenses',
+        ctx.businessId,
+        existing.filter((e) => e.id !== id),
+      )
+    },
   },
   expenseCategory: {
     call: (payload, clientRequestId) =>
@@ -140,6 +292,17 @@ export const mutationRegistry: Record<OfflineEntityType, MutationDefinition<neve
         clientRequestId,
       }),
     invalidate: (qc) => invalidateKeys(qc, [['expense-categories']]),
+    optimisticInsert: async (payload, ctx) => {
+      const p = payload as { name: string; description?: string | null }
+      const existing = await getCachedList<ExpenseCategory>('expenseCategories', ctx.businessId)
+      const optimistic: ExpenseCategory = {
+        id: `queued-${ctx.clientRequestId}`,
+        name: p.name,
+        description: p.description ?? null,
+        isActive: true,
+      }
+      await cacheList('expenseCategories', ctx.businessId, [...existing, optimistic])
+    },
   },
   employeeInvite: {
     call: (payload, clientRequestId) =>
@@ -179,6 +342,23 @@ export const mutationRegistry: Record<OfflineEntityType, MutationDefinition<neve
     call: (payload, clientRequestId) =>
       branchesApi.createBranch({ ...(payload as CreateBranchPayload), clientRequestId }),
     invalidate: (qc) => invalidateKeys(qc, [['branches']]),
+    optimisticInsert: async (payload, ctx) => {
+      const p = payload as CreateBranchPayload
+      const existing = await getCachedList<Branch>('branches', ctx.businessId)
+      const optimistic: Branch = {
+        id: `queued-${ctx.clientRequestId}`,
+        name: p.name,
+        code: p.code,
+        address: p.address ?? null,
+        city: p.city ?? null,
+        country: p.country ?? null,
+        phone: p.phone ?? null,
+        email: p.email ?? null,
+        isMainBranch: false,
+        isActive: true,
+      }
+      await cacheList('branches', ctx.businessId, [...existing, optimistic])
+    },
   },
   branchUpdate: {
     call: (payload, clientRequestId) =>
@@ -188,6 +368,8 @@ export const mutationRegistry: Record<OfflineEntityType, MutationDefinition<neve
   branchDelete: {
     call: (payload, clientRequestId) => branchesApi.deleteBranch((payload as { id: string }).id, clientRequestId),
     invalidate: (qc) => invalidateKeys(qc, [['branches']]),
+    optimisticDelete: (payload, ctx) =>
+      deactivateCachedItem<Branch>('branches', ctx.businessId, (payload as { id: string }).id),
   },
   businessProfile: {
     call: (payload, clientRequestId) =>
