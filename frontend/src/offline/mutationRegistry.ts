@@ -20,8 +20,14 @@ import type {
   UpdateSupplierPayload,
 } from '@/types/supplier'
 import type { CreateExpensePayload, Expense, ExpenseCategory, UpdateExpensePayload } from '@/types/expense'
-import type { InviteEmployeePayload } from '@/types/employee'
-import type { RolePayload } from '@/types/role'
+import type {
+  BusinessMember,
+  BusinessUsersResponse,
+  InviteEmployeePayload,
+  PendingInvitationItem,
+  Role,
+} from '@/types/employee'
+import type { RoleManagement, RolePayload } from '@/types/role'
 import type { Branch, CreateBranchPayload, UpdateBranchPayload } from '@/types/business'
 import type { UpdateBusinessProfilePayload, UpdateTaxSettingsPayload } from '@/types/businessSettings'
 import type { UpdateBusinessAboutPayload } from '@/types/about'
@@ -51,6 +57,10 @@ export interface MutationDefinition<TPayload = unknown> {
    * safely fabricate (employee invites/join requests resolve role/permission display
    * server-side; roles similarly) is left out on purpose rather than guessed at. */
   optimisticInsert?: (payload: TPayload, ctx: OptimisticInsertContext) => Promise<void>
+  /** Same idea as optimisticInsert but patches the fields of an EXISTING cached row - an edit
+   * made offline (e.g. a customer's phone number) otherwise wouldn't show until it actually
+   * synced, same gap optimisticDelete closes for deletes/deactivates. */
+  optimisticUpdate?: (payload: TPayload, ctx: OptimisticInsertContext) => Promise<void>
   /** Same idea as optimisticInsert but for a delete/deactivate action on an EXISTING cached
    * row - without this, clicking "Deactivate" while offline gave no visible feedback at all
    * (the row just sat there unchanged until it actually synced), which is exactly what led a
@@ -75,6 +85,49 @@ async function deactivateCachedItem<T extends { id: string; isActive: boolean }>
     store,
     businessId,
     existing.map((item) => (item.id === id ? { ...item, isActive: false } : item)),
+  )
+}
+
+async function updateCachedItem<T extends { id: string }>(
+  store: 'branches' | 'customers' | 'suppliers' | 'expenses',
+  businessId: string,
+  id: string,
+  patch: Partial<T>,
+) {
+  const existing = await getCachedList<T>(store, businessId)
+  await cacheList(
+    store,
+    businessId,
+    existing.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+  )
+}
+
+/** Same idea as updateCachedItem/cacheList, but for the singleton-cached array shapes
+ * (RoleManagement[], BusinessUsersResponse.members/pendingInvitations/joinRequests) instead of
+ * a plain OfflineListStore - those go through cacheSingleton/getCachedSingleton, not
+ * cacheList/getCachedList. */
+async function updateCachedSingletonArrayItem<T extends { id: string }>(
+  key: string,
+  businessId: string,
+  id: string,
+  patch: Partial<T>,
+) {
+  const existing = await getCachedSingleton<T[]>(key, businessId)
+  if (!existing) return
+  await cacheSingleton(
+    key,
+    businessId,
+    existing.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+  )
+}
+
+async function removeCachedSingletonArrayItem<T extends { id: string }>(key: string, businessId: string, id: string) {
+  const existing = await getCachedSingleton<T[]>(key, businessId)
+  if (!existing) return
+  await cacheSingleton(
+    key,
+    businessId,
+    existing.filter((item) => item.id !== id),
   )
 }
 
@@ -144,6 +197,42 @@ export const mutationRegistry: Record<OfflineEntityType, MutationDefinition<neve
     call: (payload, clientRequestId) =>
       productsApi.updateProduct({ ...(payload as UpdateProductPayload), clientRequestId }),
     invalidate: (qc) => invalidateKeys(qc, [['products'], ['sellable-products']]),
+    optimisticUpdate: async (payload, ctx) => {
+      const p = payload as UpdateProductPayload
+      const singletonKey = `products:${p.branchId ?? 'all'}`
+      const [cached, categories, suppliers] = await Promise.all([
+        getCachedSingleton<PagedResult<Product>>(singletonKey, ctx.businessId),
+        getCachedList<ProductCategory>('categories', ctx.businessId),
+        getCachedList<Supplier>('suppliers', ctx.businessId),
+      ])
+      if (!cached) return
+      await cacheSingleton(singletonKey, ctx.businessId, {
+        ...cached,
+        items: cached.items.map((item) =>
+          item.id === p.id
+            ? {
+                ...item,
+                name: p.name,
+                sku: p.sku,
+                barcode: p.barcode ?? null,
+                description: p.description ?? null,
+                imageUrl: p.imageUrl ?? null,
+                categoryId: p.categoryId ?? null,
+                categoryName: categories.find((c) => c.id === p.categoryId)?.name ?? null,
+                supplierId: p.supplierId ?? null,
+                supplierName: suppliers.find((s) => s.id === p.supplierId)?.name ?? null,
+                sellingPrice: p.sellingPrice,
+                costPrice: p.costPrice,
+                minimumStock: p.minimumStock,
+                trackInventory: p.trackInventory,
+                isActive: p.isActive,
+                // quantityOnHand/isLowStock deliberately untouched - an edit here doesn't
+                // change stock, that's stockAdjustment's job.
+              }
+            : item,
+        ),
+      })
+    },
   },
   productDelete: {
     call: (payload, clientRequestId) => productsApi.deleteProduct((payload as { id: string }).id, clientRequestId),
@@ -195,6 +284,16 @@ export const mutationRegistry: Record<OfflineEntityType, MutationDefinition<neve
     call: (payload, clientRequestId) =>
       customersApi.updateCustomer({ ...(payload as UpdateCustomerPayload), clientRequestId }),
     invalidate: (qc) => invalidateKeys(qc, [['customers']]),
+    optimisticUpdate: (payload, ctx) => {
+      const p = payload as UpdateCustomerPayload
+      return updateCachedItem<Customer>('customers', ctx.businessId, p.id, {
+        name: p.name,
+        phone: p.phone ?? null,
+        email: p.email ?? null,
+        address: p.address ?? null,
+        isActive: p.isActive,
+      })
+    },
   },
   customerDelete: {
     call: (payload, clientRequestId) => customersApi.deleteCustomer((payload as { id: string }).id, clientRequestId),
@@ -225,6 +324,17 @@ export const mutationRegistry: Record<OfflineEntityType, MutationDefinition<neve
     call: (payload, clientRequestId) =>
       suppliersApi.updateSupplier({ ...(payload as UpdateSupplierPayload), clientRequestId }),
     invalidate: (qc) => invalidateKeys(qc, [['suppliers']]),
+    optimisticUpdate: (payload, ctx) => {
+      const p = payload as UpdateSupplierPayload
+      return updateCachedItem<Supplier>('suppliers', ctx.businessId, p.id, {
+        name: p.name,
+        contactName: p.contactName ?? null,
+        phone: p.phone ?? null,
+        email: p.email ?? null,
+        address: p.address ?? null,
+        isActive: p.isActive,
+      })
+    },
   },
   supplierDelete: {
     call: (payload, clientRequestId) => suppliersApi.deleteSupplier((payload as { id: string }).id, clientRequestId),
@@ -269,6 +379,22 @@ export const mutationRegistry: Record<OfflineEntityType, MutationDefinition<neve
     call: (payload, clientRequestId) =>
       expensesApi.updateExpense({ ...(payload as UpdateExpensePayload), clientRequestId }),
     invalidate: (qc) => invalidateKeys(qc, [['expenses']]),
+    optimisticUpdate: async (payload, ctx) => {
+      const p = payload as UpdateExpensePayload
+      const [categories, branches] = await Promise.all([
+        getCachedList<ExpenseCategory>('expenseCategories', ctx.businessId),
+        getCachedList<Branch>('branches', ctx.businessId),
+      ])
+      await updateCachedItem<Expense>('expenses', ctx.businessId, p.id, {
+        branchId: p.branchId ?? null,
+        branchName: p.branchId ? (branches.find((b) => b.id === p.branchId)?.name ?? null) : null,
+        expenseCategoryId: p.expenseCategoryId,
+        categoryName: categories.find((c) => c.id === p.expenseCategoryId)?.name ?? 'Uncategorized',
+        amount: p.amount,
+        expenseDate: p.expenseDate,
+        description: p.description ?? null,
+      })
+    },
   },
   expenseDelete: {
     call: (payload, clientRequestId) => expensesApi.deleteExpense((payload as { id: string }).id, clientRequestId),
@@ -308,11 +434,46 @@ export const mutationRegistry: Record<OfflineEntityType, MutationDefinition<neve
     call: (payload, clientRequestId) =>
       employeesApi.inviteEmployee({ ...(payload as InviteEmployeePayload), clientRequestId }),
     invalidate: (qc) => invalidateKeys(qc, [['business-users']]),
+    optimisticInsert: async (payload, ctx) => {
+      const p = payload as InviteEmployeePayload
+      const [cached, roles, branches] = await Promise.all([
+        getCachedSingleton<BusinessUsersResponse>('businessUsers', ctx.businessId),
+        getCachedList<Role>('roles', ctx.businessId),
+        getCachedList<Branch>('branches', ctx.businessId),
+      ])
+      if (!cached) return
+      const optimistic: PendingInvitationItem = {
+        id: `queued-${ctx.clientRequestId}`,
+        email: p.email,
+        roleName: roles.find((r) => r.id === p.roleId)?.name ?? 'Unknown role',
+        branchName: p.branchId ? (branches.find((b) => b.id === p.branchId)?.name ?? null) : null,
+        invitedAt: new Date().toISOString(),
+        // Matches InviteEmployeeCommand's ExpiresAt = UtcNow.AddDays(7) - the real invite's
+        // actual expiry once synced, this is just a plausible stand-in in the meantime.
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      }
+      await cacheSingleton('businessUsers', ctx.businessId, {
+        ...cached,
+        pendingInvitations: [...cached.pendingInvitations, optimistic],
+      })
+    },
   },
   employeeRemove: {
     call: (payload, clientRequestId) =>
       employeesApi.removeEmployee((payload as { businessUserId: string }).businessUserId, clientRequestId),
     invalidate: (qc) => invalidateKeys(qc, [['business-users']]),
+    // The backend query excludes Removed members entirely (GetBusinessUsersQuery filters
+    // Status != Removed), so the optimistic version removes the row rather than tagging its
+    // status - matching what the real list will look like once this actually syncs.
+    optimisticDelete: async (payload, ctx) => {
+      const { businessUserId } = payload as { businessUserId: string }
+      const cached = await getCachedSingleton<BusinessUsersResponse>('businessUsers', ctx.businessId)
+      if (!cached) return
+      await cacheSingleton('businessUsers', ctx.businessId, {
+        ...cached,
+        members: cached.members.filter((m) => m.businessUserId !== businessUserId),
+      })
+    },
   },
   joinRequestApprove: {
     call: (payload, clientRequestId) => {
@@ -320,23 +481,95 @@ export const mutationRegistry: Record<OfflineEntityType, MutationDefinition<neve
       return employeesApi.approveJoinRequest(id, { ...rest, clientRequestId })
     },
     invalidate: (qc) => invalidateKeys(qc, [['business-users']]),
+    // Approving a join request is really two changes at once - the request disappears from
+    // joinRequests AND a new member appears in members. optimisticInsert/optimisticDelete both
+    // run independently (see useOfflineMutation), so this does both against the same cache.
+    optimisticInsert: async (payload, ctx) => {
+      const p = payload as { id: string; roleId: string; branchId?: string | null }
+      const [cached, roles, branches] = await Promise.all([
+        getCachedSingleton<BusinessUsersResponse>('businessUsers', ctx.businessId),
+        getCachedList<Role>('roles', ctx.businessId),
+        getCachedList<Branch>('branches', ctx.businessId),
+      ])
+      if (!cached) return
+      const request = cached.joinRequests.find((r) => r.id === p.id)
+      if (!request) return
+      const optimistic: BusinessMember = {
+        businessUserId: `queued-${ctx.clientRequestId}`,
+        userId: `queued-${ctx.clientRequestId}`,
+        firstName: request.firstName,
+        lastName: request.lastName,
+        email: request.email,
+        roleName: roles.find((r) => r.id === p.roleId)?.name ?? 'Unknown role',
+        branchName: p.branchId ? (branches.find((b) => b.id === p.branchId)?.name ?? null) : null,
+        status: 'Active',
+        isOwner: false,
+        joinedAt: new Date().toISOString(),
+      }
+      await cacheSingleton('businessUsers', ctx.businessId, {
+        ...cached,
+        members: [...cached.members, optimistic],
+      })
+    },
+    optimisticDelete: async (payload, ctx) => {
+      const { id } = payload as { id: string }
+      const cached = await getCachedSingleton<BusinessUsersResponse>('businessUsers', ctx.businessId)
+      if (!cached) return
+      await cacheSingleton('businessUsers', ctx.businessId, {
+        ...cached,
+        joinRequests: cached.joinRequests.filter((r) => r.id !== id),
+      })
+    },
   },
   joinRequestReject: {
     call: (payload, clientRequestId) => employeesApi.rejectJoinRequest((payload as { id: string }).id, clientRequestId),
     invalidate: (qc) => invalidateKeys(qc, [['business-users']]),
+    optimisticDelete: async (payload, ctx) => {
+      const { id } = payload as { id: string }
+      const cached = await getCachedSingleton<BusinessUsersResponse>('businessUsers', ctx.businessId)
+      if (!cached) return
+      await cacheSingleton('businessUsers', ctx.businessId, {
+        ...cached,
+        joinRequests: cached.joinRequests.filter((r) => r.id !== id),
+      })
+    },
   },
   role: {
     call: (payload, clientRequestId) => rolesApi.createRole({ ...(payload as RolePayload), clientRequestId }),
     invalidate: (qc) => invalidateKeys(qc, [['roles'], ['role-management']]),
+    optimisticInsert: async (payload, ctx) => {
+      const p = payload as RolePayload
+      const existing = await getCachedSingleton<RoleManagement[]>('roleManagement', ctx.businessId)
+      if (!existing) return
+      const optimistic: RoleManagement = {
+        id: `queued-${ctx.clientRequestId}`,
+        name: p.name,
+        description: p.description,
+        isSystemRole: false,
+        permissionKeys: p.permissionKeys,
+        employeeCount: 0,
+      }
+      await cacheSingleton('roleManagement', ctx.businessId, [...existing, optimistic])
+    },
   },
   roleUpdate: {
     call: (payload, clientRequestId) =>
       rolesApi.updateRole({ ...(payload as RolePayload & { id: string }), clientRequestId }),
     invalidate: (qc) => invalidateKeys(qc, [['roles'], ['role-management']]),
+    optimisticUpdate: (payload, ctx) => {
+      const p = payload as RolePayload & { id: string }
+      return updateCachedSingletonArrayItem<RoleManagement>('roleManagement', ctx.businessId, p.id, {
+        name: p.name,
+        description: p.description,
+        permissionKeys: p.permissionKeys,
+      })
+    },
   },
   roleDelete: {
     call: (payload, clientRequestId) => rolesApi.deleteRole((payload as { id: string }).id, clientRequestId),
     invalidate: (qc) => invalidateKeys(qc, [['roles'], ['role-management']]),
+    optimisticDelete: (payload, ctx) =>
+      removeCachedSingletonArrayItem<RoleManagement>('roleManagement', ctx.businessId, (payload as { id: string }).id),
   },
   branch: {
     call: (payload, clientRequestId) =>
@@ -364,6 +597,22 @@ export const mutationRegistry: Record<OfflineEntityType, MutationDefinition<neve
     call: (payload, clientRequestId) =>
       branchesApi.updateBranch({ ...(payload as UpdateBranchPayload), clientRequestId }),
     invalidate: (qc) => invalidateKeys(qc, [['branches']]),
+    optimisticUpdate: (payload, ctx) => {
+      const p = payload as UpdateBranchPayload
+      return updateCachedItem<Branch>('branches', ctx.businessId, p.id, {
+        name: p.name,
+        code: p.code,
+        address: p.address ?? null,
+        city: p.city ?? null,
+        country: p.country ?? null,
+        phone: p.phone ?? null,
+        email: p.email ?? null,
+        // Payload field is `isMain`, entity field is `isMainBranch` - not a typo, they're
+        // genuinely named differently between the two.
+        isMainBranch: p.isMain,
+        isActive: p.isActive,
+      })
+    },
   },
   branchDelete: {
     call: (payload, clientRequestId) => branchesApi.deleteBranch((payload as { id: string }).id, clientRequestId),
