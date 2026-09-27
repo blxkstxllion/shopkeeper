@@ -65,6 +65,14 @@ export function useOfflineMutation<TPayload>(
           })
           await definition.invalidate(queryClient)
         }
+        if (businessId && definition.optimisticUpdate) {
+          await definition.optimisticUpdate(variables.payload as never, {
+            businessId,
+            clientRequestId: result.clientRequestId,
+            userName: user ? `${user.firstName} ${user.lastName}` : '',
+          })
+          await definition.invalidate(queryClient)
+        }
         if (businessId && definition.optimisticDelete) {
           await definition.optimisticDelete(variables.payload as never, { businessId })
           await definition.invalidate(queryClient)
