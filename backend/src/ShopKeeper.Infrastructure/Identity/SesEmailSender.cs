@@ -29,7 +29,7 @@ public class SesEmailSender(
         return SendAsync(
             toEmail,
             "Verify your email address",
-            BuildBody(
+            EmailTemplates.Build(
                 firstName,
                 "Verify your email address to finish setting up your account.",
                 "Verify email",
@@ -43,7 +43,7 @@ public class SesEmailSender(
         return SendAsync(
             toEmail,
             "Reset your password",
-            BuildBody(
+            EmailTemplates.Build(
                 firstName,
                 "We received a request to reset your password. If you didn't make this request, you can safely ignore this email.",
                 "Reset password",
@@ -60,7 +60,7 @@ public class SesEmailSender(
         return SendAsync(
             toEmail,
             $"{inviterName} invited you to join {businessName} on The Shop Keeper",
-            BuildBody(
+            EmailTemplates.Build(
                 null,
                 $"{encodedInviter} invited you to join <strong>{encodedBusiness}</strong> on The Shop Keeper.",
                 "Accept invite",
@@ -76,7 +76,7 @@ public class SesEmailSender(
         // only "Raw" (a full RFC 2045 MIME message) does, so this is the one email that needs
         // to actually build MIME instead of handing SES a subject/body pair.
         var encodedBusiness = WebUtility.HtmlEncode(businessName);
-        var body = BuildBody(
+        var body = EmailTemplates.Build(
             null,
             $"Your scheduled report for <strong>{encodedBusiness}</strong> is attached.",
             "Open The Shop Keeper",
@@ -145,19 +145,4 @@ public class SesEmailSender(
             logger.LogError(ex, "Failed to send email to {Email} via SES", toEmail);
         }
     }
-
-    private static (string Html, string Text) BuildBody(string? firstName, string message, string ctaLabel, string ctaLink)
-    {
-        var greeting = string.IsNullOrWhiteSpace(firstName) ? "Hi," : $"Hi {WebUtility.HtmlEncode(firstName)},";
-        var html = $"""
-            <p>{greeting}</p>
-            <p>{message}</p>
-            <p><a href="{ctaLink}" style="display:inline-block;padding:10px 20px;background:#16a34a;color:#fff;border-radius:8px;text-decoration:none;">{ctaLabel}</a></p>
-            <p style="color:#666;font-size:13px;">If the button doesn't work, copy and paste this link into your browser:<br />{ctaLink}</p>
-            """;
-        var text = $"{greeting}\n\n{StripHtml(message)}\n\n{ctaLabel}: {ctaLink}";
-        return (html, text);
-    }
-
-    private static string StripHtml(string value) => value.Replace("<strong>", "").Replace("</strong>", "");
 }
