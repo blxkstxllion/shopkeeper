@@ -8,10 +8,10 @@ import { Alert } from '@/components/ui/Alert'
 import { getProductCategories, uploadProductImage } from '@/api/products'
 import { getSuppliers } from '@/api/suppliers'
 import { ApiError } from '@/lib/api-client'
-import { resolveUploadUrl } from '@/lib/format'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { useOfflineMutation } from '@/offline/useOfflineMutation'
 import { useOfflineListQuery } from '@/offline/useOfflineQuery'
+import { OfflineImage } from '@/components/ui/OfflineImage'
 import type { ProductCategory } from '@/types/product'
 import type { Supplier } from '@/types/supplier'
 import type { Product } from '@/types/product'
@@ -187,11 +187,12 @@ export function ProductFormModal({
 
         <div className="flex items-center gap-4">
           <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
-            {imageUrl ? (
-              <img src={resolveUploadUrl(imageUrl)} alt="Product" className="h-full w-full object-cover" />
-            ) : (
-              <Package className="h-8 w-8 text-slate-300 dark:text-slate-600" />
-            )}
+            <OfflineImage
+              src={imageUrl}
+              alt="Product"
+              className="h-full w-full object-cover"
+              fallback={<Package className="h-8 w-8 text-slate-300 dark:text-slate-600" />}
+            />
           </div>
           <div className="flex flex-col gap-1.5">
             <input

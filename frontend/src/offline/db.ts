@@ -3,7 +3,7 @@ import type { CreateSalePayload, SellableProduct } from '@/types/sale'
 import type { ProductCategory } from '@/types/product'
 import type { Customer } from '@/types/customer'
 
-const DB_VERSION = 3
+const DB_VERSION = 4
 
 /** Every offline-eligible mutation type - each one maps 1:1 to a backend command that opted
  * into ISupportsClientRequestId (IdempotencyBehavior). Kept as a flat union rather than a
@@ -91,6 +91,14 @@ export interface OfflineDbSchema extends DBSchema {
     key: string // clientRequestId
     value: QueuedMutation
   }
+  /** Actual downloaded image bytes (product photos, business logo) - eager-synced at login,
+   * not lazily like everything else - see offline/imageCache.ts. Keyed by the fully-resolved
+   * URL (post resolveUploadUrl), not the raw origin-relative path the API returns, so lookups
+   * never have to guess which form they were given. */
+  imageBlobs: {
+    key: string // resolved URL
+    value: { url: string; blob: Blob; cachedAt: string }
+  }
 }
 
 /** One database per business, not one shared database - a shared terminal that logs
@@ -139,6 +147,9 @@ export function getOfflineDb(businessId: string): Promise<IDBPDatabase<OfflineDb
 
         if (!database.objectStoreNames.contains('mutationQueue')) {
           database.createObjectStore('mutationQueue', { keyPath: 'id' })
+        }
+        if (!database.objectStoreNames.contains('imageBlobs')) {
+          database.createObjectStore('imageBlobs', { keyPath: 'url' })
         }
 
         // v2 -> v3: the old Sales-only `outbox` store is folded into the new generic

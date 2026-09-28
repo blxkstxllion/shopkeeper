@@ -9,10 +9,11 @@ import { StatTile } from '@/components/ui/StatTile'
 import { Alert } from '@/components/ui/Alert'
 import { FormSkeleton } from '@/components/ui/Skeleton'
 import { ApiError } from '@/lib/api-client'
-import { formatMoney, resolveUploadUrl } from '@/lib/format'
+import { formatMoney } from '@/lib/format'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { useOfflineSingletonQuery } from '@/offline/useOfflineQuery'
 import { useOfflineMutation } from '@/offline/useOfflineMutation'
+import { OfflineImage } from '@/components/ui/OfflineImage'
 import type { BusinessAbout } from '@/types/about'
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
@@ -114,13 +115,16 @@ export function AboutPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <div className="mb-6 flex items-center gap-3">
-        {data.logoUrl ? (
-          <img src={resolveUploadUrl(data.logoUrl)} alt="" className="h-12 w-12 rounded-lg object-cover" />
-        ) : (
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">
-            <Store className="h-6 w-6" />
-          </div>
-        )}
+        <OfflineImage
+          src={data.logoUrl}
+          alt=""
+          className="h-12 w-12 rounded-lg object-cover"
+          fallback={
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">
+              <Store className="h-6 w-6" />
+            </div>
+          }
+        />
         <div>
           <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{data.businessName}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">About this shop</p>
@@ -141,11 +145,12 @@ export function AboutPage() {
           >
             <div className="flex items-center gap-4">
               <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
-                {logoUrl ? (
-                  <img src={resolveUploadUrl(logoUrl)} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <Store className="h-6 w-6 text-slate-300 dark:text-slate-600" />
-                )}
+                <OfflineImage
+                  src={logoUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  fallback={<Store className="h-6 w-6 text-slate-300 dark:text-slate-600" />}
+                />
               </div>
               <div className="flex flex-col gap-1.5">
                 <input
