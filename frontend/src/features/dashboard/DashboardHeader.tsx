@@ -6,7 +6,9 @@ import { uploadProfilePhoto, updateProfilePhoto } from '@/api/auth'
 import { Avatar } from '@/components/ui/Avatar'
 import { Alert } from '@/components/ui/Alert'
 import { ApiError } from '@/lib/api-client'
+import { resolveUploadUrl } from '@/lib/format'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
+import { cacheImageBlob } from '@/offline/imageCache'
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
@@ -88,6 +90,7 @@ export function DashboardHeader() {
       const { url } = await uploadProfilePhoto(file)
       await updateProfilePhoto(url)
       await refreshUser()
+      if (activeBusiness?.businessId) void cacheImageBlob(resolveUploadUrl(url), activeBusiness.businessId)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Unable to update your photo. Please try again.')
     } finally {
