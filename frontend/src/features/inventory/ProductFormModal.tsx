@@ -8,9 +8,12 @@ import { Alert } from '@/components/ui/Alert'
 import { getProductCategories, uploadProductImage } from '@/api/products'
 import { getSuppliers } from '@/api/suppliers'
 import { ApiError } from '@/lib/api-client'
+import { resolveUploadUrl } from '@/lib/format'
+import { useAuth } from '@/contexts/AuthContext'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { useOfflineMutation } from '@/offline/useOfflineMutation'
 import { useOfflineListQuery } from '@/offline/useOfflineQuery'
+import { cacheImageBlob } from '@/offline/imageCache'
 import { OfflineImage } from '@/components/ui/OfflineImage'
 import type { ProductCategory } from '@/types/product'
 import type { Supplier } from '@/types/supplier'
@@ -34,6 +37,7 @@ export function ProductFormModal({
   product?: Product | null
 }) {
   const queryClient = useQueryClient()
+  const { activeBusiness } = useAuth()
   const isOnline = useOnlineStatus()
   const [serverError, setServerError] = useState<string | null>(null)
   const [imageUrl, setImageUrl] = useState<string | null>(null)
@@ -173,6 +177,9 @@ export function ProductFormModal({
     try {
       const { url } = await uploadProductImage(file)
       setImageUrl(url)
+      // Cache the actual bytes the moment we have them, not just at the next login's eager
+      // sync - there's no reason to wait when the app already has the fresh image right now.
+      if (activeBusiness?.businessId) void cacheImageBlob(resolveUploadUrl(url), activeBusiness.businessId)
     } catch (err) {
       setServerError(err instanceof ApiError ? err.message : 'Unable to upload that image. Please try again.')
     } finally {
