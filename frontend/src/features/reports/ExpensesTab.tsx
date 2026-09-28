@@ -11,6 +11,8 @@ import { UpgradePrompt } from '@/components/ui/UpgradePrompt'
 import { ApiError } from '@/lib/api-client'
 import { formatMoney } from '@/lib/format'
 import { downloadCsv } from '@/lib/csv'
+import { useOfflineSingletonQuery } from '@/offline/useOfflineQuery'
+import { reportSingletonKey } from '@/offline/eagerSync'
 import { useReportComparison } from './useReportComparison'
 import { ReportCompareControl } from './ReportCompareControl'
 import type { DateRange } from '@/components/ui/DateRangePicker'
@@ -19,10 +21,11 @@ export function ExpensesTab({ range, branchId }: { range: DateRange; branchId?: 
   const compare = useReportComparison()
   const { compareRange, delta } = compare
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['reports-expenses', range, branchId],
-    queryFn: () => getExpenseReport({ from: range.from, to: range.to, branchId }),
-  })
+  const { data, isLoading, error } = useOfflineSingletonQuery(
+    ['reports-expenses', range, branchId],
+    reportSingletonKey('Expenses', branchId, range),
+    () => getExpenseReport({ from: range.from, to: range.to, branchId }),
+  )
 
   const { data: compareData } = useQuery({
     queryKey: ['reports-expenses', compareRange, branchId],

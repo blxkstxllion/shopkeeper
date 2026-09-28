@@ -10,6 +10,8 @@ import { UpgradePrompt } from '@/components/ui/UpgradePrompt'
 import { ApiError } from '@/lib/api-client'
 import { formatMoney } from '@/lib/format'
 import { downloadCsv } from '@/lib/csv'
+import { useOfflineSingletonQuery } from '@/offline/useOfflineQuery'
+import { reportSingletonKey } from '@/offline/eagerSync'
 import { useReportComparison } from './useReportComparison'
 import { ReportCompareControl } from './ReportCompareControl'
 import type { DateRange } from '@/components/ui/DateRangePicker'
@@ -23,10 +25,11 @@ export function InventoryTab({ range, branchId }: { range: DateRange; branchId?:
   const compare = useReportComparison()
   const { compareRange, delta } = compare
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['reports-inventory', range, branchId],
-    queryFn: () => getInventoryReport({ from: range.from, to: range.to, branchId }),
-  })
+  const { data, isLoading, error } = useOfflineSingletonQuery(
+    ['reports-inventory', range, branchId],
+    reportSingletonKey('Inventory', branchId, range),
+    () => getInventoryReport({ from: range.from, to: range.to, branchId }),
+  )
 
   // Only turnover (units sold in the range) is actually range-dependent - valuation and
   // stock counts below are point-in-time snapshots of current inventory, not filtered by

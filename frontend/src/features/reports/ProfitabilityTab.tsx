@@ -12,6 +12,8 @@ import { UpgradePrompt } from '@/components/ui/UpgradePrompt'
 import { ApiError } from '@/lib/api-client'
 import { formatMoney } from '@/lib/format'
 import { downloadCsv } from '@/lib/csv'
+import { useOfflineSingletonQuery } from '@/offline/useOfflineQuery'
+import { reportSingletonKey } from '@/offline/eagerSync'
 import { useReportComparison } from './useReportComparison'
 import { ReportCompareControl } from './ReportCompareControl'
 import type { DateRange } from '@/components/ui/DateRangePicker'
@@ -21,11 +23,18 @@ export function ProfitabilityTab({ range, branchId }: { range: DateRange; branch
   const compare = useReportComparison()
   const { compareRange, delta } = compare
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['reports-profitability', range, branchId],
-    queryFn: () => getProfitabilityReport({ from: range.from, to: range.to, branchId }),
-  })
+  // Offline-aware for the exact range/branch combo eager sync seeds (see eagerSync.ts) - a
+  // custom range still falls back to whatever was cached the last time it happened to be
+  // viewed online, same as every other lazily-cached screen.
+  const { data, isLoading, error } = useOfflineSingletonQuery(
+    ['reports-profitability', range, branchId],
+    reportSingletonKey('Profitability', branchId, range),
+    () => getProfitabilityReport({ from: range.from, to: range.to, branchId }),
+  )
 
+  // Comparison ranges are arbitrary and not part of the eager-synced default view - left as a
+  // plain online-only query rather than over-extending the offline cache to every possible
+  // date range a user could pick.
   const { data: compareData } = useQuery({
     queryKey: ['reports-profitability', compareRange, branchId],
     queryFn: () => getProfitabilityReport({ from: compareRange!.from, to: compareRange!.to, branchId }),
