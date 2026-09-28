@@ -6,8 +6,18 @@ import { clearOfflineDb } from '@/offline/db'
 import { setActiveCurrencyCode } from '@/lib/format'
 import { applyColorTheme } from '@/lib/colorTheme'
 import { loadSessionSnapshot, saveSessionSnapshot, clearSessionSnapshot } from '@/lib/session-cache'
+import { runEagerSync } from '@/offline/eagerSync'
 import type { AuthResult, User, UserBusiness } from '@/types/auth'
 import type { Business } from '@/types/business'
+
+/** Fire-and-forget - eager sync is a background warm-up (see eagerSync.ts's own doc comment),
+ * never something a login/business-switch/onboarding call should wait on or fail because of.
+ * Only called from paths that just got a REAL server response (a genuine login, token
+ * refresh, business switch, or onboarding completion) - never from the cached-snapshot cold
+ * start path, since that one specifically has no confirmed connectivity to sync anything with. */
+function triggerEagerSync(businessId: string | null, userPhotoUrl?: string | null) {
+  if (businessId) void runEagerSync(businessId, userPhotoUrl)
+}
 
 /** Either a completed login, or a signal that the caller must now collect a 2FA code. */
 type LoginOutcome = { requiresTwoFactor: true; challengeToken: string } | { requiresTwoFactor: false; user: User }
@@ -73,7 +83,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (cancelled) return
         if (outcome.kind === 'authenticated') {
           setUser(outcome.result.user)
-          setActiveBusinessId(resolveActiveBusiness(outcome.result.user)?.businessId ?? null)
+          const businessId = resolveActiveBusiness(outcome.result.user)?.businessId ?? null
+          setActiveBusinessId(businessId)
+          triggerEagerSync(businessId, outcome.result.user?.photoUrl)
           return
         }
         if (outcome.kind === 'unauthenticated') {
@@ -130,7 +142,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const applyAuthResult = useCallback((result: AuthResult, businessId?: string) => {
     setAccessToken(result.accessToken)
     setUser(result.user)
-    setActiveBusinessId(businessId ?? resolveActiveBusiness(result.user)?.businessId ?? null)
+    const resolvedBusinessId = businessId ?? resolveActiveBusiness(result.user)?.businessId ?? null
+    setActiveBusinessId(resolvedBusinessId)
+    triggerEagerSync(resolvedBusinessId, result.user.photoUrl)
   }, [])
 
   const login = useCallback(
@@ -181,6 +195,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAccessToken(result.accessToken)
     setUser(result.user)
     setActiveBusinessId(businessId)
+    triggerEagerSync(businessId, result.user.photoUrl)
   }, [])
 
   const completeOnboarding = useCallback((business: Business & { accessToken: string }, updatedUser: User) => {
@@ -191,6 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAccessToken(business.accessToken)
     setUser(updatedUser)
     setActiveBusinessId(business.id)
+    triggerEagerSync(business.id, updatedUser.photoUrl)
   }, [])
 
   const refreshUser = useCallback(async () => {

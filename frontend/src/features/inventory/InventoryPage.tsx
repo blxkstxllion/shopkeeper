@@ -20,7 +20,8 @@ import { Input } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { StatTile } from '@/components/ui/StatTile'
 import { StatTileSkeleton, TableSkeleton } from '@/components/ui/Skeleton'
-import { formatMoney, resolveUploadUrl } from '@/lib/format'
+import { formatMoney } from '@/lib/format'
+import { OfflineImage } from '@/components/ui/OfflineImage'
 import type { PagedResult, Product } from '@/types/product'
 import type { InventoryStats } from '@/api/inventory'
 import { ProductFormModal } from './ProductFormModal'
@@ -168,11 +169,12 @@ export function InventoryPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
-                          {p.imageUrl ? (
-                            <img src={resolveUploadUrl(p.imageUrl)} alt="" className="h-full w-full object-cover" />
-                          ) : (
-                            <Package className="h-4 w-4 text-slate-300 dark:text-slate-600" />
-                          )}
+                          <OfflineImage
+                            src={p.imageUrl}
+                            alt=""
+                            className="h-full w-full object-cover"
+                            fallback={<Package className="h-4 w-4 text-slate-300 dark:text-slate-600" />}
+                          />
                         </div>
                         <div>
                           <p className="font-medium text-slate-900 dark:text-slate-100">{p.name}</p>
