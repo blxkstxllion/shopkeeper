@@ -34,14 +34,23 @@ services:
     # on it here (`docker compose run` + `env | grep`, present-but-empty vs. truly absent).
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      # Presence of Email__FromAddress is what switches DependencyInjection.AddInfrastructure
-      # from the dev-only LoggingEmailSender to the real SesEmailSender - see
-      # backend/src/ShopKeeper.Infrastructure/DependencyInjection.cs. The AWS SDK client is
-      # constructed with no explicit credentials, so it uses the default credential chain:
-      # these two env vars first if set, otherwise (on a real EC2 host) the instance role -
-      # see README's deployment section. Leave both unset in .env on EC2 so no AWS secret
-      # needs to be managed as a ShopKeeper secret at all; set them on any non-AWS host (e.g.
-      # a Hetzner/DigitalOcean VPS), since there's no instance metadata service to fall back to.
+      # Email__FromAddress is required either way - both senders below use it to build the
+      # "From" header, regardless of which one is actually delivering. Presence of
+      # Email__ResendApiKey is what switches DependencyInjection.AddInfrastructure to
+      # ResendEmailSender; otherwise Email__FromAddress alone falls through to SesEmailSender.
+      # Neither set falls through further, to the dev-only LoggingEmailSender - see
+      # backend/src/ShopKeeper.Infrastructure/DependencyInjection.cs.
+      #
+      # Deliberately NOT :? required, unlike Email__FromAddress - Resend is the default
+      # provider now (see ResendEmailSender's doc comment for why), but SES support is kept
+      # working so switching back is just unsetting this and setting AWS credentials instead.
+      - Email__ResendApiKey=${EMAIL_RESEND_API_KEY:-}
+      # The AWS SDK client (only constructed when Email__ResendApiKey is unset) uses the
+      # default credential chain: these two env vars first if set, otherwise (on a real EC2
+      # host) the instance role - see README's deployment section. Leave both unset in .env on
+      # EC2 so no AWS secret needs to be managed as a ShopKeeper secret at all; set them on any
+      # non-AWS host (e.g. a Hetzner/DigitalOcean VPS), since there's no instance metadata
+      # service to fall back to.
       - AWS_ACCESS_KEY_ID
       - AWS_SECRET_ACCESS_KEY
       - Email__FromAddress=${EMAIL_FROM_ADDRESS:?EMAIL_FROM_ADDRESS must be set - see .env.example}

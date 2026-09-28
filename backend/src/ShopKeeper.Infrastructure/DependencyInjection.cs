@@ -35,12 +35,25 @@ public static class DependencyInjection
         services.AddSingleton<ITotpService, TotpService>();
         services.AddSingleton<IFileStorageService, LocalFileStorageService>();
 
-        // Real delivery (SES) only when an Email:FromAddress is configured - same "absence
-        // never breaks startup" pattern as Redis below. Local/CI dev has none configured, so
-        // it keeps using LoggingEmailSender; production must set Email:FromAddress (and
-        // Email:FrontendBaseUrl) for real mail to go out at all.
+        // Real delivery only when configured - same "absence never breaks startup" pattern as
+        // Redis below. Local/CI dev has neither configured, so it keeps using
+        // LoggingEmailSender. Resend takes priority over SES when both happen to be present:
+        // Resend approves low-volume transactional senders same-day with no sandbox review,
+        // where this account's SES production-access request sat pending (and was once denied
+        // outright) for weeks - see ResendEmailSender's doc comment. SES is left wired up, not
+        // removed, so switching back is a one-line env-var change if ever needed.
+        var resendApiKey = configuration["Email:ResendApiKey"];
         var emailFromAddress = configuration["Email:FromAddress"];
-        if (!string.IsNullOrWhiteSpace(emailFromAddress))
+        if (!string.IsNullOrWhiteSpace(resendApiKey))
+        {
+            services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));
+            services.AddHttpClient<IEmailSender, ResendEmailSender>(client =>
+            {
+                client.BaseAddress = new Uri("https://api.resend.com/");
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", resendApiKey);
+            });
+        }
+        else if (!string.IsNullOrWhiteSpace(emailFromAddress))
         {
             services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));
             var region = configuration["Email:Region"] ?? "us-east-1";
