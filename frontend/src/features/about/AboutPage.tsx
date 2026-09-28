@@ -3,16 +3,18 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Store, Trophy, TrendingDown, Pencil, Upload, X } from 'lucide-react'
 import { getBusinessAbout, uploadBusinessLogo } from '@/api/about'
 import { useSessionClaims } from '@/hooks/useSessionClaims'
+import { useAuth } from '@/contexts/AuthContext'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { StatTile } from '@/components/ui/StatTile'
 import { Alert } from '@/components/ui/Alert'
 import { FormSkeleton } from '@/components/ui/Skeleton'
 import { ApiError } from '@/lib/api-client'
-import { formatMoney } from '@/lib/format'
+import { formatMoney, resolveUploadUrl } from '@/lib/format'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { useOfflineSingletonQuery } from '@/offline/useOfflineQuery'
 import { useOfflineMutation } from '@/offline/useOfflineMutation'
+import { cacheImageBlob } from '@/offline/imageCache'
 import { OfflineImage } from '@/components/ui/OfflineImage'
 import type { BusinessAbout } from '@/types/about'
 
@@ -25,6 +27,7 @@ const TEXTAREA_CLASS =
 export function AboutPage() {
   const claims = useSessionClaims()
   const canEdit = Boolean(claims?.isOwner || claims?.permissions.includes('settings:manage'))
+  const { activeBusiness } = useAuth()
   const queryClient = useQueryClient()
   const isOnline = useOnlineStatus()
   const { data, isLoading } = useOfflineSingletonQuery<BusinessAbout>(
@@ -69,6 +72,7 @@ export function AboutPage() {
     try {
       const { url } = await uploadBusinessLogo(file)
       setLogoUrl(url)
+      if (activeBusiness?.businessId) void cacheImageBlob(resolveUploadUrl(url), activeBusiness.businessId)
     } catch (err) {
       setServerError(err instanceof ApiError ? err.message : 'Unable to upload that image. Please try again.')
     } finally {
