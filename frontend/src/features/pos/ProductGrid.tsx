@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Package, PackagePlus } from 'lucide-react'
-import { formatMoney, resolveUploadUrl } from '@/lib/format'
+import { formatMoney } from '@/lib/format'
+import { OfflineImage } from '@/components/ui/OfflineImage'
 import type { SellableProduct } from '@/types/sale'
 
 export function ProductGrid({
@@ -47,15 +48,12 @@ export function ProductGrid({
             className="flex flex-col items-start gap-2 rounded-xl border border-slate-200 bg-white p-3 text-left transition-colors hover:border-primary-400 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900"
           >
             <div className="flex h-16 w-full items-center justify-center rounded-lg bg-slate-100 text-slate-300 dark:bg-slate-800">
-              {p.imageUrl ? (
-                <img
-                  src={resolveUploadUrl(p.imageUrl)}
-                  alt={p.name}
-                  className="h-full w-full rounded-lg object-cover"
-                />
-              ) : (
-                <Package className="h-6 w-6" />
-              )}
+              <OfflineImage
+                src={p.imageUrl}
+                alt={p.name}
+                className="h-full w-full rounded-lg object-cover"
+                fallback={<Package className="h-6 w-6" />}
+              />
             </div>
             <div className="w-full">
               <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{p.name}</p>

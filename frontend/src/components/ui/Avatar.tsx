@@ -1,4 +1,4 @@
-import { resolveUploadUrl } from '@/lib/format'
+import { useOfflineImage } from '@/offline/useOfflineImage'
 
 type Size = 'sm' | 'lg'
 
@@ -23,11 +23,12 @@ export function Avatar({
   className?: string
 }) {
   const sizeClass = sizeClasses[size]
+  const resolvedPhotoUrl = useOfflineImage(photoUrl)
 
-  if (photoUrl) {
+  if (resolvedPhotoUrl) {
     return (
       <img
-        src={resolveUploadUrl(photoUrl)}
+        src={resolvedPhotoUrl}
         alt=""
         className={`${sizeClass} shrink-0 rounded-full object-cover ${className ?? ''}`}
       />
