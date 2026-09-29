@@ -24,7 +24,7 @@ public class AuthCommandTests : IDisposable
     {
         var currentUser = new TestCurrentUserService();
         var context = _db.CreateContext(currentUser);
-        var handler = new RegisterCommandHandler(context, _hasher, new TokenIssuer(context, _jwt));
+        var handler = new RegisterCommandHandler(context, _hasher, new TokenIssuer(context, _jwt), new TestEmailSender());
 
         var result = await handler.Handle(
             new RegisterCommand("owner@shop.test", "Passw0rd!", "Ama", "Owusu", "127.0.0.1"), CancellationToken.None);
@@ -36,24 +36,19 @@ public class AuthCommandTests : IDisposable
     }
 
     [Fact]
-    public async Task Register_DoesNotDispatchVerificationEmailAndIsNotEnforced()
+    public async Task Register_WithNewEmail_DispatchesVerificationEmailWithTheStoredToken()
     {
-        // Verification is deliberately switched off at sign-up for now - see the comment on
-        // EmailVerificationEnforced in RegisterCommandHandler - because AWS SES for this
-        // account is stuck in sandbox mode, so a real verification email could never reach a
-        // new user anyway. Re-enable this alongside RegisterCommandHandler once SES production
-        // access is granted.
         var currentUser = new TestCurrentUserService();
         var context = _db.CreateContext(currentUser);
-        var handler = new RegisterCommandHandler(context, _hasher, new TokenIssuer(context, _jwt));
+        var emailSender = new TestEmailSender();
+        var handler = new RegisterCommandHandler(context, _hasher, new TokenIssuer(context, _jwt), emailSender);
 
         await handler.Handle(
             new RegisterCommand("verify-me@shop.test", "Passw0rd!", "Ama", "Owusu", "127.0.0.1"), CancellationToken.None);
 
         var user = await context.Users.SingleAsync(u => u.Email == "verify-me@shop.test");
-        Assert.False(user.IsEmailVerified);
-        Assert.False(user.EmailVerificationEnforced);
-        Assert.Null(user.EmailVerificationToken);
+        Assert.NotNull(emailSender.LastVerification);
+        Assert.Equal(("verify-me@shop.test", "Ama", user.EmailVerificationToken!), emailSender.LastVerification);
     }
 
     [Fact]
@@ -61,7 +56,7 @@ public class AuthCommandTests : IDisposable
     {
         var currentUser = new TestCurrentUserService();
         var context = _db.CreateContext(currentUser);
-        var handler = new RegisterCommandHandler(context, _hasher, new TokenIssuer(context, _jwt));
+        var handler = new RegisterCommandHandler(context, _hasher, new TokenIssuer(context, _jwt), new TestEmailSender());
 
         await handler.Handle(new RegisterCommand("dupe@shop.test", "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
 
@@ -74,7 +69,7 @@ public class AuthCommandTests : IDisposable
     {
         var currentUser = new TestCurrentUserService();
         var context = _db.CreateContext(currentUser);
-        var handler = new RegisterCommandHandler(context, _hasher, new TokenIssuer(context, _jwt));
+        var handler = new RegisterCommandHandler(context, _hasher, new TokenIssuer(context, _jwt), new TestEmailSender());
 
         await handler.Handle(new RegisterCommand("Case@Shop.Test", "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
 
@@ -88,7 +83,7 @@ public class AuthCommandTests : IDisposable
         var currentUser = new TestCurrentUserService();
         var context = _db.CreateContext(currentUser);
         var tokenIssuer = new TokenIssuer(context, _jwt);
-        await new RegisterCommandHandler(context, _hasher, tokenIssuer).Handle(
+        await new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender()).Handle(
             new RegisterCommand("login@shop.test", "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
 
         var loginHandler = new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt);
@@ -104,7 +99,7 @@ public class AuthCommandTests : IDisposable
         var currentUser = new TestCurrentUserService();
         var context = _db.CreateContext(currentUser);
         var tokenIssuer = new TokenIssuer(context, _jwt);
-        await new RegisterCommandHandler(context, _hasher, tokenIssuer).Handle(
+        await new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender()).Handle(
             new RegisterCommand("not-remembered@shop.test", "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
 
         var loginHandler = new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt);
@@ -125,7 +120,7 @@ public class AuthCommandTests : IDisposable
         var currentUser = new TestCurrentUserService();
         var context = _db.CreateContext(currentUser);
         var tokenIssuer = new TokenIssuer(context, _jwt);
-        await new RegisterCommandHandler(context, _hasher, tokenIssuer).Handle(
+        await new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender()).Handle(
             new RegisterCommand("remembered@shop.test", "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
 
         var loginHandler = new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt);
@@ -153,7 +148,7 @@ public class AuthCommandTests : IDisposable
         var currentUser = new TestCurrentUserService();
         var context = _db.CreateContext(currentUser);
         var tokenIssuer = new TokenIssuer(context, _jwt);
-        await new RegisterCommandHandler(context, _hasher, tokenIssuer).Handle(
+        await new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender()).Handle(
             new RegisterCommand("wrongpw@shop.test", "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
 
         var loginHandler = new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt);
@@ -179,7 +174,7 @@ public class AuthCommandTests : IDisposable
         var currentUser = new TestCurrentUserService();
         var context = _db.CreateContext(currentUser);
         var tokenIssuer = new TokenIssuer(context, _jwt);
-        var registerResult = await new RegisterCommandHandler(context, _hasher, tokenIssuer).Handle(
+        var registerResult = await new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender()).Handle(
             new RegisterCommand("refresh@shop.test", "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
 
         var refreshHandler = new RefreshTokenCommandHandler(context, _jwt, tokenIssuer);
@@ -203,7 +198,7 @@ public class AuthCommandTests : IDisposable
         var setupUser = new TestCurrentUserService();
         var setupContext = _db.CreateContext(setupUser);
         var setupTokenIssuer = new TokenIssuer(setupContext, _jwt);
-        var registerResult = await new RegisterCommandHandler(setupContext, _hasher, setupTokenIssuer).Handle(
+        var registerResult = await new RegisterCommandHandler(setupContext, _hasher, setupTokenIssuer, new TestEmailSender()).Handle(
             new RegisterCommand("twotabs@shop.test", "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
 
         var contextA = _db.CreateContext(setupUser);
@@ -234,7 +229,7 @@ public class AuthCommandTests : IDisposable
         var setupUser = new TestCurrentUserService();
         var context = _db.CreateContext(setupUser);
         var tokenIssuer = new TokenIssuer(context, _jwt);
-        var registerResult = await new RegisterCommandHandler(context, _hasher, tokenIssuer).Handle(
+        var registerResult = await new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender()).Handle(
             new RegisterCommand("stale-reuse@shop.test", "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
 
         var refreshHandler = new RefreshTokenCommandHandler(context, _jwt, tokenIssuer);
@@ -259,7 +254,7 @@ public class AuthCommandTests : IDisposable
         var setupUser = new TestCurrentUserService();
         var context = _db.CreateContext(setupUser);
         var tokenIssuer = new TokenIssuer(context, _jwt);
-        var registerResult = await new RegisterCommandHandler(context, _hasher, tokenIssuer).Handle(
+        var registerResult = await new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender()).Handle(
             new RegisterCommand("broken-chain@shop.test", "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
 
         var refreshHandler = new RefreshTokenCommandHandler(context, _jwt, tokenIssuer);
@@ -282,7 +277,7 @@ public class AuthCommandTests : IDisposable
         var setupUser = new TestCurrentUserService();
         var context = _db.CreateContext(setupUser);
         var tokenIssuer = new TokenIssuer(context, _jwt);
-        var registerResult = await new RegisterCommandHandler(context, _hasher, tokenIssuer).Handle(
+        var registerResult = await new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender()).Handle(
             new RegisterCommand("expired-refresh@shop.test", "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
 
         var token = await context.RefreshTokens.SingleAsync(rt => rt.TokenHash == _jwt.Hash(registerResult.RefreshToken));
@@ -300,7 +295,7 @@ public class AuthCommandTests : IDisposable
         var setupUser = new TestCurrentUserService();
         var context = _db.CreateContext(setupUser);
         var tokenIssuer = new TokenIssuer(context, _jwt);
-        var registerResult = await new RegisterCommandHandler(context, _hasher, tokenIssuer).Handle(
+        var registerResult = await new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender()).Handle(
             new RegisterCommand("multi-device@shop.test", "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
 
         // A second, independent session - e.g. logging in from another device.
