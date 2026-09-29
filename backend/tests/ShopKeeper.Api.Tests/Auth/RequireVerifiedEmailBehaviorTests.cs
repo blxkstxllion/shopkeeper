@@ -117,21 +117,18 @@ public class RequireVerifiedEmailBehaviorTests : IDisposable
     [Fact]
     public async Task UnverifiedAndEnforced_CanStillCompleteOnboarding()
     {
-        // Registration itself doesn't enforce verification right now (see the comment on
-        // EmailVerificationEnforced in RegisterCommandHandler), but the exemption this test
-        // covers still matters for whenever enforcement is switched back on: if onboarding
-        // weren't exempt, nobody could ever get past this screen - the frontend's own
-        // RequireVerifiedEmail route guard only wraps /app/*, not /onboarding, so a user who's
-        // never verified would see a working onboarding UI whose final submit always 403s.
+        // A brand-new registration is unverified-and-enforced by default (RegisterCommand) -
+        // if onboarding weren't exempt, nobody could ever get past this screen: the frontend's
+        // own RequireVerifiedEmail route guard only wraps /app/*, not /onboarding, so a user
+        // who's never verified would see a working onboarding UI whose final submit always 403s.
         var context = _db.CreateContext(new TestCurrentUserService());
         var tokenIssuer = new TokenIssuer(context, _jwt);
-        var registerHandler = new RegisterCommandHandler(context, _hasher, tokenIssuer);
+        var registerHandler = new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender());
         var registered = await registerHandler.Handle(
             new RegisterCommand("newcomer@shop.test", "Passw0rd!", "Kofi", "Mensah", null), CancellationToken.None);
 
         var user = await context.Users.SingleAsync(u => u.Id == registered.User.Id);
-        user.EmailVerificationEnforced = true;
-        await context.SaveChangesAsync(CancellationToken.None);
+        Assert.True(user.EmailVerificationEnforced);
         Assert.False(user.IsEmailVerified);
 
         var currentUser = new TestCurrentUserService { UserId = user.Id };
