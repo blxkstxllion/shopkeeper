@@ -140,7 +140,7 @@ public class EmployeesTests : IDisposable
         var cashierRole = await context.Roles.SingleAsync(r => r.Name == DefaultRoles.Cashier);
 
         // Register the invitee as a standalone user (e.g. they already use ShopKeeper elsewhere) first.
-        var registerResult = await new RegisterCommandHandler(context, _hasher, tokenIssuer).Handle(
+        var registerResult = await new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender()).Handle(
             new RegisterCommand("existing@shop.test", "Passw0rd!", "Ama", "Boateng", null), CancellationToken.None);
 
         await new InviteEmployeeCommandHandler(context, owner, _emailSender, _jwt).Handle(
@@ -289,7 +289,7 @@ public class EmployeesTests : IDisposable
 
         // A real registered user, standing in for a genuine Administrator (InviteEmployeeCommand
         // looks up the inviter's name from db.Users, so the persona needs to actually exist).
-        var registerResult = await new RegisterCommandHandler(context, _hasher, tokenIssuer).Handle(
+        var registerResult = await new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender()).Handle(
             new RegisterCommand("admin@shop.test", "Passw0rd!", "Adjoa", "Owusu", null), CancellationToken.None);
         var administrator = new TestCurrentUserService
         {
@@ -350,7 +350,7 @@ public class EmployeesTests : IDisposable
         var tokenIssuer = new TokenIssuer(context, _jwt);
         var ownerRole = await context.Roles.SingleAsync(r => r.Name == DefaultRoles.Owner);
 
-        var registerResult = await new RegisterCommandHandler(context, _hasher, tokenIssuer).Handle(
+        var registerResult = await new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender()).Handle(
             new RegisterCommand("existing-coowner@shop.test", "Passw0rd!", "Yaw", "Darko", null), CancellationToken.None);
 
         await new InviteEmployeeCommandHandler(context, owner, _emailSender, _jwt).Handle(
