@@ -8,6 +8,16 @@ name: Production
 # the `:develop` tag in GHCR at merge time is exactly the image that was tested.
 # Don't push new commits to develop between opening and merging a release PR, or the
 # `:develop` tag will have moved past what was actually validated.
+#
+# A sharper version of that same risk actually shipped once: merging a develop->master
+# release PR immediately (seconds) after merging the feature PR into develop, before
+# staging.yml's own build-and-push job for that commit had finished. The `:develop` tag
+# GHCR handed back to this workflow's `imagetools create` was still the PREVIOUS commit's
+# image, so the new production tag (named after the new commit's short SHA) silently
+# retagged old content under a misleading name - the deploy "succeeded" and the tag name
+# looked right, but the running container was building software that was hours old. Give
+# staging.yml's own workflow run a minute to actually finish (check the Actions tab, not
+# just that the develop merge went through) before merging the release PR to master/main.
 on:
   push:
     branches: [main, master]
