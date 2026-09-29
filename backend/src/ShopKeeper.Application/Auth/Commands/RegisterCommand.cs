@@ -31,7 +31,7 @@ public class RegisterCommandValidator : AbstractValidator<RegisterCommand>
     }
 }
 
-public class RegisterCommandHandler(IAppDbContext db, IPasswordHasher hasher, TokenIssuer tokenIssuer)
+public class RegisterCommandHandler(IAppDbContext db, IPasswordHasher hasher, TokenIssuer tokenIssuer, IEmailSender emailSender)
     : IRequestHandler<RegisterCommand, AuthResultDto>
 {
     public async Task<AuthResultDto> Handle(RegisterCommand request, CancellationToken cancellationToken)
@@ -51,11 +51,15 @@ public class RegisterCommandHandler(IAppDbContext db, IPasswordHasher hasher, To
             FirstName = request.FirstName.Trim(),
             LastName = request.LastName.Trim(),
             IsEmailVerified = false,
-            // Enforcement (and sending the verification email below) is switched off for
-            // now - AWS SES for this account is stuck in sandbox mode, so a real verification
-            // email can never actually reach a new user. Re-enable both once SES production
-            // access is granted, or every sign-up would be gated on an email nobody receives.
-            EmailVerificationEnforced = false,
+            EmailVerificationToken = Guid.NewGuid().ToString("N"),
+            EmailVerificationExpiresAt = DateTimeOffset.UtcNow.AddDays(2),
+            // New accounts only - existing users are grandfathered in via the migration's
+            // backfill default (false), so this gate doesn't retroactively lock anyone out.
+            // Was briefly switched off account-wide while AWS SES sat in sandbox mode (no real
+            // verification email could reach anyone); re-enabled now that Resend is the
+            // default provider and confirmed actually delivering - see the "Add Resend"/
+            // "Disable email verification enforcement" commits.
+            EmailVerificationEnforced = true,
         };
 
         db.Users.Add(user);
@@ -78,6 +82,8 @@ public class RegisterCommandHandler(IAppDbContext db, IPasswordHasher hasher, To
 
             throw new ConflictException("An account with this email already exists.");
         }
+
+        await emailSender.SendEmailVerificationAsync(user.Email, user.FirstName, user.EmailVerificationToken!, cancellationToken);
 
         return await tokenIssuer.IssueAsync(user, activeBusinessId: null, rememberMe: false, request.IpAddress, request.UserAgent, cancellationToken);
     }
