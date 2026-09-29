@@ -8,6 +8,10 @@ name: Staging
 on:
   push:
     branches: [develop]
+  # Manual re-run with no code change - e.g. to force a fresh build+push after suspecting
+  # the `:develop` tag went stale relative to develop's actual tip (see production.yml's
+  # comment on the promote-race that motivated adding this).
+  workflow_dispatch:
 
 concurrency:
   group: staging-deploy
