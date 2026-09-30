@@ -122,6 +122,32 @@ public class PaystackWebhookControllerTests : IClassFixture<PaystackWebhookTestF
     }
 
     [Fact]
+    public async Task Receive_ConcurrentIdenticalDeliveries_BothSucceed_OnlyOneEventRecorded()
+    {
+        // Regression test for the check-then-act race in ProcessPaystackWebhookCommandHandler:
+        // two genuinely concurrent identical retries both pass the AnyAsync precheck before
+        // either has inserted, so the unique index on RawPayloadHash decides the winner and the
+        // loser's SaveChangesAsync throws DbUpdateException. Before the fix, that exception was
+        // unhandled and surfaced as a 500 (Paystack would then retry into the same no-op again -
+        // self-healing, but wrong). Fires two real concurrent HTTP requests through the actual
+        // pipeline (shared SQLite connection, separate per-request DbContext) so this either
+        // reproduces the real race or it doesn't - no mocking the concurrency away.
+        var client = _factory.CreateClient();
+        var rawBody = """{"event":"test.concurrent_delivery","data":{"reference":"chk_pipeline_concurrent"}}""";
+        var signature = Sign(rawBody, PaystackWebhookTestFactory.TestSecretKey);
+
+        var responses = await Task.WhenAll(
+            PostWebhookAsync(client, rawBody, signature),
+            PostWebhookAsync(client, rawBody, signature));
+
+        Assert.All(responses, r => Assert.Equal(HttpStatusCode.OK, r.StatusCode));
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(1, await db.PaystackWebhookEvents.CountAsync(e => e.EventType == "test.concurrent_delivery"));
+    }
+
+    [Fact]
     public async Task Receive_MissingSignatureHeader_ReturnsUnauthorized()
     {
         var client = _factory.CreateClient();

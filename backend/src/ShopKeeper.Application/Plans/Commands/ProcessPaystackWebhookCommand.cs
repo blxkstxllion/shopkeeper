@@ -57,7 +57,23 @@ public class ProcessPaystackWebhookCommandHandler(IAppDbContext db, ILogger<Proc
         }
 
         db.PaystackWebhookEvents.Add(new PaystackWebhookEvent { RawPayloadHash = hash, EventType = eventType ?? "unknown" });
-        await db.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // Two concurrent deliveries of the same identical retry both passed the AnyAsync
+            // check above and raced to insert - the unique index on RawPayloadHash caught it.
+            // Same shape as CreateSaleCommand's ClientRequestId race: this isn't a real
+            // failure, the event IS recorded, just by the other request. Swallow it rather than
+            // surfacing a 500 that just makes Paystack retry into the same no-op again.
+            if (!await db.PaystackWebhookEvents.AnyAsync(e => e.RawPayloadHash == hash, cancellationToken))
+            {
+                throw;
+            }
+        }
     }
 
     private async Task<Business?> ResolveBusinessAsync(JsonElement data, CancellationToken cancellationToken)
