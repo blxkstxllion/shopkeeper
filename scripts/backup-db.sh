@@ -23,7 +23,11 @@ set -euo pipefail
 : "${BACKUP_S3_BUCKET:?BACKUP_S3_BUCKET must be set - see .env.example}"
 POSTGRES_USER="${POSTGRES_USER:-shopkeeper}"
 POSTGRES_DB="${POSTGRES_DB:-shopkeeper}"
-COMPOSE_FILES=(-f docker/docker-compose.yml -f docker/docker-compose.prod.yml)
+# --env-file is explicit, not left to Compose's auto-discovery: the project directory
+# Compose infers .env from is derived from the -f paths (docker/), not from cwd, so
+# without this it can't find /opt/shopkeeper/.env at all - the same bug staging.yml and
+# production.yml's deploy scripts already had to work around.
+COMPOSE_FILES=(--env-file .env -f docker/docker-compose.yml -f docker/docker-compose.prod.yml)
 
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 DUMP_FILE="shopkeeper-${TIMESTAMP}.sql.gz"
