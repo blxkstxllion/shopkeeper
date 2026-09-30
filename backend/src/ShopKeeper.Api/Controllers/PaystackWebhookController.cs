@@ -16,7 +16,14 @@ using ShopKeeper.Application.Plans.Commands;
 [Route("api/webhooks/paystack")]
 public class PaystackWebhookController(IPaystackClient paystack, ISender mediator) : ControllerBase
 {
+    // A real Paystack event payload is a few KB of JSON at most. This endpoint is public and
+    // unauthenticated by design (see class doc comment) and reads the full body into memory
+    // before the signature check even runs, so an unbounded body is a free DoS surface - 1MB is
+    // generous headroom over any real payload while still bounding it.
+    private const int MaxBodySizeBytes = 1 * 1024 * 1024;
+
     [HttpPost]
+    [RequestSizeLimit(MaxBodySizeBytes)]
     public async Task<IActionResult> Receive(CancellationToken ct)
     {
         if (!paystack.IsConfigured)
