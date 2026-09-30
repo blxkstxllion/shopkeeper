@@ -21,23 +21,18 @@ public class UploadBusinessLogoCommandValidator : AbstractValidator<UploadBusine
     }
 }
 
-public class UploadBusinessLogoCommandHandler(IFileStorageService storage, ICurrentUserService currentUser)
+public class UploadBusinessLogoCommandHandler(
+    IFileStorageService storage, IImageProcessor imageProcessor, ICurrentUserService currentUser)
     : IRequestHandler<UploadBusinessLogoCommand, string>
 {
     public async Task<string> Handle(UploadBusinessLogoCommand request, CancellationToken cancellationToken)
     {
         currentUser.RequirePermission(PermissionKeys.SettingsManage);
 
-        var extension = request.ContentType.ToLowerInvariant() switch
-        {
-            "image/jpeg" => ".jpg",
-            "image/png" => ".png",
-            "image/webp" => ".webp",
-            "image/gif" => ".gif",
-            _ => throw new InvalidOperationException("Unreachable - content type already validated."),
-        };
-
-        var fileName = $"{Guid.NewGuid()}{extension}";
-        return await storage.SaveAsync(request.Content, fileName, "business-logos", cancellationToken);
+        // See UploadProductImageCommandHandler's comment - the Content-Type check above is
+        // just a fast-path, IImageProcessor is the real security boundary.
+        var processed = await imageProcessor.ProcessAsync(request.Content, cancellationToken);
+        var fileName = $"{Guid.NewGuid()}.png";
+        return await storage.SaveAsync(processed, fileName, "business-logos", cancellationToken);
     }
 }

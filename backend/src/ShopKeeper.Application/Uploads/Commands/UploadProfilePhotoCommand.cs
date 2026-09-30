@@ -22,23 +22,18 @@ public class UploadProfilePhotoCommandValidator : AbstractValidator<UploadProfil
 
 /// <summary>No PermissionKeys check, unlike UploadProductImageCommand - uploading your own profile
 /// photo isn't gated by a business role, only by being an authenticated user at all.</summary>
-public class UploadProfilePhotoCommandHandler(IFileStorageService storage, ICurrentUserService currentUser)
+public class UploadProfilePhotoCommandHandler(
+    IFileStorageService storage, IImageProcessor imageProcessor, ICurrentUserService currentUser)
     : IRequestHandler<UploadProfilePhotoCommand, string>
 {
     public async Task<string> Handle(UploadProfilePhotoCommand request, CancellationToken cancellationToken)
     {
         currentUser.RequireUserId();
 
-        var extension = request.ContentType.ToLowerInvariant() switch
-        {
-            "image/jpeg" => ".jpg",
-            "image/png" => ".png",
-            "image/webp" => ".webp",
-            "image/gif" => ".gif",
-            _ => throw new InvalidOperationException("Unreachable - content type already validated."),
-        };
-
-        var fileName = $"{Guid.NewGuid()}{extension}";
-        return await storage.SaveAsync(request.Content, fileName, "profile-photos", cancellationToken);
+        // See UploadProductImageCommandHandler's comment - the Content-Type check above is
+        // just a fast-path, IImageProcessor is the real security boundary.
+        var processed = await imageProcessor.ProcessAsync(request.Content, cancellationToken);
+        var fileName = $"{Guid.NewGuid()}.png";
+        return await storage.SaveAsync(processed, fileName, "profile-photos", cancellationToken);
     }
 }
