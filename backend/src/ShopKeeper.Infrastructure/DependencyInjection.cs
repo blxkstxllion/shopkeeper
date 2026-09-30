@@ -34,6 +34,7 @@ public static class DependencyInjection
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
         services.AddSingleton<ITotpService, TotpService>();
         services.AddSingleton<IFileStorageService, LocalFileStorageService>();
+        services.AddSingleton<IImageProcessor, SkiaImageProcessor>();
 
         // Real delivery only when configured - same "absence never breaks startup" pattern as
         // Redis below. Local/CI dev has neither configured, so it keeps using
