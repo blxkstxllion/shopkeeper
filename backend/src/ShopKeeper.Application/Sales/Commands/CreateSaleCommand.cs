@@ -84,20 +84,31 @@ public class CreateSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
             }
         }
 
+        // Aggregated by product first, not checked per line - two lines for the same product
+        // (e.g. the same item scanned twice, or added once then edited to add more) must be
+        // validated against their combined quantity. Checking each line independently against
+        // the same starting QuantityOnHand let both pass even when their total exceeded stock,
+        // since neither line's check reflected the other's reservation (a real bug this exact
+        // scenario caught).
+        var requestedQuantityByProduct = request.Items
+            .GroupBy(l => l.ProductId)
+            .ToDictionary(g => g.Key, g => g.Sum(l => l.Quantity));
+
         var stockByProduct = new Dictionary<Guid, ProductStock>();
-        foreach (var line in request.Items.Where(l => products[l.ProductId].TrackInventory))
+        foreach (var productId in requestedQuantityByProduct.Keys.Where(id => products[id].TrackInventory))
         {
             var stock = await db.ProductStocks.FirstOrDefaultAsync(
-                s => s.ProductId == line.ProductId && s.BranchId == request.BranchId, cancellationToken);
+                s => s.ProductId == productId && s.BranchId == request.BranchId, cancellationToken);
 
             var available = stock?.QuantityOnHand ?? 0;
-            if (available < line.Quantity)
+            var requested = requestedQuantityByProduct[productId];
+            if (available < requested)
             {
                 throw new ConflictException(
-                    $"Not enough stock for '{products[line.ProductId].Name}': {available} available, {line.Quantity} requested.");
+                    $"Not enough stock for '{products[productId].Name}': {available} available, {requested} requested.");
             }
 
-            stockByProduct[line.ProductId] = stock!;
+            stockByProduct[productId] = stock!;
         }
 
         var businessSetting = await db.BusinessSettings.FirstOrDefaultAsync(s => s.BusinessId == businessId, cancellationToken);
