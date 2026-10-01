@@ -9,6 +9,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Lets tests call ScheduledReportRunner's internal RunOneAsync/RunDueReportsAsync
+         directly - a BackgroundService's real entry point (ExecuteAsync) runs an
+         Task.Delay-based loop, so testing it any other way means either reflection or a
+         timing-dependent test that waits on real wall-clock delay. -->
+    <InternalsVisibleTo Include="ShopKeeper.Api.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="AWSSDK.SimpleEmailV2" Version="4.0.102.3" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.5.1" />

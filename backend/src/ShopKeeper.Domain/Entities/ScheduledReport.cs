@@ -36,6 +36,14 @@ public class ScheduledReport : BaseEntity, ITenantEntity
     public DateTimeOffset NextRunAt { get; set; }
     public DateTimeOffset? LastRunAt { get; set; }
 
+    /// <summary>Null = never run yet. Set on every run regardless of outcome (see
+    /// ScheduledReportRunner) so a schedule that's been silently failing every occurrence has
+    /// somewhere to actually show that - before this, LastRunAt advanced identically on success
+    /// and failure, so a permanently broken schedule looked indistinguishable from a healthy one
+    /// anywhere a business owner could see.</summary>
+    public bool? LastRunSucceeded { get; set; }
+    public string? LastRunError { get; set; }
+
     /// <summary>The user whose permissions the scheduled run executes with (see
     /// BackgroundJobContext) - captured at creation time, not re-checked per run, since a
     /// schedule wouldn't have been created without adequate permission in the first place.</summary>
