@@ -99,6 +99,28 @@ public class SalesCommandTests : IDisposable
     }
 
     [Fact]
+    public async Task CreateSale_DuplicateLinesForSameProduct_ValidatesCombinedQuantityNotEachLineIndependently()
+    {
+        // Regression test: two lines for the same product (e.g. scanned twice) were each
+        // checked against the same starting QuantityOnHand instead of their combined total, so
+        // both could pass even when their sum exceeded stock - 8 units available, two lines of
+        // 5 each (10 total) must be rejected, not silently drive stock negative.
+        var (seeded, context, owner, productId) = await SeedWithProductAsync(initialQuantity: 8);
+
+        await Assert.ThrowsAsync<ConflictException>(() => new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
+            new CreateSaleCommand(
+                seeded.BranchId,
+                [new SaleLineInput(productId, 5, 0), new SaleLineInput(productId, 5, 0)],
+                0,
+                [new SalePaymentInput(PaymentMethod.Cash, 100m, null)]),
+            CancellationToken.None));
+
+        var stock = await context.ProductStocks.SingleAsync(s => s.ProductId == productId);
+        Assert.Equal(8, stock.QuantityOnHand);
+        Assert.Empty(context.Sales);
+    }
+
+    [Fact]
     public async Task CreateSale_PaymentsDoNotMatchTotal_ThrowsConflict()
     {
         var (seeded, context, owner, productId) = await SeedWithProductAsync();
