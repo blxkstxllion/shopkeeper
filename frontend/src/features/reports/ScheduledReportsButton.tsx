@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Calendar, Trash2, Loader2, Plus } from 'lucide-react'
+import { Calendar, Trash2, Loader2, Plus, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Alert } from '@/components/ui/Alert'
@@ -80,8 +80,17 @@ function ScheduledReportsPanel() {
           {reports.map((r) => (
             <li key={r.id} className="flex items-center justify-between py-2.5 text-sm">
               <div>
-                <p className="font-medium text-slate-900 dark:text-slate-100">
+                <p className="flex items-center gap-1.5 font-medium text-slate-900 dark:text-slate-100">
                   {r.frequency} · {r.format} · {r.branchName ?? 'All branches'}
+                  {r.lastRunSucceeded === false && (
+                    <span
+                      className="flex items-center gap-1 text-xs font-normal text-danger dark:text-danger-dark"
+                      title={r.lastRunError ?? 'The last run failed.'}
+                    >
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      Last run failed
+                    </span>
+                  )}
                 </p>
                 <p className="text-xs text-slate-400">
                   {r.recipientEmails.join(', ')} · next {new Date(r.nextRunAt).toLocaleDateString()}

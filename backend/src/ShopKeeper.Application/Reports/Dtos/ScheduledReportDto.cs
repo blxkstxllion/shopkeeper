@@ -11,4 +11,6 @@ public record ScheduledReportDto(
     IReadOnlyList<string> RecipientEmails,
     bool IsActive,
     DateTimeOffset NextRunAt,
-    DateTimeOffset? LastRunAt);
+    DateTimeOffset? LastRunAt,
+    bool? LastRunSucceeded,
+    string? LastRunError);

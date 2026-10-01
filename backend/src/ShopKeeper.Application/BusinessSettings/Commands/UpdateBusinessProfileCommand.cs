@@ -24,9 +24,28 @@ public class UpdateBusinessProfileCommandValidator : AbstractValidator<UpdateBus
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
         RuleFor(x => x.LegalName).MaximumLength(200);
-        RuleFor(x => x.TimeZone).NotEmpty().MaximumLength(100);
+        RuleFor(x => x.TimeZone).NotEmpty().MaximumLength(100).Must(BeAValidTimeZone)
+            .WithMessage("Time zone must be a valid IANA time zone identifier, e.g. \"Africa/Accra\".");
         RuleFor(x => x.ColorTheme).Must(BusinessColorThemes.All.Contains)
             .WithMessage($"Color theme must be one of: {string.Join(", ", BusinessColorThemes.All)}.");
+    }
+
+    // Free text until now (only NotEmpty/MaximumLength) - ScheduledReportScheduling reads this
+    // field to compute report period boundaries in the business's local calendar, and silently
+    // falls back to UTC for anything it can't resolve, so an invalid value wouldn't crash
+    // anything, it would just quietly produce UTC-based (wrong) period boundaries again. Better
+    // to reject it at the source.
+    private static bool BeAValidTimeZone(string timeZoneId)
+    {
+        try
+        {
+            TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+            return true;
+        }
+        catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException)
+        {
+            return false;
+        }
     }
 }
 
