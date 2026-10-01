@@ -53,7 +53,7 @@ public class ScheduledReportRunner(IServiceScopeFactory scopeFactory, ILogger<Sc
         }
     }
 
-    private async Task RunDueReportsAsync(CancellationToken ct)
+    internal async Task RunDueReportsAsync(CancellationToken ct)
     {
         using var scanScope = scopeFactory.CreateScope();
         var scanDb = scanScope.ServiceProvider.GetRequiredService<IAppDbContext>();
@@ -76,7 +76,7 @@ public class ScheduledReportRunner(IServiceScopeFactory scopeFactory, ILogger<Sc
         }
     }
 
-    private async Task RunOneAsync(Guid scheduledReportId, CancellationToken ct)
+    internal async Task RunOneAsync(Guid scheduledReportId, CancellationToken ct)
     {
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<IAppDbContext>();
@@ -87,7 +87,7 @@ public class ScheduledReportRunner(IServiceScopeFactory scopeFactory, ILogger<Sc
         if (report is null) return; // deleted between the scan and now
 
         var runAt = DateTimeOffset.UtcNow;
-        var (from, to) = ScheduledReportScheduling.PeriodCoveredBy(runAt, report.Frequency);
+        var (from, to) = ScheduledReportScheduling.PeriodCoveredBy(runAt, report.Frequency, report.Business.TimeZone);
 
         try
         {
@@ -112,6 +112,8 @@ public class ScheduledReportRunner(IServiceScopeFactory scopeFactory, ILogger<Sc
             logger.LogInformation(
                 "Sent scheduled report {ScheduledReportId} for business {BusinessId} ({From} to {To})",
                 report.Id, report.BusinessId, from, to);
+            report.LastRunSucceeded = true;
+            report.LastRunError = null;
         }
         catch (Exception ex)
         {
@@ -119,10 +121,15 @@ public class ScheduledReportRunner(IServiceScopeFactory scopeFactory, ILogger<Sc
             // must still advance NextRunAt below, or a permanently-broken report would retry
             // every tick forever instead of just skipping to its next real occurrence.
             logger.LogError(ex, "Failed to generate scheduled report {ScheduledReportId}", report.Id);
+            report.LastRunSucceeded = false;
+            // Truncated: this is surfaced to the business owner in the scheduled-reports UI, not
+            // a log sink - the exception type/message is enough to recognize a recurring cause
+            // (e.g. "recipient rejected") without dumping a full stack trace into that view.
+            report.LastRunError = ex.Message.Length > 500 ? ex.Message[..500] : ex.Message;
         }
 
         report.LastRunAt = runAt;
-        report.NextRunAt = ScheduledReportScheduling.NextRunAfter(runAt, report.Frequency);
+        report.NextRunAt = ScheduledReportScheduling.NextRunAfter(runAt, report.Frequency, report.Business.TimeZone);
         await db.SaveChangesAsync(ct);
     }
 }

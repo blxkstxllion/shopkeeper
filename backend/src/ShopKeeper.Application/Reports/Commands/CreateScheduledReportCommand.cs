@@ -43,6 +43,7 @@ public class CreateScheduledReportCommandHandler(IAppDbContext db, ICurrentUserS
             currentUser.RequireBranchAccess(request.BranchId.Value);
         }
         var businessId = currentUser.RequireBusinessId();
+        var timeZone = await db.Businesses.Where(b => b.Id == businessId).Select(b => b.TimeZone).FirstAsync(cancellationToken);
 
         var report = new ScheduledReport
         {
@@ -52,7 +53,7 @@ public class CreateScheduledReportCommandHandler(IAppDbContext db, ICurrentUserS
             Format = request.Format,
             RecipientEmails = string.Join(',', request.RecipientEmails.Select(e => e.Trim().ToLowerInvariant())),
             CreatedByUserId = currentUser.RequireUserId(),
-            NextRunAt = ScheduledReportScheduling.NextRunAfter(DateTimeOffset.UtcNow, request.Frequency),
+            NextRunAt = ScheduledReportScheduling.NextRunAfter(DateTimeOffset.UtcNow, request.Frequency, timeZone),
         };
         db.ScheduledReports.Add(report);
         await db.SaveChangesAsync(cancellationToken);
@@ -63,6 +64,7 @@ public class CreateScheduledReportCommandHandler(IAppDbContext db, ICurrentUserS
 
         return new ScheduledReportDto(
             report.Id, report.BranchId, branchName, report.Frequency, report.Format,
-            request.RecipientEmails, report.IsActive, report.NextRunAt, report.LastRunAt);
+            request.RecipientEmails, report.IsActive, report.NextRunAt, report.LastRunAt,
+            report.LastRunSucceeded, report.LastRunError);
     }
 }
