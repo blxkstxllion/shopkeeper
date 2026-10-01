@@ -39,6 +39,8 @@ public class GetScheduledReportsQueryHandler(IAppDbContext db, ICurrentUserServi
                 r.IsActive,
                 r.NextRunAt,
                 r.LastRunAt,
+                r.LastRunSucceeded,
+                r.LastRunError,
             })
             .ToListAsync(cancellationToken);
 
@@ -46,7 +48,8 @@ public class GetScheduledReportsQueryHandler(IAppDbContext db, ICurrentUserServi
             .OrderBy(r => r.NextRunAt)
             .Select(r => new ScheduledReportDto(
                 r.Id, r.BranchId, r.BranchName, r.Frequency, r.Format,
-                r.RecipientEmails.Split(',', StringSplitOptions.RemoveEmptyEntries), r.IsActive, r.NextRunAt, r.LastRunAt))
+                r.RecipientEmails.Split(',', StringSplitOptions.RemoveEmptyEntries), r.IsActive, r.NextRunAt, r.LastRunAt,
+                r.LastRunSucceeded, r.LastRunError))
             .ToList();
     }
 }
