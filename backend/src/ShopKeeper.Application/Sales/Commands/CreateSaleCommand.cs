@@ -219,6 +219,32 @@ public class CreateSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
         sale.TotalCost = totalCost;
         sale.GrossProfit = (subtotal - totalDiscount) - totalCost;
 
+        // Allocates the final Total (already net of every discount and inclusive of tax) across
+        // lines in proportion to each line's LineRevenue - this is what RefundSaleCommand later
+        // refunds from, so a refund can never exceed what was actually collected. Rounding each
+        // line independently would leave the lines' sum off by a cent or two from Total (the
+        // classic invoice-allocation rounding problem), so every line but the last is rounded
+        // normally and the last absorbs whatever remainder keeps the sum exact.
+        var lineRevenueSum = sale.Items.Sum(i => i.LineRevenue);
+        var saleItems = sale.Items.ToList();
+        decimal allocatedSoFar = 0;
+        for (var i = 0; i < saleItems.Count; i++)
+        {
+            if (lineRevenueSum == 0)
+            {
+                saleItems[i].NetAmountPaid = 0;
+            }
+            else if (i == saleItems.Count - 1)
+            {
+                saleItems[i].NetAmountPaid = total - allocatedSoFar;
+            }
+            else
+            {
+                saleItems[i].NetAmountPaid = Math.Round(total * (saleItems[i].LineRevenue / lineRevenueSum), 2);
+                allocatedSoFar += saleItems[i].NetAmountPaid;
+            }
+        }
+
         foreach (var payment in request.Payments)
         {
             sale.Payments.Add(new Payment

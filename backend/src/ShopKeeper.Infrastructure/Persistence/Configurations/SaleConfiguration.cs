@@ -46,7 +46,7 @@ public class SaleItemConfiguration : IEntityTypeConfiguration<SaleItem>
         builder.Property(i => i.ProductNameSnapshot).HasMaxLength(200).IsRequired();
         builder.Property(i => i.SkuSnapshot).HasMaxLength(50).IsRequired();
 
-        foreach (var money in new[] { nameof(SaleItem.UnitPrice), nameof(SaleItem.UnitCost), nameof(SaleItem.DiscountAmount), nameof(SaleItem.LineRevenue), nameof(SaleItem.LineCost), nameof(SaleItem.LineProfit) })
+        foreach (var money in new[] { nameof(SaleItem.UnitPrice), nameof(SaleItem.UnitCost), nameof(SaleItem.DiscountAmount), nameof(SaleItem.LineRevenue), nameof(SaleItem.LineCost), nameof(SaleItem.LineProfit), nameof(SaleItem.NetAmountPaid) })
         {
             builder.Property(money).HasPrecision(18, 2);
         }
