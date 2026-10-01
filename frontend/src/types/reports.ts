@@ -111,4 +111,6 @@ export interface ScheduledReport {
   isActive: boolean
   nextRunAt: string
   lastRunAt: string | null
+  lastRunSucceeded: boolean | null
+  lastRunError: string | null
 }
