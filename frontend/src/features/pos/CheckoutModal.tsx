@@ -8,13 +8,16 @@ import { Alert } from '@/components/ui/Alert'
 import { formatMoney } from '@/lib/format'
 import { createSale } from '@/api/sales'
 import { createCustomer, getCustomers } from '@/api/customers'
+import { getBusinessSettings } from '@/api/businessSettings'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { ApiError, isNetworkError } from '@/lib/api-client'
 import { cacheCustomers, getCachedCustomers } from '@/offline/customerCache'
 import { enqueueMutation } from '@/offline/mutationQueue'
+import { useOfflineSingletonQuery } from '@/offline/useOfflineQuery'
+import type { BusinessSettings } from '@/types/businessSettings'
 import type { PaymentMethod, QueuedSale, Sale } from '@/types/sale'
-import { cartLineDiscountTotal, cartSubtotal, type CartLine } from './cart'
+import { calculateSaleTotal, cartLineDiscountTotal, cartSubtotal, type CartLine } from './cart'
 
 interface PaymentRow {
   method: PaymentMethod
@@ -54,6 +57,13 @@ export function CheckoutModal({
   const [customerId, setCustomerId] = useState('')
   const [isAddingCustomer, setIsAddingCustomer] = useState(false)
   const [newCustomerName, setNewCustomerName] = useState('')
+
+  const { data: businessSettings } = useOfflineSingletonQuery<BusinessSettings>(
+    ['business-settings'],
+    'businessSettings',
+    getBusinessSettings,
+    isOpen,
+  )
 
   const { data: customers } = useQuery({
     queryKey: ['customers', { activeOnly: true, pageSize: 200 }],
@@ -109,7 +119,8 @@ export function CheckoutModal({
 
   const subtotal = cartSubtotal(lines)
   const lineDiscounts = cartLineDiscountTotal(lines)
-  const total = Math.max(subtotal - lineDiscounts - discountAmount, 0)
+  const taxableAmount = Math.max(subtotal - lineDiscounts - discountAmount, 0)
+  const { taxAmount, total } = calculateSaleTotal(taxableAmount, businessSettings)
   const paid = payments.reduce((sum, p) => sum + p.amount, 0)
   const remaining = Math.round((total - paid) * 100) / 100
 
@@ -222,6 +233,12 @@ export function CheckoutModal({
         <div className="rounded-xl bg-slate-50 p-4 text-center dark:bg-slate-800">
           <p className="text-xs uppercase tracking-wide text-slate-400">Total due</p>
           <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{formatMoney(total)}</p>
+          {taxAmount > 0 && (
+            <p className="mt-1 text-xs text-slate-400">
+              Includes {formatMoney(taxAmount)} tax
+              {businessSettings?.taxRatePercent ? ` (${businessSettings.taxRatePercent}%)` : ''}
+            </p>
+          )}
         </div>
 
         <FormField label="Customer (optional)" htmlFor="customerId">
