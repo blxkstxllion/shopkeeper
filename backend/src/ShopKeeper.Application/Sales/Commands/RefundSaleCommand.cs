@@ -3,7 +3,6 @@ namespace ShopKeeper.Application.Sales.Commands;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using ShopKeeper.Application.Common.Behaviors;
 using ShopKeeper.Application.Common.Exceptions;
 using ShopKeeper.Application.Common.Extensions;
 using ShopKeeper.Application.Common.Interfaces;
@@ -14,8 +13,14 @@ using ShopKeeper.Domain.Enums;
 
 public record RefundLineInput(Guid SaleItemId, int Quantity);
 
+// Deliberately NOT ISupportsClientRequestId - this has its own dedicated idempotency mechanism
+// below (precheck by (BusinessId, ClientRequestId), a partial unique index backstop, catch the
+// race), mirroring CreateSaleCommand rather than the generic IdempotencyBehavior. A refund has
+// cascading side effects (stock increment, Sale.Status change) that compound badly if processed
+// twice, and the generic behavior's response-persisted-after-commit gap is only safe for a
+// single device's sequential sync loop - see Refund.ClientRequestId's doc comment.
 public record RefundSaleCommand(Guid SaleId, IReadOnlyList<RefundLineInput> Items, string Reason, Guid? ClientRequestId = null)
-    : IRequest<RefundDto>, ISupportsClientRequestId;
+    : IRequest<RefundDto>;
 
 public class RefundSaleCommandValidator : AbstractValidator<RefundSaleCommand>
 {
@@ -34,6 +39,18 @@ public class RefundSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
         currentUser.RequirePermission(PermissionKeys.SalesRefund);
         var businessId = currentUser.RequireBusinessId();
         var userId = currentUser.RequireUserId();
+
+        // Idempotent replay: see RefundSaleCommand's own doc comment for why this has its own
+        // mechanism rather than the generic IdempotencyBehavior. Checked before any other work,
+        // same as CreateSaleCommand's identical precheck.
+        if (request.ClientRequestId.HasValue)
+        {
+            var existing = await FindByClientRequestIdAsync(businessId, request.ClientRequestId.Value, cancellationToken);
+            if (existing is not null)
+            {
+                return existing;
+            }
+        }
 
         var sale = await db.Sales.Include(s => s.Items).FirstOrDefaultAsync(s => s.Id == request.SaleId, cancellationToken)
             ?? throw new NotFoundException(nameof(Sale), request.SaleId);
@@ -79,6 +96,7 @@ public class RefundSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
             RefundNumber = await GenerateRefundNumberAsync(businessId, cancellationToken),
             Reason = request.Reason,
             ProcessedByUserId = userId,
+            ClientRequestId = request.ClientRequestId,
         };
 
         decimal totalAmount = 0;
@@ -143,6 +161,21 @@ public class RefundSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
             // an absence of conflicts).
             throw new ConflictException("Stock changed while this refund was being processed. Please try again.");
         }
+        catch (DbUpdateException) when (request.ClientRequestId.HasValue)
+        {
+            // Two concurrent replays of the same ClientRequestId both passed the precheck above
+            // and raced to insert - the partial unique index on (BusinessId, ClientRequestId)
+            // caught it. Not a real conflict from the client's point of view: the refund IS
+            // created, just by the other request. Return the winner's data instead of an error.
+            // Same shape as CreateSaleCommand's identical race handling.
+            var winner = await FindByClientRequestIdAsync(businessId, request.ClientRequestId.Value, cancellationToken);
+            if (winner is null)
+            {
+                throw;
+            }
+
+            return winner;
+        }
 
         return new RefundDto(refund.Id, refund.RefundNumber, sale.Id, sale.SaleNumber, refund.Reason, refund.TotalAmount, refund.CreatedAt);
     }
@@ -151,5 +184,14 @@ public class RefundSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
     {
         var count = await db.Refunds.IgnoreQueryFilters().CountAsync(r => r.BusinessId == businessId, ct);
         return $"R-{count + 1:D6}";
+    }
+
+    private async Task<RefundDto?> FindByClientRequestIdAsync(Guid businessId, Guid clientRequestId, CancellationToken ct)
+    {
+        var existing = await db.Refunds.Include(r => r.Sale)
+            .FirstOrDefaultAsync(r => r.BusinessId == businessId && r.ClientRequestId == clientRequestId, ct);
+        return existing is null
+            ? null
+            : new RefundDto(existing.Id, existing.RefundNumber, existing.SaleId, existing.Sale.SaleNumber, existing.Reason, existing.TotalAmount, existing.CreatedAt);
     }
 }
