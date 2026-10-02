@@ -339,6 +339,80 @@ public class SalesCommandTests : IDisposable
     }
 
     [Fact]
+    public async Task RefundSale_ReplayedWithSameClientRequestId_ReturnsOriginalRefund_DoesNotDoubleRefund()
+    {
+        // Regression test: RefundSaleCommand now has its own dedicated idempotency mechanism
+        // (mirroring CreateSaleCommand) instead of relying on the generic IdempotencyBehavior,
+        // because a refund's cascading side effects (stock increment, Sale.Status change)
+        // compound badly if the same submission is processed twice.
+        var (seeded, context, owner, productId) = await SeedWithProductAsync(initialQuantity: 20);
+        var clientRequestId = Guid.NewGuid();
+
+        var sale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
+            new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(productId, 5, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 50m, null)]),
+            CancellationToken.None);
+        var saleItemId = sale.Items.Single().Id;
+
+        var first = await new RefundSaleCommandHandler(context, owner).Handle(
+            new RefundSaleCommand(sale.Id, [new RefundLineInput(saleItemId, 3)], "Customer returned 3 units", ClientRequestId: clientRequestId),
+            CancellationToken.None);
+
+        // Simulates a retry after the first response never arrived (lost connection, two tabs
+        // of the same account both online) - same ClientRequestId, same request.
+        var replay = await new RefundSaleCommandHandler(context, owner).Handle(
+            new RefundSaleCommand(sale.Id, [new RefundLineInput(saleItemId, 3)], "Customer returned 3 units", ClientRequestId: clientRequestId),
+            CancellationToken.None);
+
+        Assert.Equal(first.Id, replay.Id);
+        Assert.Equal(first.TotalAmount, replay.TotalAmount);
+
+        Assert.Single(await context.Refunds.AsNoTracking().ToListAsync());
+        var stock = await context.ProductStocks.AsNoTracking().SingleAsync(s => s.ProductId == productId);
+        Assert.Equal(18, stock.QuantityOnHand); // 20 - 5 (sale) + 3 (refund) - restocked only once, not twice
+        var storedSaleItem = await context.SaleItems.AsNoTracking().SingleAsync(i => i.Id == saleItemId);
+        Assert.Equal(3, storedSaleItem.RefundedQuantity); // not 6
+    }
+
+    [Fact]
+    public async Task RefundSale_GenuineConcurrentReplay_ExactlyOneRefundCreated_BothCallersGetSameRefund()
+    {
+        using var db = new ConcurrentSqliteTestDatabase();
+        var hasher = new BcryptPasswordHasher();
+        var jwt = new JwtTokenService(Options.Create(PosTestFixture.JwtTestSettings));
+        var seeded = await PosTestFixture.SeedAsync(db, hasher, jwt);
+        var owner = seeded.AsOwner();
+        var setupContext = db.CreateContext(owner);
+
+        var product = await new CreateProductCommandHandler(setupContext, owner, new PlanLimitService(setupContext)).Handle(
+            new CreateProductCommand("Widget", "SKU-REFUND-IDEMPOTENT", null, null, null, null, 10m, 6m, 0, true, 20, seeded.BranchId),
+            CancellationToken.None);
+
+        var sale = await new CreateSaleCommandHandler(setupContext, owner, new NotificationDispatcher(setupContext)).Handle(
+            new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(product.Id, 5, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 50m, null)]),
+            CancellationToken.None);
+        var saleItemId = sale.Items.Single().Id;
+
+        var clientRequestId = Guid.NewGuid();
+
+        Task<ShopKeeper.Application.Sales.Dtos.RefundDto> Send()
+        {
+            var context = db.CreateContext(owner);
+            return new RefundSaleCommandHandler(context, owner).Handle(
+                new RefundSaleCommand(sale.Id, [new RefundLineInput(saleItemId, 3)], "Concurrent replay", ClientRequestId: clientRequestId),
+                CancellationToken.None);
+        }
+
+        // Two genuinely concurrent requests carrying the identical client key - e.g. two tabs
+        // of the same account both coming online and replaying the same queued refund.
+        var results = await Task.WhenAll(Send(), Send());
+
+        Assert.Equal(results[0].Id, results[1].Id);
+        Assert.Single(await setupContext.Refunds.AsNoTracking().ToListAsync());
+        var stock = await setupContext.ProductStocks.AsNoTracking().SingleAsync(s => s.ProductId == product.Id);
+        Assert.Equal(18, stock.QuantityOnHand); // 20 - 5 + 3, restocked only once
+    }
+
+    [Fact]
     public async Task CreateSale_ReplayedWithSameClientRequestId_ReturnsOriginalSale_DoesNotDoubleSell()
     {
         var (seeded, context, owner, productId) = await SeedWithProductAsync(initialQuantity: 20);

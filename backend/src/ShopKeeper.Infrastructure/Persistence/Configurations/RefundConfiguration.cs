@@ -10,6 +10,15 @@ public class RefundConfiguration : IEntityTypeConfiguration<Refund>
     {
         builder.ToTable("Refunds");
         builder.HasIndex(r => new { r.BusinessId, r.RefundNumber }).IsUnique();
+
+        // Partial unique index backing Refund's own dedicated idempotency check - same shape as
+        // Sale's identical index (SaleConfiguration). Null (an online-created refund with no
+        // client-generated key) is never compared as equal to itself under a partial index, so
+        // any number of them can coexist.
+        builder.HasIndex(r => new { r.BusinessId, r.ClientRequestId })
+            .IsUnique()
+            .HasFilter("\"ClientRequestId\" IS NOT NULL");
+
         builder.Property(r => r.RefundNumber).HasMaxLength(30).IsRequired();
         builder.Property(r => r.Reason).HasMaxLength(500).IsRequired();
         builder.Property(r => r.TotalAmount).HasPrecision(18, 2);

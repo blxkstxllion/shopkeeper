@@ -25,5 +25,14 @@ public class Refund : BaseEntity, ITenantEntity
 
     public Guid ProcessedByUserId { get; set; }
 
+    /// <summary>Same mechanism as Sale.ClientRequestId - a dedicated precheck + partial unique
+    /// index backstop, not the generic IdempotencyBehavior. A refund has cascading side effects
+    /// (stock increment, Sale.Status change) that compound badly if the same submission is
+    /// processed twice, and the generic behavior's response-persisted-after-commit gap is only
+    /// actually safe for a single device's sequential sync loop - two tabs of the same account
+    /// coming online simultaneously would violate that assumption. See IdempotencyBehavior's
+    /// own doc comment for the tradeoff this specifically avoids.</summary>
+    public Guid? ClientRequestId { get; set; }
+
     public ICollection<RefundItem> Items { get; set; } = new List<RefundItem>();
 }
