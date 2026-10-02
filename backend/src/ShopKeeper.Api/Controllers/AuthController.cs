@@ -54,6 +54,7 @@ public class AuthController(ISender mediator, IWebHostEnvironment env, ICurrentU
         return Ok(new { requiresTwoFactor = false, auth = result.Auth with { RefreshToken = string.Empty } });
     }
 
+    [EnableRateLimiting("auth")]
     [HttpPost("2fa/verify")]
     public async Task<ActionResult<AuthResultDto>> VerifyTwoFactor(VerifyTwoFactorRequest request, CancellationToken ct)
     {

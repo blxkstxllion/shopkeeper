@@ -99,6 +99,28 @@ public class SalesCommandTests : IDisposable
     }
 
     [Fact]
+    public async Task CreateSale_DuplicateLinesForSameProduct_ValidatesCombinedQuantityNotEachLineIndependently()
+    {
+        // Regression test: two lines for the same product (e.g. scanned twice) were each
+        // checked against the same starting QuantityOnHand instead of their combined total, so
+        // both could pass even when their sum exceeded stock - 8 units available, two lines of
+        // 5 each (10 total) must be rejected, not silently drive stock negative.
+        var (seeded, context, owner, productId) = await SeedWithProductAsync(initialQuantity: 8);
+
+        await Assert.ThrowsAsync<ConflictException>(() => new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
+            new CreateSaleCommand(
+                seeded.BranchId,
+                [new SaleLineInput(productId, 5, 0), new SaleLineInput(productId, 5, 0)],
+                0,
+                [new SalePaymentInput(PaymentMethod.Cash, 100m, null)]),
+            CancellationToken.None));
+
+        var stock = await context.ProductStocks.SingleAsync(s => s.ProductId == productId);
+        Assert.Equal(8, stock.QuantityOnHand);
+        Assert.Empty(context.Sales);
+    }
+
+    [Fact]
     public async Task CreateSale_PaymentsDoNotMatchTotal_ThrowsConflict()
     {
         var (seeded, context, owner, productId) = await SeedWithProductAsync();
@@ -205,6 +227,100 @@ public class SalesCommandTests : IDisposable
 
         var storedSale = await context.Sales.SingleAsync(s => s.Id == sale.Id);
         Assert.Equal(SaleStatus.Refunded, storedSale.Status);
+    }
+
+    [Fact]
+    public async Task CreateSale_WithTaxAndSaleLevelDiscount_AllocatesNetAmountPaidProportionallySummingToTotal()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var context = _db.CreateContext(owner);
+
+        var businessSetting = await context.BusinessSettings.SingleAsync(s => s.BusinessId == seeded.BusinessId);
+        businessSetting.TaxEnabled = true;
+        businessSetting.TaxRatePercent = 10m;
+        businessSetting.TaxInclusivePricing = false;
+        await context.SaveChangesAsync();
+
+        var productA = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
+            new CreateProductCommand("A", "SKU-A", null, null, null, null, 100m, 50m, 10, true, 20, seeded.BranchId), CancellationToken.None);
+        var productB = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
+            new CreateProductCommand("B", "SKU-B", null, null, null, null, 50m, 20m, 10, true, 20, seeded.BranchId), CancellationToken.None);
+
+        // subtotal 150, sale-level discount 10 -> taxable 140, 10% tax-exclusive -> tax 14, total 154.
+        var sale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
+            new CreateSaleCommand(
+                seeded.BranchId,
+                [new SaleLineInput(productA.Id, 1, 0), new SaleLineInput(productB.Id, 1, 0)],
+                10m,
+                [new SalePaymentInput(PaymentMethod.Cash, 154m, null)]),
+            CancellationToken.None);
+
+        Assert.Equal(154m, sale.Total);
+
+        var itemA = await context.SaleItems.SingleAsync(i => i.ProductId == productA.Id);
+        var itemB = await context.SaleItems.SingleAsync(i => i.ProductId == productB.Id);
+
+        // Combined, every line's share must reconstruct Total exactly, to the cent - no
+        // rounding drift lost or gained across the sale.
+        Assert.Equal(154m, itemA.NetAmountPaid + itemB.NetAmountPaid);
+        Assert.True(itemA.NetAmountPaid > 0 && itemB.NetAmountPaid > 0);
+    }
+
+    [Fact]
+    public async Task RefundSale_DuplicateLinesForSameSaleItem_ValidatesCombinedQuantityNotEachLineIndependently()
+    {
+        // Regression test: mirrors CreateSale's duplicate-line fix. Two refund lines for the
+        // same sale item (5 + 5 = 10) against only 8 sold units must be rejected as a whole,
+        // not each checked independently against the original refundable quantity.
+        var (seeded, context, owner, productId) = await SeedWithProductAsync(initialQuantity: 20);
+
+        var sale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
+            new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(productId, 8, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 80m, null)]),
+            CancellationToken.None);
+        var saleItemId = sale.Items.Single().Id;
+
+        await Assert.ThrowsAsync<ConflictException>(() => new RefundSaleCommandHandler(context, owner).Handle(
+            new RefundSaleCommand(sale.Id, [new RefundLineInput(saleItemId, 5), new RefundLineInput(saleItemId, 5)], "Over-refund attempt"),
+            CancellationToken.None));
+
+        var storedItem = await context.SaleItems.SingleAsync(i => i.Id == saleItemId);
+        Assert.Equal(0, storedItem.RefundedQuantity);
+    }
+
+    [Fact]
+    public async Task RefundSale_WithTaxAndDiscount_RefundsNetAmountActuallyPaidNotGrossUnitPrice()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var context = _db.CreateContext(owner);
+
+        var businessSetting = await context.BusinessSettings.SingleAsync(s => s.BusinessId == seeded.BusinessId);
+        businessSetting.TaxEnabled = true;
+        businessSetting.TaxRatePercent = 10m;
+        businessSetting.TaxInclusivePricing = false;
+        await context.SaveChangesAsync();
+
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
+            new CreateProductCommand("Widget", "SKU-TAX", null, null, null, null, 100m, 50m, 10, true, 20, seeded.BranchId), CancellationToken.None);
+
+        // subtotal 200 (2 units), sale-level discount 20 -> taxable 180, 10% tax -> tax 18, total 198.
+        var sale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
+            new CreateSaleCommand(
+                seeded.BranchId, [new SaleLineInput(product.Id, 2, 0)], 20m, [new SalePaymentInput(PaymentMethod.Cash, 198m, null)]),
+            CancellationToken.None);
+
+        var saleItem = await context.SaleItems.SingleAsync(i => i.ProductId == product.Id);
+        Assert.Equal(198m, saleItem.NetAmountPaid); // the sale's only line, so it absorbs the full total
+
+        var refund = await new RefundSaleCommandHandler(context, owner).Handle(
+            new RefundSaleCommand(sale.Id, [new RefundLineInput(saleItem.Id, 1)], "One unit returned"), CancellationToken.None);
+
+        // Half of what was actually collected (99.00), not half of the gross unit price (100.00)
+        // - the old UnitPrice-based calculation would have refunded 100.00, handing back more
+        // than the customer paid net of the sale-level discount, and ignoring that a slice of
+        // the refund should also return the tax collected on that unit.
+        Assert.Equal(99m, refund.TotalAmount);
     }
 
     [Fact]

@@ -47,15 +47,24 @@ public class RefundSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
 
         var itemsById = sale.Items.ToDictionary(i => i.Id);
 
-        foreach (var line in request.Items)
+        // Aggregated by SaleItemId first, not checked per line - two lines for the same sale
+        // item (e.g. a duplicated row in the refund form) must be validated against their
+        // combined quantity. Checking each line independently against the same starting
+        // RefundedQuantity let both pass even when their total exceeded what was actually sold,
+        // the same class of bug CreateSaleCommand had for duplicate sale lines.
+        var requestedQuantityBySaleItem = request.Items
+            .GroupBy(l => l.SaleItemId)
+            .ToDictionary(g => g.Key, g => g.Sum(l => l.Quantity));
+
+        foreach (var (saleItemId, requestedQuantity) in requestedQuantityBySaleItem)
         {
-            if (!itemsById.TryGetValue(line.SaleItemId, out var saleItem))
+            if (!itemsById.TryGetValue(saleItemId, out var saleItem))
             {
-                throw new NotFoundException(nameof(SaleItem), line.SaleItemId);
+                throw new NotFoundException(nameof(SaleItem), saleItemId);
             }
 
             var refundable = saleItem.Quantity - saleItem.RefundedQuantity;
-            if (line.Quantity > refundable)
+            if (requestedQuantity > refundable)
             {
                 throw new ConflictException(
                     $"Only {refundable} unit(s) of '{saleItem.ProductNameSnapshot}' remain refundable on this sale.");
@@ -77,7 +86,11 @@ public class RefundSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
         foreach (var line in request.Items)
         {
             var saleItem = itemsById[line.SaleItemId];
-            var amount = line.Quantity * saleItem.UnitPrice;
+            // Derived from NetAmountPaid (the line's actual share of Sale.Total, already net of
+            // every discount and inclusive of tax - see SaleItem's doc comment), not UnitPrice.
+            // UnitPrice is the gross pre-discount, pre-tax price - refunding from it would hand
+            // back more than the customer actually paid whenever a discount or tax applied.
+            var amount = Math.Round((saleItem.NetAmountPaid / saleItem.Quantity) * line.Quantity, 2);
             totalAmount += amount;
 
             refund.Items.Add(new RefundItem { Refund = refund, SaleItemId = saleItem.Id, Quantity = line.Quantity, Amount = amount });
@@ -90,6 +103,11 @@ public class RefundSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
             {
                 var newQuantity = stock.QuantityOnHand + line.Quantity;
                 stock.QuantityOnHand = newQuantity;
+                // Without this, a concurrent write on the same ProductStock row that read its
+                // RowVersion before this refund committed wouldn't be detected as a conflict -
+                // EF's optimistic-concurrency check only catches writes against a RowVersion
+                // that's actually changed. See CreateSaleCommand's identical increment.
+                stock.RowVersion++;
 
                 db.InventoryTransactions.Add(new InventoryTransaction
                 {
@@ -111,7 +129,20 @@ public class RefundSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
         sale.Status = sale.Items.All(i => i.RefundedQuantity >= i.Quantity) ? SaleStatus.Refunded : SaleStatus.PartiallyRefunded;
 
         db.Refunds.Add(refund);
-        await db.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // A concurrent sale or another refund moved one of these ProductStock rows between
+            // our read and this write - see CreateSaleCommand's identical handling. Only
+            // actually reachable now that the RowVersion increment above exists; before it, a
+            // concurrent write here was silently never detected at all (a lost-update bug, not
+            // an absence of conflicts).
+            throw new ConflictException("Stock changed while this refund was being processed. Please try again.");
+        }
 
         return new RefundDto(refund.Id, refund.RefundNumber, sale.Id, sale.SaleNumber, refund.Reason, refund.TotalAmount, refund.CreatedAt);
     }

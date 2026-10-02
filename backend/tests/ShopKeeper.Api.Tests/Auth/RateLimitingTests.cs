@@ -110,6 +110,30 @@ public class RateLimitingTests : IClassFixture<RateLimitTestFactory>
     }
 
     [Fact]
+    public async Task VerifyTwoFactor_AllowsFiveRequestsThenRejectsTheSixth_WithinTheWindow()
+    {
+        // Regression test for a real gap: 2fa/verify was the only auth-adjacent endpoint missing
+        // [EnableRateLimiting("auth")], leaving the TOTP/recovery-code challenge (a 5-minute,
+        // reusable, stateless JWT with no server-side attempt counter) open to unlimited guesses
+        // for its entire lifetime. A bogus challenge token still exercises the rate limiter, since
+        // that runs before the handler ever validates the token.
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Forwarded-For", "203.0.113.40");
+
+        for (var i = 0; i < 5; i++)
+        {
+            var response = await client.PostAsJsonAsync(
+                "/api/auth/2fa/verify", new { challengeToken = "bogus", code = "000000" });
+            Assert.NotEqual(HttpStatusCode.TooManyRequests, response.StatusCode);
+        }
+
+        var sixth = await client.PostAsJsonAsync(
+            "/api/auth/2fa/verify", new { challengeToken = "bogus", code = "000000" });
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, sixth.StatusCode);
+    }
+
+    [Fact]
     public async Task Login_IsRateLimited_ButNotEveryAuthenticatedEndpoint()
     {
         // Confirms the policy attribute reached a second controller (not just AuthController)
