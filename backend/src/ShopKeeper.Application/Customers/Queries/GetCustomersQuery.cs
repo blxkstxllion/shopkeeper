@@ -43,7 +43,7 @@ public class GetCustomersQueryHandler(IAppDbContext db, ICurrentUserService curr
             .OrderBy(c => c.Name)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(c => new CustomerDto(c.Id, c.Name, c.Phone, c.Email, c.Address, c.IsActive))
+            .Select(c => new CustomerDto(c.Id, c.Name, c.Phone, c.Email, c.Address, c.IsActive, c.CurrentBalance))
             .ToListAsync(cancellationToken);
 
         return new PagedResult<CustomerDto>(items, totalCount, page, pageSize);

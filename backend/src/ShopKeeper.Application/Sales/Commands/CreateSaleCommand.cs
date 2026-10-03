@@ -22,7 +22,13 @@ public record CreateSaleCommand(
     decimal DiscountAmount,
     IReadOnlyList<SalePaymentInput> Payments,
     Guid? CustomerId = null,
-    Guid? ClientRequestId = null) : IRequest<SaleDto>;
+    Guid? ClientRequestId = null,
+    // Explicit, not inferred from a payment shortfall - a cashier must actively choose to put a
+    // sale on a customer's tab, not accidentally create debt via a typo'd payment amount. When
+    // true and CustomerId is set, Payments is allowed to fall short of Total; the shortfall
+    // becomes a CustomerLedgerEntry Charge. Ignored (shortfall still rejected) without a
+    // CustomerId - no debt on an anonymous walk-in.
+    bool AllowCredit = false) : IRequest<SaleDto>;
 
 public class CreateSaleCommandValidator : AbstractValidator<CreateSaleCommand>
 {
@@ -207,9 +213,27 @@ public class CreateSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
         }
 
         var paymentsTotal = request.Payments.Sum(p => p.Amount);
-        if (Math.Abs(paymentsTotal - total) > RoundingTolerance)
+        // Positive = underpaid (a possible credit shortfall), negative = overpaid.
+        var shortfall = total - paymentsTotal;
+
+        if (shortfall > RoundingTolerance)
         {
+            // Underpaid - only acceptable as an explicit credit sale against a real customer.
+            // Unchanged from before credit sales existed when either condition isn't met.
+            if (!request.AllowCredit || !request.CustomerId.HasValue)
+            {
+                throw new ConflictException($"Payments total {paymentsTotal:0.00} but the sale total is {total:0.00}.");
+            }
+        }
+        else if (shortfall < -RoundingTolerance)
+        {
+            // Overpayment is never valid, regardless of AllowCredit - there's no sense in which
+            // a sale should collect more than its own total.
             throw new ConflictException($"Payments total {paymentsTotal:0.00} but the sale total is {total:0.00}.");
+        }
+        else
+        {
+            shortfall = 0; // within rounding tolerance - no charge to the customer's account
         }
 
         sale.Subtotal = subtotal;
@@ -257,6 +281,31 @@ public class CreateSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
             });
         }
 
+        if (shortfall > 0)
+        {
+            // Validated above: shortfall > 0 only survives this far when AllowCredit and
+            // CustomerId were both present. CurrentBalance/RowVersion updated transactionally
+            // alongside this same SaveChangesAsync - same relationship ProductStock has to
+            // InventoryTransaction.
+            var customer = await db.Customers.FirstOrDefaultAsync(c => c.Id == request.CustomerId!.Value, cancellationToken)
+                ?? throw new NotFoundException(nameof(Customer), request.CustomerId!.Value);
+
+            customer.CurrentBalance += shortfall;
+            customer.RowVersion++;
+
+            db.CustomerLedgerEntries.Add(new CustomerLedgerEntry
+            {
+                BusinessId = businessId,
+                CustomerId = customer.Id,
+                Type = CustomerLedgerEntryType.Charge,
+                Amount = shortfall,
+                BalanceAfter = customer.CurrentBalance,
+                ReferenceType = "Sale",
+                ReferenceId = sale.Id,
+                CreatedByUserId = userId,
+            });
+        }
+
         db.Sales.Add(sale);
 
         foreach (var alert in lowStockAlerts)
@@ -273,11 +322,12 @@ public class CreateSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
         }
         catch (DbUpdateConcurrencyException)
         {
-            // A concurrent sale or stock adjustment moved one of this sale's ProductStock
-            // rows between our read and this write - ProductStock.RowVersion is what
-            // catches it. Surface a clean conflict rather than the raw EF exception; the
-            // caller (POS UI) can just retry with fresh stock numbers.
-            throw new ConflictException("Stock changed while this sale was being processed. Please try again.");
+            // A concurrent sale/adjustment moved one of this sale's ProductStock rows, or (for
+            // a credit sale) a concurrent charge/payment/refund moved the customer's balance,
+            // between our read and this write - RowVersion is what catches either. Surface a
+            // clean conflict rather than the raw EF exception; the caller can just retry with
+            // fresh numbers.
+            throw new ConflictException("Stock or account balance changed while this sale was being processed. Please try again.");
         }
         catch (DbUpdateException) when (request.ClientRequestId.HasValue)
         {
