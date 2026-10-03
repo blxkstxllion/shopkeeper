@@ -22,17 +22,45 @@ using ShopKeeper.Infrastructure.Persistence;
 /// raw request body before model binding and checks a real header, so (like rate limiting) this
 /// is the one part of this feature that genuinely needs the real ASP.NET Core pipeline rather
 /// than calling a handler directly.
+///
+/// Uses a named shared-cache in-memory database (one SqliteConnection *string*, not one shared
+/// connection *object*) - same reasoning as ConcurrentSqliteTestDatabase. A single
+/// SqliteConnection object can't safely run two commands at once, so
+/// Receive_ConcurrentIdenticalDeliveries below (which fires two genuinely concurrent requests)
+/// was flaky: ASP.NET Core creates a separate scoped AppDbContext per request as normal, but
+/// both contexts were sharing the one underlying connection object, so a real race could throw
+/// a connection-contention exception that isn't a DbUpdateException - not caught by the
+/// handler's race-recovery logic, surfacing as an unhandled 500 instead of exercising the
+/// actual race path under test. A connection string instead lets EF Core open an independent
+/// connection per DbContext onto the same named database, so concurrent requests race at the
+/// SQLite engine level (the thing actually being tested) instead of colliding on ADO.NET
+/// connection state (an artifact of the old test setup, nothing to do with the real race).
 /// </summary>
 public class PaystackWebhookTestFactory : WebApplicationFactory<Program>
 {
     public const string TestSecretKey = "sk_test_webhook_pipeline_secret";
 
-    private readonly SqliteConnection _connection = new("DataSource=:memory:");
+    private readonly string _connectionString = new SqliteConnectionStringBuilder
+    {
+        DataSource = $"file:{Guid.NewGuid():N}",
+        Mode = SqliteOpenMode.Memory,
+        Cache = SqliteCacheMode.Shared,
+        DefaultTimeout = 5,
+    }.ToString();
+
+    private readonly SqliteConnection _anchor;
+
+    public PaystackWebhookTestFactory()
+    {
+        // Keeps the named shared-cache database alive for the factory's lifetime - it's
+        // destroyed the instant its last connection closes, and every other connection is
+        // opened-and-closed per request.
+        _anchor = new SqliteConnection(_connectionString);
+        _anchor.Open();
+    }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        _connection.Open();
-
         builder.ConfigureAppConfiguration((_, config) =>
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>
@@ -50,7 +78,7 @@ public class PaystackWebhookTestFactory : WebApplicationFactory<Program>
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<DbContextOptions<AppDbContext>>();
-            services.AddDbContext<AppDbContext>(options => options.UseSqlite(_connection));
+            services.AddDbContext<AppDbContext>(options => options.UseSqlite(_connectionString));
 
             // Overriding the DI registration directly (like the DbContext above) rather than
             // relying on Paystack:SecretKey reaching DependencyInjection.AddInfrastructure's own
@@ -78,7 +106,7 @@ public class PaystackWebhookTestFactory : WebApplicationFactory<Program>
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);
-        if (disposing) _connection.Dispose();
+        if (disposing) _anchor.Dispose();
     }
 }
 
