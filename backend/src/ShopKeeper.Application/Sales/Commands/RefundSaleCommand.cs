@@ -99,20 +99,52 @@ public class RefundSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
             ClientRequestId = request.ClientRequestId,
         };
 
+        // Cumulative, not per-call independent rounding: computing Math.Round(unitShare *
+        // thisCall'sQuantity, 2) separately on every refund call lets rounding drift accumulate
+        // across repeated partial refunds of the same line (e.g. three separate 1-unit refunds
+        // of a $10.00/3-unit line summed to $9.99, a cent short, with the old per-call formula -
+        // a real bug that shipped). Instead, each call computes what the TOTAL refunded-so-far
+        // amount for the line should be (rounded once, from the cumulative quantity), then
+        // subtracts what's already been recorded - the difference is this call's amount. When
+        // the cumulative quantity reaches the line's full Quantity, the cumulative amount is
+        // NetAmountPaid exactly (no rounding at all), so full completion always reconciles to
+        // the cent regardless of how many partial refunds got there.
+        // Summed client-side, not via a server-side GroupBy/Sum - the SQLite test provider can't
+        // translate Sum over a decimal column (the same limitation GetProfitabilityReportQuery
+        // and ScheduledReportScheduling's own tests already have to work around), and this is a
+        // handful of rows per sale item, not a table scan.
+        var saleItemIds = requestedQuantityBySaleItem.Keys.ToList();
+        var refundedAmountBySaleItem = (await db.RefundItems
+                .Where(ri => saleItemIds.Contains(ri.SaleItemId))
+                .Select(ri => new { ri.SaleItemId, ri.Amount })
+                .ToListAsync(cancellationToken))
+            .GroupBy(ri => ri.SaleItemId)
+            .ToDictionary(g => g.Key, g => g.Sum(ri => ri.Amount));
+
         decimal totalAmount = 0;
 
         foreach (var line in request.Items)
         {
             var saleItem = itemsById[line.SaleItemId];
+            var priorAmount = refundedAmountBySaleItem.GetValueOrDefault(line.SaleItemId);
+            var cumulativeQuantity = saleItem.RefundedQuantity + line.Quantity;
+
             // Derived from NetAmountPaid (the line's actual share of Sale.Total, already net of
             // every discount and inclusive of tax - see SaleItem's doc comment), not UnitPrice.
             // UnitPrice is the gross pre-discount, pre-tax price - refunding from it would hand
             // back more than the customer actually paid whenever a discount or tax applied.
-            var amount = Math.Round((saleItem.NetAmountPaid / saleItem.Quantity) * line.Quantity, 2);
+            var cumulativeAmount = cumulativeQuantity >= saleItem.Quantity
+                ? saleItem.NetAmountPaid
+                : Math.Round(saleItem.NetAmountPaid * cumulativeQuantity / saleItem.Quantity, 2);
+            var amount = cumulativeAmount - priorAmount;
             totalAmount += amount;
 
             refund.Items.Add(new RefundItem { Refund = refund, SaleItemId = saleItem.Id, Quantity = line.Quantity, Amount = amount });
-            saleItem.RefundedQuantity += line.Quantity;
+            saleItem.RefundedQuantity = cumulativeQuantity;
+            // Keeps a second line for the same SaleItemId within this same request correct too -
+            // it must see this line's contribution as already-recorded, not just what was in the
+            // database before this request started.
+            refundedAmountBySaleItem[line.SaleItemId] = cumulativeAmount;
 
             var stock = await db.ProductStocks.FirstOrDefaultAsync(
                 s => s.ProductId == saleItem.ProductId && s.BranchId == sale.BranchId, cancellationToken);
