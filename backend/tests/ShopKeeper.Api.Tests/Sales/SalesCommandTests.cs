@@ -212,6 +212,69 @@ public class SalesCommandTests : IDisposable
     }
 
     [Fact]
+    public async Task RefundSale_ThreeSeparateOneUnitRefunds_SumExactlyToNetAmountPaid()
+    {
+        // Regression test for a real rounding-drift bug: computing Math.Round(unitShare * qty, 2)
+        // independently on every refund call let repeated partial refunds of the same line sum to
+        // less than NetAmountPaid (3.33 + 3.33 + 3.33 = 9.99, a cent short of 10.00). The line is
+        // built as 3 units at $4 with a $2 line discount (LineRevenue = 12 - 2 = 10), so it's the
+        // sale's only line and NetAmountPaid is exactly $10.00, Quantity 3 - a non-terminating
+        // per-unit share ($3.333...) that actually exercises the rounding path.
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var context = _db.CreateContext(owner);
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
+            new CreateProductCommand("Widget", "SKU-ROUND", null, null, null, null, 4m, 2m, 0, true, 20, seeded.BranchId), CancellationToken.None);
+
+        var sale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
+            new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(product.Id, 3, 2m)], 0, [new SalePaymentInput(PaymentMethod.Cash, 10m, null)]),
+            CancellationToken.None);
+        var saleItemId = sale.Items.Single().Id;
+
+        var first = await new RefundSaleCommandHandler(context, owner).Handle(
+            new RefundSaleCommand(sale.Id, [new RefundLineInput(saleItemId, 1)], "Unit 1"), CancellationToken.None);
+        var second = await new RefundSaleCommandHandler(context, owner).Handle(
+            new RefundSaleCommand(sale.Id, [new RefundLineInput(saleItemId, 1)], "Unit 2"), CancellationToken.None);
+        var third = await new RefundSaleCommandHandler(context, owner).Handle(
+            new RefundSaleCommand(sale.Id, [new RefundLineInput(saleItemId, 1)], "Unit 3"), CancellationToken.None);
+
+        Assert.Equal(3.33m, first.TotalAmount);
+        Assert.Equal(3.34m, second.TotalAmount);
+        Assert.Equal(3.33m, third.TotalAmount);
+        Assert.Equal(10.00m, first.TotalAmount + second.TotalAmount + third.TotalAmount);
+
+        var storedSaleItem = await context.SaleItems.AsNoTracking().SingleAsync(i => i.Id == saleItemId);
+        Assert.Equal(3, storedSaleItem.RefundedQuantity);
+    }
+
+    [Fact]
+    public async Task RefundSale_PartialThenRemainder_SumExactlyToNetAmountPaid()
+    {
+        // Same scenario as the three-separate-refunds test, but a 2-unit partial refund followed
+        // by the 1-unit remainder - the remainder must absorb whatever rounding is left so the
+        // total still reconciles exactly, regardless of how the quantity gets split across calls.
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var context = _db.CreateContext(owner);
+        var product = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
+            new CreateProductCommand("Widget", "SKU-ROUND2", null, null, null, null, 4m, 2m, 0, true, 20, seeded.BranchId), CancellationToken.None);
+
+        var sale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
+            new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(product.Id, 3, 2m)], 0, [new SalePaymentInput(PaymentMethod.Cash, 10m, null)]),
+            CancellationToken.None);
+        var saleItemId = sale.Items.Single().Id;
+
+        var partial = await new RefundSaleCommandHandler(context, owner).Handle(
+            new RefundSaleCommand(sale.Id, [new RefundLineInput(saleItemId, 2)], "2 units"), CancellationToken.None);
+        var remainder = await new RefundSaleCommandHandler(context, owner).Handle(
+            new RefundSaleCommand(sale.Id, [new RefundLineInput(saleItemId, 1)], "Last unit"), CancellationToken.None);
+
+        Assert.Equal(6.67m, partial.TotalAmount);
+        Assert.Equal(3.33m, remainder.TotalAmount);
+        Assert.Equal(10.00m, partial.TotalAmount + remainder.TotalAmount);
+    }
+
+    [Fact]
     public async Task RefundSale_FullQuantity_SetsStatusRefunded()
     {
         var (seeded, context, owner, productId) = await SeedWithProductAsync();
