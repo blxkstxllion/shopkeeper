@@ -45,7 +45,8 @@ public class SalesController(ISender mediator) : ControllerBase
 
     [HttpPost("{id:guid}/refund")]
     public async Task<ActionResult<RefundDto>> Refund(Guid id, [FromBody] RefundSaleRequest body, CancellationToken ct) =>
-        Ok(await mediator.Send(new RefundSaleCommand(id, body.Items, body.Reason, body.ClientRequestId), ct));
+        Ok(await mediator.Send(
+            new RefundSaleCommand(id, body.Items, body.Reason, body.ApplyToBalance, body.CustomerBalanceRowVersion, body.ClientRequestId), ct));
 
     [HttpGet("sellable-products")]
     public async Task<ActionResult<IReadOnlyList<SellableProductDto>>> GetSellableProducts(
@@ -55,4 +56,6 @@ public class SalesController(ISender mediator) : ControllerBase
 
 public record VoidSaleRequest(string Reason, Guid? ClientRequestId = null);
 
-public record RefundSaleRequest(IReadOnlyList<RefundLineInput> Items, string Reason, Guid? ClientRequestId = null);
+public record RefundSaleRequest(
+    IReadOnlyList<RefundLineInput> Items, string Reason,
+    decimal ApplyToBalance = 0, int? CustomerBalanceRowVersion = null, Guid? ClientRequestId = null);

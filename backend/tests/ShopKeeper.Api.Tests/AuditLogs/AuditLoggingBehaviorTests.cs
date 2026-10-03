@@ -156,6 +156,7 @@ public class AuditLoggingBehaviorTests : IDisposable
         public DbSet<ProductCategory> ProductCategories => inner.ProductCategories;
         public DbSet<Supplier> Suppliers => inner.Suppliers;
         public DbSet<Customer> Customers => inner.Customers;
+        public DbSet<CustomerLedgerEntry> CustomerLedgerEntries => inner.CustomerLedgerEntries;
         public DbSet<Product> Products => inner.Products;
         public DbSet<ProductStock> ProductStocks => inner.ProductStocks;
         public DbSet<InventoryTransaction> InventoryTransactions => inner.InventoryTransactions;
