@@ -6,7 +6,8 @@ public record CustomerDto(
     string? Phone,
     string? Email,
     string? Address,
-    bool IsActive);
+    bool IsActive,
+    decimal CurrentBalance);
 
 /// <summary>
 /// TotalSpend/AverageSale/LastPurchaseAt are real aggregates over the customer's Sale history -
@@ -23,4 +24,17 @@ public record CustomerDetailDto(
     decimal TotalSpend,
     decimal AverageSale,
     int PurchaseCount,
-    DateTimeOffset? LastPurchaseAt);
+    DateTimeOffset? LastPurchaseAt,
+    decimal CurrentBalance);
+
+public record CustomerLedgerEntryDto(
+    Guid Id,
+    string Type,
+    decimal Amount,
+    decimal BalanceAfter,
+    string ReferenceType,
+    Guid ReferenceId,
+    string? Method,
+    string? ReferenceNumber,
+    string? Note,
+    DateTimeOffset CreatedAt);

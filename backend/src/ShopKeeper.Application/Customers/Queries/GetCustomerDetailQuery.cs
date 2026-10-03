@@ -40,6 +40,6 @@ public class GetCustomerDetailQueryHandler(IAppDbContext db, ICurrentUserService
 
         return new CustomerDetailDto(
             customer.Id, customer.Name, customer.Phone, customer.Email, customer.Address, customer.IsActive,
-            totalSpend, averageSale, purchaseCount, lastPurchaseAt);
+            totalSpend, averageSale, purchaseCount, lastPurchaseAt, customer.CurrentBalance);
     }
 }

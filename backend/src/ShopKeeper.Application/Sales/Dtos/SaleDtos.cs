@@ -67,4 +67,5 @@ public record RefundDto(
     string SaleNumber,
     string Reason,
     decimal TotalAmount,
+    decimal AmountAppliedToBalance,
     DateTimeOffset CreatedAt);

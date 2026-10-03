@@ -19,7 +19,19 @@ public record RefundLineInput(Guid SaleItemId, int Quantity);
 // cascading side effects (stock increment, Sale.Status change) that compound badly if processed
 // twice, and the generic behavior's response-persisted-after-commit gap is only safe for a
 // single device's sequential sync loop - see Refund.ClientRequestId's doc comment.
-public record RefundSaleCommand(Guid SaleId, IReadOnlyList<RefundLineInput> Items, string Reason, Guid? ClientRequestId = null)
+public record RefundSaleCommand(
+    Guid SaleId,
+    IReadOnlyList<RefundLineInput> Items,
+    string Reason,
+    // Explicit, never inferred or defaulted - the cashier sees the computed refund total, the
+    // customer's current balance, and actively chooses how much of the refund applies to the
+    // account versus pays out in cash/card. CustomerBalanceRowVersion is the balance's
+    // RowVersion as displayed on that confirmation screen; if it's moved since, the request is
+    // rejected so the UI can re-fetch and the cashier re-confirms against current numbers
+    // rather than silently applying a stale split.
+    decimal ApplyToBalance = 0,
+    int? CustomerBalanceRowVersion = null,
+    Guid? ClientRequestId = null)
     : IRequest<RefundDto>;
 
 public class RefundSaleCommandValidator : AbstractValidator<RefundSaleCommand>
@@ -29,6 +41,10 @@ public class RefundSaleCommandValidator : AbstractValidator<RefundSaleCommand>
         RuleFor(x => x.Reason).NotEmpty().MaximumLength(500);
         RuleFor(x => x.Items).NotEmpty().WithMessage("A refund needs at least one item.");
         RuleForEach(x => x.Items).ChildRules(item => item.RuleFor(i => i.Quantity).GreaterThan(0));
+        RuleFor(x => x.ApplyToBalance).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.CustomerBalanceRowVersion).NotNull()
+            .When(x => x.ApplyToBalance > 0)
+            .WithMessage("The customer's balance version must be confirmed when applying a refund to their account.");
     }
 }
 
@@ -178,6 +194,53 @@ public class RefundSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
         refund.TotalAmount = totalAmount;
         sale.Status = sale.Items.All(i => i.RefundedQuantity >= i.Quantity) ? SaleStatus.Refunded : SaleStatus.PartiallyRefunded;
 
+        if (request.ApplyToBalance > 0)
+        {
+            if (!sale.CustomerId.HasValue)
+            {
+                throw new ConflictException("This sale has no customer to apply a balance credit to.");
+            }
+
+            var customer = await db.Customers.FirstOrDefaultAsync(c => c.Id == sale.CustomerId.Value, cancellationToken)
+                ?? throw new NotFoundException(nameof(Customer), sale.CustomerId.Value);
+
+            // Staleness check against what the cashier's confirmation screen actually displayed
+            // - distinct from (and in addition to) EF's own optimistic-concurrency protection
+            // below, which only catches a conflict within this request's own read-to-write
+            // window, not one that happened before this request was ever sent.
+            if (customer.RowVersion != request.CustomerBalanceRowVersion)
+            {
+                throw new ConflictException(
+                    "This customer's balance changed since the refund split was calculated. Please review and confirm again.");
+            }
+
+            if (request.ApplyToBalance > totalAmount)
+            {
+                throw new ConflictException("Cannot apply more to the account balance than the refund total.");
+            }
+
+            if (request.ApplyToBalance > customer.CurrentBalance)
+            {
+                throw new ConflictException("Cannot apply more to the account balance than the customer currently owes.");
+            }
+
+            customer.CurrentBalance -= request.ApplyToBalance;
+            customer.RowVersion++;
+            refund.AmountAppliedToBalance = request.ApplyToBalance;
+
+            db.CustomerLedgerEntries.Add(new CustomerLedgerEntry
+            {
+                BusinessId = businessId,
+                CustomerId = customer.Id,
+                Type = CustomerLedgerEntryType.RefundCredit,
+                Amount = -request.ApplyToBalance,
+                BalanceAfter = customer.CurrentBalance,
+                ReferenceType = "Refund",
+                ReferenceId = refund.Id,
+                CreatedByUserId = userId,
+            });
+        }
+
         db.Refunds.Add(refund);
 
         try
@@ -186,12 +249,12 @@ public class RefundSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
         }
         catch (DbUpdateConcurrencyException)
         {
-            // A concurrent sale or another refund moved one of these ProductStock rows between
-            // our read and this write - see CreateSaleCommand's identical handling. Only
-            // actually reachable now that the RowVersion increment above exists; before it, a
-            // concurrent write here was silently never detected at all (a lost-update bug, not
-            // an absence of conflicts).
-            throw new ConflictException("Stock changed while this refund was being processed. Please try again.");
+            // A concurrent sale/refund moved one of these ProductStock rows, or a concurrent
+            // charge/payment/refund moved the customer's balance, between our read and this
+            // write - see CreateSaleCommand's identical handling. Only actually reachable now
+            // that the RowVersion increments above exist; before them, a concurrent write here
+            // was silently never detected at all (a lost-update bug, not an absence of conflicts).
+            throw new ConflictException("Stock or account balance changed while this refund was being processed. Please try again.");
         }
         catch (DbUpdateException) when (request.ClientRequestId.HasValue)
         {
@@ -209,7 +272,9 @@ public class RefundSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
             return winner;
         }
 
-        return new RefundDto(refund.Id, refund.RefundNumber, sale.Id, sale.SaleNumber, refund.Reason, refund.TotalAmount, refund.CreatedAt);
+        return new RefundDto(
+            refund.Id, refund.RefundNumber, sale.Id, sale.SaleNumber, refund.Reason,
+            refund.TotalAmount, refund.AmountAppliedToBalance, refund.CreatedAt);
     }
 
     private async Task<string> GenerateRefundNumberAsync(Guid businessId, CancellationToken ct)
@@ -224,6 +289,8 @@ public class RefundSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
             .FirstOrDefaultAsync(r => r.BusinessId == businessId && r.ClientRequestId == clientRequestId, ct);
         return existing is null
             ? null
-            : new RefundDto(existing.Id, existing.RefundNumber, existing.SaleId, existing.Sale.SaleNumber, existing.Reason, existing.TotalAmount, existing.CreatedAt);
+            : new RefundDto(
+                existing.Id, existing.RefundNumber, existing.SaleId, existing.Sale.SaleNumber, existing.Reason,
+                existing.TotalAmount, existing.AmountAppliedToBalance, existing.CreatedAt);
     }
 }
