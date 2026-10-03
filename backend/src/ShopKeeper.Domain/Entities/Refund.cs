@@ -23,6 +23,14 @@ public class Refund : BaseEntity, ITenantEntity
     public string Reason { get; set; } = default!;
     public decimal TotalAmount { get; set; }
 
+    /// <summary>How much of TotalAmount the cashier explicitly chose to apply against the
+    /// sale's customer's account balance rather than pay out in cash/card - never inferred or
+    /// defaulted, always an explicit confirmed choice (see RefundSaleCommand). 0 when the sale
+    /// has no customer, the customer owes nothing, or the cashier chose a full cash payout.
+    /// The applied portion generates a CustomerLedgerEntry; TotalAmount - this is what's paid
+    /// out through the existing refund/tender records, same as before this field existed.</summary>
+    public decimal AmountAppliedToBalance { get; set; }
+
     public Guid ProcessedByUserId { get; set; }
 
     /// <summary>Same mechanism as Sale.ClientRequestId - a dedicated precheck + partial unique

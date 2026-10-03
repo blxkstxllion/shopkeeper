@@ -22,6 +22,7 @@ public class RefundConfiguration : IEntityTypeConfiguration<Refund>
         builder.Property(r => r.RefundNumber).HasMaxLength(30).IsRequired();
         builder.Property(r => r.Reason).HasMaxLength(500).IsRequired();
         builder.Property(r => r.TotalAmount).HasPrecision(18, 2);
+        builder.Property(r => r.AmountAppliedToBalance).HasPrecision(18, 2);
 
         builder.HasOne(r => r.Branch).WithMany().HasForeignKey(r => r.BranchId).OnDelete(DeleteBehavior.Restrict);
 
