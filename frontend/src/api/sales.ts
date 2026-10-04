@@ -42,7 +42,13 @@ export async function voidSale(id: string, reason: string, clientRequestId?: str
 
 export async function refundSale(
   id: string,
-  payload: { items: { saleItemId: string; quantity: number }[]; reason: string; clientRequestId?: string },
+  payload: {
+    items: { saleItemId: string; quantity: number }[]
+    reason: string
+    applyToBalance?: number
+    customerBalanceRowVersion?: number
+    clientRequestId?: string
+  },
 ): Promise<Refund> {
   const { data } = await apiClient.post<Refund>(`/sales/${id}/refund`, payload)
   return data
