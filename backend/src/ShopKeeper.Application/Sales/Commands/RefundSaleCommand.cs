@@ -123,7 +123,7 @@ public class RefundSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
         // amount for the line should be (rounded once, from the cumulative quantity), then
         // subtracts what's already been recorded - the difference is this call's amount. When
         // the cumulative quantity reaches the line's full Quantity, the cumulative amount is
-        // NetAmountPaid exactly (no rounding at all), so full completion always reconciles to
+        // NetLineValue exactly (no rounding at all), so full completion always reconciles to
         // the cent regardless of how many partial refunds got there.
         // Summed client-side, not via a server-side GroupBy/Sum - the SQLite test provider can't
         // translate Sum over a decimal column (the same limitation GetProfitabilityReportQuery
@@ -145,13 +145,13 @@ public class RefundSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
             var priorAmount = refundedAmountBySaleItem.GetValueOrDefault(line.SaleItemId);
             var cumulativeQuantity = saleItem.RefundedQuantity + line.Quantity;
 
-            // Derived from NetAmountPaid (the line's actual share of Sale.Total, already net of
+            // Derived from NetLineValue (the line's actual share of Sale.Total, already net of
             // every discount and inclusive of tax - see SaleItem's doc comment), not UnitPrice.
             // UnitPrice is the gross pre-discount, pre-tax price - refunding from it would hand
             // back more than the customer actually paid whenever a discount or tax applied.
             var cumulativeAmount = cumulativeQuantity >= saleItem.Quantity
-                ? saleItem.NetAmountPaid
-                : Math.Round(saleItem.NetAmountPaid * cumulativeQuantity / saleItem.Quantity, 2);
+                ? saleItem.NetLineValue
+                : Math.Round(saleItem.NetLineValue * cumulativeQuantity / saleItem.Quantity, 2);
             var amount = cumulativeAmount - priorAmount;
             totalAmount += amount;
 

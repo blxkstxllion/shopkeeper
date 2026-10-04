@@ -17,7 +17,7 @@ public record SaleItemDto(
     // RefundSaleCommand refunds from. Exposed so the frontend can show an accurate refund-amount
     // preview before submitting, rather than approximating from LineRevenue (which doesn't
     // reflect sale-level discount or tax).
-    decimal NetAmountPaid);
+    decimal NetLineValue);
 
 public record PaymentDto(Guid Id, string Method, decimal Amount, string? ReferenceNumber);
 
