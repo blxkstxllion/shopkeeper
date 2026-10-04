@@ -20,6 +20,7 @@ export type OfflineEntityType =
   | 'customer'
   | 'customerUpdate'
   | 'customerDelete'
+  | 'customerPayment'
   | 'supplier'
   | 'supplierUpdate'
   | 'supplierDelete'
