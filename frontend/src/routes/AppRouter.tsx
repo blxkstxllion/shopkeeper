@@ -25,6 +25,7 @@ import { AboutPage } from '@/features/about/AboutPage'
 import { BillingCallbackPage } from '@/features/settings/BillingCallbackPage'
 import { AuditLogsPage } from '@/features/audit-logs/AuditLogsPage'
 import { AdvisorPage } from '@/features/advisor/AdvisorPage'
+import { PrivacyPolicyPage } from '@/features/legal/PrivacyPolicyPage'
 import { RequireActiveBusiness, RequireAuth, RedirectIfAuthed, RequirePermission, RequireVerifiedEmail } from './guards'
 
 export function AppRouter() {
@@ -44,6 +45,7 @@ export function AppRouter() {
       <Route path="/accept-invite" element={<AcceptInvitePage />} />
       <Route path="/join" element={<JoinPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/privacy" element={<PrivacyPolicyPage />} />
 
       <Route
         element={

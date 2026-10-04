@@ -108,6 +108,19 @@ export function RegisterPage() {
         <Button type="submit" isLoading={isSubmitting} className="w-full">
           Create account
         </Button>
+
+        <p className="text-center text-xs text-slate-400">
+          By creating an account, you agree to our{' '}
+          <Link
+            to="/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-primary-600 hover:text-primary-700"
+          >
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </form>
 
       <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
