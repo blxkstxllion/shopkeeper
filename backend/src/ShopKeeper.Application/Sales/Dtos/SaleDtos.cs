@@ -12,7 +12,12 @@ public record SaleItemDto(
     decimal LineRevenue,
     decimal LineCost,
     decimal LineProfit,
-    int RefundedQuantity);
+    int RefundedQuantity,
+    // The line's actual share of Sale.Total (net of every discount, inclusive of tax) - what
+    // RefundSaleCommand refunds from. Exposed so the frontend can show an accurate refund-amount
+    // preview before submitting, rather than approximating from LineRevenue (which doesn't
+    // reflect sale-level discount or tax).
+    decimal NetAmountPaid);
 
 public record PaymentDto(Guid Id, string Method, decimal Amount, string? ReferenceNumber);
 

@@ -7,7 +7,11 @@ public record CustomerDto(
     string? Email,
     string? Address,
     bool IsActive,
-    decimal CurrentBalance);
+    decimal CurrentBalance,
+    // Exposed so the frontend can pass it back on RefundSaleCommand's ApplyToBalance split -
+    // the server rejects a stale value rather than silently applying a split calculated
+    // against a balance that's since moved. See RefundSaleCommand's own doc comment.
+    int BalanceRowVersion);
 
 /// <summary>
 /// TotalSpend/AverageSale/LastPurchaseAt are real aggregates over the customer's Sale history -
@@ -25,7 +29,8 @@ public record CustomerDetailDto(
     decimal AverageSale,
     int PurchaseCount,
     DateTimeOffset? LastPurchaseAt,
-    decimal CurrentBalance);
+    decimal CurrentBalance,
+    int BalanceRowVersion);
 
 public record CustomerLedgerEntryDto(
     Guid Id,

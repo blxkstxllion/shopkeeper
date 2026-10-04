@@ -1,6 +1,13 @@
 import { apiClient } from '@/lib/api-client'
 import type { PagedResult } from '@/types/product'
-import type { CreateCustomerPayload, Customer, CustomerDetail, UpdateCustomerPayload } from '@/types/customer'
+import type {
+  CreateCustomerPayload,
+  Customer,
+  CustomerDetail,
+  CustomerLedgerEntry,
+  RecordCustomerPaymentPayload,
+  UpdateCustomerPayload,
+} from '@/types/customer'
 
 export interface GetCustomersParams {
   search?: string
@@ -30,4 +37,20 @@ export async function updateCustomer(payload: UpdateCustomerPayload & { clientRe
 
 export async function deleteCustomer(id: string, clientRequestId?: string): Promise<void> {
   await apiClient.delete(`/customers/${id}`, { params: { clientRequestId } })
+}
+
+export async function recordCustomerPayment(
+  customerId: string,
+  payload: RecordCustomerPaymentPayload,
+): Promise<CustomerLedgerEntry> {
+  const { data } = await apiClient.post<CustomerLedgerEntry>(`/customers/${customerId}/payments`, payload)
+  return data
+}
+
+export async function getCustomerLedger(
+  customerId: string,
+  params?: { page?: number; pageSize?: number },
+): Promise<PagedResult<CustomerLedgerEntry>> {
+  const { data } = await apiClient.get<PagedResult<CustomerLedgerEntry>>(`/customers/${customerId}/ledger`, { params })
+  return data
 }

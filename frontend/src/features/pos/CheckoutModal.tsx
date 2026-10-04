@@ -57,6 +57,7 @@ export function CheckoutModal({
   const [customerId, setCustomerId] = useState('')
   const [isAddingCustomer, setIsAddingCustomer] = useState(false)
   const [newCustomerName, setNewCustomerName] = useState('')
+  const [allowCredit, setAllowCredit] = useState(false)
 
   const { data: businessSettings } = useOfflineSingletonQuery<BusinessSettings>(
     ['business-settings'],
@@ -96,8 +97,16 @@ export function CheckoutModal({
       setCustomerId('')
       setIsAddingCustomer(false)
       setNewCustomerName('')
+      setAllowCredit(false)
     }
   }, [isOpen])
+
+  // The toggle is only meaningful with a real customer attached (no debt on an anonymous
+  // walk-in, same rule the backend enforces) - clearing the customer silently drops any credit
+  // in progress rather than leaving a stale toggle the cashier might not notice.
+  useEffect(() => {
+    if (!customerId) setAllowCredit(false)
+  }, [customerId])
 
   const customerMutation = useMutation({
     mutationFn: () => createCustomer({ name: newCustomerName }),
@@ -140,6 +149,7 @@ export function CheckoutModal({
           referenceNumber: p.referenceNumber || null,
         })),
         customerId: customerId || null,
+        allowCredit: allowCredit && Boolean(customerId),
         // Generated fresh for every attempt, online or offline - a retry of this exact
         // payload (flaky connection, or a resync after reconnecting) can never double-sell.
         clientRequestId: crypto.randomUUID(),
@@ -286,6 +296,18 @@ export function CheckoutModal({
           )}
         </FormField>
 
+        {customerId && (
+          <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+            <input
+              type="checkbox"
+              checked={allowCredit}
+              onChange={(e) => setAllowCredit(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+            />
+            Sell on credit (add any shortfall to this customer&apos;s account)
+          </label>
+        )}
+
         <div className="grid grid-cols-3 gap-2">
           {(Object.keys(methodConfig) as PaymentMethod[]).map((method) => {
             const { label, icon: Icon } = methodConfig[method]
@@ -347,13 +369,17 @@ export function CheckoutModal({
           <span>{formatMoney(Math.max(remaining, 0))}</span>
         </div>
 
+        {allowCredit && remaining > 0 && (
+          <Alert tone="info">{formatMoney(remaining)} will be charged to this customer&apos;s account.</Alert>
+        )}
+
         <div className="flex justify-end gap-2">
           <Button type="button" variant="ghost" onClick={handleClose}>
             Cancel
           </Button>
           <Button
             type="button"
-            disabled={remaining !== 0 || payments.length === 0}
+            disabled={(!allowCredit && (remaining !== 0 || payments.length === 0)) || mutation.isPending}
             isLoading={mutation.isPending}
             onClick={() => mutation.mutate()}
           >

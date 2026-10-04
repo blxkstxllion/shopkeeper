@@ -27,6 +27,9 @@ export interface SaleItem {
   lineCost: number
   lineProfit: number
   refundedQuantity: number
+  /** This line's actual share of Sale.total (net of every discount, inclusive of tax) - what a
+   * refund is actually computed from. Use this, not lineRevenue, for any refund-amount preview. */
+  netAmountPaid: number
 }
 
 export interface Payment {
@@ -89,6 +92,10 @@ export interface CreateSalePayload {
   discountAmount: number
   payments: SalePaymentInput[]
   customerId?: string | null
+  /** Explicit, never inferred - lets payments fall short of the total (the shortfall becomes a
+   * charge against the customer's account). Only meaningful with a customerId set; see
+   * CreateSaleCommand's AllowCredit. */
+  allowCredit?: boolean
   /** Client-generated idempotency key, sent on every attempt (online or queued offline)
    * so a retry - whether from a flaky connection or a resync after reconnecting - can
    * never double-sell. See CreateSaleCommandHandler's use of it on the backend. */
@@ -118,5 +125,9 @@ export interface Refund {
   saleNumber: string
   reason: string
   totalAmount: number
+  /** How much of totalAmount was applied against the customer's account balance rather than
+   * paid out - 0 when the sale has no customer, the customer owed nothing, or the cashier
+   * chose a full cash/card payout. */
+  amountAppliedToBalance: number
   createdAt: string
 }

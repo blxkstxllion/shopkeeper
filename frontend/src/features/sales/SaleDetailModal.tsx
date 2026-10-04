@@ -1,16 +1,28 @@
-import { useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Ban, RotateCcw } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
+import { Input, FormField } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
 import { ApiError } from '@/lib/api-client'
 import { formatMoney, formatDateTime } from '@/lib/format'
 import { getSale } from '@/api/sales'
+import { getCustomer } from '@/api/customers'
 import { useOfflineMutation } from '@/offline/useOfflineMutation'
 import { useOfflineSingletonQuery } from '@/offline/useOfflineQuery'
+import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import type { Sale, SaleStatus } from '@/types/sale'
+
+/** Proportional preview only - a rough estimate of what the server's exact cumulative-allocation
+ * formula (RefundSaleCommand) will charge, good enough to show the cashier before confirming. */
+function previewRefundTotal(sale: Sale, refundQuantities: Record<string, number>): number {
+  return sale.items.reduce((sum, item) => {
+    const qty = refundQuantities[item.id] ?? 0
+    if (qty <= 0) return sum
+    return sum + Math.round(((item.netAmountPaid * qty) / item.quantity) * 100) / 100
+  }, 0)
+}
 
 const statusTone: Record<SaleStatus, string> = {
   Completed: 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300',
@@ -24,7 +36,9 @@ export function SaleDetailModal({ saleId, onClose }: { saleId: string | null; on
   const [mode, setMode] = useState<'view' | 'void' | 'refund'>('view')
   const [reason, setReason] = useState('')
   const [refundQuantities, setRefundQuantities] = useState<Record<string, number>>({})
+  const [applyToBalance, setApplyToBalance] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const isOnline = useOnlineStatus()
 
   const { data: sale } = useOfflineSingletonQuery<Sale>(
     ['sale', saleId],
@@ -32,6 +46,22 @@ export function SaleDetailModal({ saleId, onClose }: { saleId: string | null; on
     () => getSale(saleId!),
     Boolean(saleId),
   )
+
+  // Fetched fresh (not offline-cached) so the balance/RowVersion used for the refund split is
+  // never stale - the server rejects a RowVersion that's moved since this read. That's why the
+  // split control is only available online: there's no safe offline equivalent of "fresh".
+  const { data: customer } = useQuery({
+    queryKey: ['customer-detail', sale?.customerId],
+    queryFn: () => getCustomer(sale!.customerId!),
+    enabled: mode === 'refund' && isOnline && Boolean(sale?.customerId),
+  })
+
+  const previewTotal = sale ? previewRefundTotal(sale, refundQuantities) : 0
+  const maxApplyToBalance = Math.max(0, Math.min(previewTotal, customer?.currentBalance ?? 0))
+
+  useEffect(() => {
+    setApplyToBalance((prev) => Math.min(prev, maxApplyToBalance))
+  }, [maxApplyToBalance])
 
   const voidMutation = useOfflineMutation<{ saleId: string; reason: string }>(
     'void',
@@ -41,6 +71,8 @@ export function SaleDetailModal({ saleId, onClose }: { saleId: string | null; on
     saleId: string
     reason: string
     items: { saleItemId: string; quantity: number }[]
+    applyToBalance?: number
+    customerBalanceRowVersion?: number
   }>('refund', () => `Refund on sale ${sale?.saleNumber ?? ''}`)
 
   async function handleVoid() {
@@ -64,9 +96,12 @@ export function SaleDetailModal({ saleId, onClose }: { saleId: string | null; on
           items: Object.entries(refundQuantities)
             .filter(([, qty]) => qty > 0)
             .map(([saleItemId, quantity]) => ({ saleItemId, quantity })),
+          ...(applyToBalance > 0 ? { applyToBalance, customerBalanceRowVersion: customer?.balanceRowVersion } : {}),
         },
       })
       queryClient.invalidateQueries({ queryKey: ['sales'] })
+      queryClient.invalidateQueries({ queryKey: ['customers'] })
+      queryClient.invalidateQueries({ queryKey: ['customer-detail'] })
       handleClose()
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Unable to process this refund.')
@@ -77,6 +112,7 @@ export function SaleDetailModal({ saleId, onClose }: { saleId: string | null; on
     setMode('view')
     setReason('')
     setRefundQuantities({})
+    setApplyToBalance(0)
     setError(null)
     onClose()
   }
@@ -116,8 +152,11 @@ export function SaleDetailModal({ saleId, onClose }: { saleId: string | null; on
               )}
               {mode === 'refund' && item.quantity - item.refundedQuantity > 0 && (
                 <div className="flex items-center gap-2 pt-1">
-                  <label className="text-xs text-slate-500 dark:text-slate-400">Refund qty:</label>
+                  <label htmlFor={`refund-qty-${item.id}`} className="text-xs text-slate-500 dark:text-slate-400">
+                    Refund qty:
+                  </label>
                   <Input
+                    id={`refund-qty-${item.id}`}
                     type="number"
                     min={0}
                     max={item.quantity - item.refundedQuantity}
@@ -169,6 +208,40 @@ export function SaleDetailModal({ saleId, onClose }: { saleId: string | null; on
                 Void sale
               </Button>
             )}
+          </div>
+        )}
+
+        {mode === 'refund' && sale.customerId && !isOnline && (
+          <Alert tone="info">
+            This customer has an account balance, but splitting a refund between account credit and payout requires a
+            connection. This refund will be paid out in full; record any account adjustment separately once you're back
+            online.
+          </Alert>
+        )}
+
+        {mode === 'refund' && maxApplyToBalance > 0 && (
+          <div className="flex flex-col gap-2 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {customer?.name ?? 'This customer'} owes {formatMoney(customer?.currentBalance ?? 0)}. Choose how much of
+              this refund reduces that balance versus gets paid out.
+            </p>
+            <FormField label={`Apply to balance (up to ${formatMoney(maxApplyToBalance)})`} htmlFor="applyToBalance">
+              <Input
+                id="applyToBalance"
+                type="number"
+                min={0}
+                max={maxApplyToBalance}
+                step="0.01"
+                value={applyToBalance}
+                onChange={(e) =>
+                  setApplyToBalance(Math.min(maxApplyToBalance, Math.max(0, Number(e.target.value) || 0)))
+                }
+              />
+            </FormField>
+            <div className="flex justify-between text-sm text-slate-500 dark:text-slate-400">
+              <span>Paid out</span>
+              <span>{formatMoney(Math.max(0, previewTotal - applyToBalance))}</span>
+            </div>
           </div>
         )}
 

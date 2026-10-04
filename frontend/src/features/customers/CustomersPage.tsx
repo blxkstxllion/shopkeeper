@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { TableSkeleton } from '@/components/ui/Skeleton'
+import { formatMoney } from '@/lib/format'
 import { useOfflineSingletonQuery } from '@/offline/useOfflineQuery'
 import { useOfflineMutation } from '@/offline/useOfflineMutation'
 import type { PagedResult } from '@/types/product'
@@ -67,7 +68,7 @@ export function CustomersPage() {
 
       <Card className="overflow-hidden">
         {isLoading ? (
-          <TableSkeleton columns={3} rows={6} />
+          <TableSkeleton columns={4} rows={6} />
         ) : customers.length === 0 ? (
           <EmptyState
             icon={UserCircle}
@@ -82,6 +83,7 @@ export function CustomersPage() {
                   <th className="px-4 py-3 font-medium">Customer</th>
                   <th className="px-4 py-3 font-medium">Phone</th>
                   <th className="px-4 py-3 font-medium">Email</th>
+                  <th className="px-4 py-3 font-medium">Balance</th>
                   <th className="px-4 py-3 font-medium"></th>
                 </tr>
               </thead>
@@ -91,6 +93,15 @@ export function CustomersPage() {
                     <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{c.name}</td>
                     <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{c.phone ?? '—'}</td>
                     <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{c.email ?? '—'}</td>
+                    <td
+                      className={`px-4 py-3 font-medium ${
+                        c.currentBalance > 0
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-slate-400 dark:text-slate-500'
+                      }`}
+                    >
+                      {c.currentBalance > 0 ? formatMoney(c.currentBalance) : '—'}
+                    </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-2">
                         <Button variant="ghost" size="sm" onClick={() => setDetailCustomerId(c.id)}>

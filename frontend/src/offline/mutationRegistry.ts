@@ -12,7 +12,12 @@ import * as aboutApi from '@/api/about'
 import * as salesApi from '@/api/sales'
 import { cacheList, cacheSingleton, getCachedList, getCachedSingleton } from './cache'
 import type { CreateProductPayload, PagedResult, Product, ProductCategory, UpdateProductPayload } from '@/types/product'
-import type { Customer, CreateCustomerPayload, UpdateCustomerPayload } from '@/types/customer'
+import type {
+  Customer,
+  CreateCustomerPayload,
+  RecordCustomerPaymentPayload,
+  UpdateCustomerPayload,
+} from '@/types/customer'
 import type {
   CreateSupplierPayload,
   RestockFromSupplierPayload,
@@ -134,7 +139,8 @@ async function removeCachedSingletonArrayItem<T extends { id: string }>(key: str
 export const mutationRegistry: Record<OfflineEntityType, MutationDefinition<never>> = {
   sale: {
     call: (payload, clientRequestId) => salesApi.createSale({ ...(payload as CreateSalePayload), clientRequestId }),
-    invalidate: (qc) => invalidateKeys(qc, [['sellable-products'], ['sales'], ['dashboard']]),
+    invalidate: (qc) =>
+      invalidateKeys(qc, [['sellable-products'], ['sales'], ['dashboard'], ['customers'], ['customer-detail']]),
   },
   refund: {
     call: (payload, clientRequestId) => {
@@ -142,10 +148,12 @@ export const mutationRegistry: Record<OfflineEntityType, MutationDefinition<neve
         saleId: string
         items: { saleItemId: string; quantity: number }[]
         reason: string
+        applyToBalance?: number
+        customerBalanceRowVersion?: number
       }
       return salesApi.refundSale(saleId, { ...rest, clientRequestId })
     },
-    invalidate: (qc) => invalidateKeys(qc, [['sales'], ['dashboard']]),
+    invalidate: (qc) => invalidateKeys(qc, [['sales'], ['dashboard'], ['customers'], ['customer-detail']]),
   },
   void: {
     call: (payload, clientRequestId) => {
@@ -276,6 +284,8 @@ export const mutationRegistry: Record<OfflineEntityType, MutationDefinition<neve
         email: p.email ?? null,
         address: p.address ?? null,
         isActive: true,
+        currentBalance: 0, // a newly-created customer has no history yet, can't owe anything
+        balanceRowVersion: 0,
       }
       await cacheList('customers', ctx.businessId, [...existing, optimistic])
     },
@@ -300,6 +310,17 @@ export const mutationRegistry: Record<OfflineEntityType, MutationDefinition<neve
     invalidate: (qc) => invalidateKeys(qc, [['customers']]),
     optimisticDelete: (payload, ctx) =>
       deactivateCachedItem<Customer>('customers', ctx.businessId, (payload as { id: string }).id),
+  },
+  customerPayment: {
+    // No optimistic balance adjustment - unlike a field edit, a repayment doesn't need to know
+    // the live balance to be valid (overpayment is allowed by design, see
+    // RecordCustomerPaymentCommand), so it's safe to queue offline same as any other write. The
+    // balance just refreshes correctly once this syncs and the query invalidates.
+    call: (payload, clientRequestId) => {
+      const { customerId, ...rest } = payload as { customerId: string } & RecordCustomerPaymentPayload
+      return customersApi.recordCustomerPayment(customerId, { ...rest, clientRequestId })
+    },
+    invalidate: (qc) => invalidateKeys(qc, [['customers'], ['customer-detail'], ['customer-ledger']]),
   },
   supplier: {
     call: (payload, clientRequestId) =>
