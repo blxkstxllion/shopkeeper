@@ -48,7 +48,7 @@ const sale: Sale = {
       lineCost: 10,
       lineProfit: 10,
       refundedQuantity: 0,
-      netAmountPaid: 20,
+      netLineValue: 20,
     },
   ],
   payments: [{ id: 'pay1', method: 'Cash', amount: 20, referenceNumber: null }],
