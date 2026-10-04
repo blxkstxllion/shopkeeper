@@ -14,5 +14,5 @@ public static class SaleMapper
     public static SaleItemDto ToItemDto(SaleItem item) => new(
         item.Id, item.ProductId, item.ProductNameSnapshot, item.SkuSnapshot, item.Quantity,
         item.UnitPrice, item.UnitCost, item.DiscountAmount, item.LineRevenue, item.LineCost, item.LineProfit,
-        item.RefundedQuantity);
+        item.RefundedQuantity, item.NetAmountPaid);
 }
