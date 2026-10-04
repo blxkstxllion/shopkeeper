@@ -212,13 +212,13 @@ public class SalesCommandTests : IDisposable
     }
 
     [Fact]
-    public async Task RefundSale_ThreeSeparateOneUnitRefunds_SumExactlyToNetAmountPaid()
+    public async Task RefundSale_ThreeSeparateOneUnitRefunds_SumExactlyToNetLineValue()
     {
         // Regression test for a real rounding-drift bug: computing Math.Round(unitShare * qty, 2)
         // independently on every refund call let repeated partial refunds of the same line sum to
-        // less than NetAmountPaid (3.33 + 3.33 + 3.33 = 9.99, a cent short of 10.00). The line is
+        // less than NetLineValue (3.33 + 3.33 + 3.33 = 9.99, a cent short of 10.00). The line is
         // built as 3 units at $4 with a $2 line discount (LineRevenue = 12 - 2 = 10), so it's the
-        // sale's only line and NetAmountPaid is exactly $10.00, Quantity 3 - a non-terminating
+        // sale's only line and NetLineValue is exactly $10.00, Quantity 3 - a non-terminating
         // per-unit share ($3.333...) that actually exercises the rounding path.
         var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
         var owner = seeded.AsOwner();
@@ -248,7 +248,7 @@ public class SalesCommandTests : IDisposable
     }
 
     [Fact]
-    public async Task RefundSale_PartialThenRemainder_SumExactlyToNetAmountPaid()
+    public async Task RefundSale_PartialThenRemainder_SumExactlyToNetLineValue()
     {
         // Same scenario as the three-separate-refunds test, but a 2-unit partial refund followed
         // by the 1-unit remainder - the remainder must absorb whatever rounding is left so the
@@ -293,7 +293,7 @@ public class SalesCommandTests : IDisposable
     }
 
     [Fact]
-    public async Task CreateSale_WithTaxAndSaleLevelDiscount_AllocatesNetAmountPaidProportionallySummingToTotal()
+    public async Task CreateSale_WithTaxAndSaleLevelDiscount_AllocatesNetLineValueProportionallySummingToTotal()
     {
         var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
         var owner = seeded.AsOwner();
@@ -326,8 +326,8 @@ public class SalesCommandTests : IDisposable
 
         // Combined, every line's share must reconstruct Total exactly, to the cent - no
         // rounding drift lost or gained across the sale.
-        Assert.Equal(154m, itemA.NetAmountPaid + itemB.NetAmountPaid);
-        Assert.True(itemA.NetAmountPaid > 0 && itemB.NetAmountPaid > 0);
+        Assert.Equal(154m, itemA.NetLineValue + itemB.NetLineValue);
+        Assert.True(itemA.NetLineValue > 0 && itemB.NetLineValue > 0);
     }
 
     [Fact]
@@ -374,7 +374,7 @@ public class SalesCommandTests : IDisposable
             CancellationToken.None);
 
         var saleItem = await context.SaleItems.SingleAsync(i => i.ProductId == product.Id);
-        Assert.Equal(198m, saleItem.NetAmountPaid); // the sale's only line, so it absorbs the full total
+        Assert.Equal(198m, saleItem.NetLineValue); // the sale's only line, so it absorbs the full total
 
         var refund = await new RefundSaleCommandHandler(context, owner).Handle(
             new RefundSaleCommand(sale.Id, [new RefundLineInput(saleItem.Id, 1)], "One unit returned"), CancellationToken.None);

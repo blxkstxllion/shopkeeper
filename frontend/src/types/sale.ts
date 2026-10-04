@@ -29,7 +29,7 @@ export interface SaleItem {
   refundedQuantity: number
   /** This line's actual share of Sale.total (net of every discount, inclusive of tax) - what a
    * refund is actually computed from. Use this, not lineRevenue, for any refund-amount preview. */
-  netAmountPaid: number
+  netLineValue: number
 }
 
 export interface Payment {
