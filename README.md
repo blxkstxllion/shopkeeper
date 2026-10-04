@@ -212,6 +212,48 @@ main → production.yml → retag staging's exact image (no rebuild) → deploy 
 
 Once `STAGING_HOST`/`PRODUCTION_HOST` are set, the deploy jobs activate automatically on the next run. `caddy`'s first startup on a fresh host will take a little longer than usual while it obtains its initial certificates from Let's Encrypt — this fails (and `caddy` will retry on its own) if DNS isn't pointed at the host yet, so do step 3 before starting it.
 
+## Desktop & mobile builds
+
+The downloadable Windows installer and Android APK (`/downloads/*` on the production
+site, served by Caddy straight from `docker/downloads/` — see `docker/Caddyfile`) are
+**manual Tauri builds, not part of any CI/CD pipeline.** Merging to `master` updates the
+live web app instantly; it does **not** touch these files. Rebuild and re-upload by hand
+whenever a release-worthy batch of changes lands.
+
+- **Windows**: `npm run tauri build` (from `frontend/`) with the Rust toolchain already
+  installed produces `src-tauri/target/release/bundle/nsis/*.exe` and `bundle/msi/*.msi`.
+  Rename to `ShopKeeper-Setup-x64.exe`/`.msi` and `scp` into
+  `/opt/shopkeeper/docker/downloads/` on the production host.
+- **Android**: needs the Android NDK (`sdkmanager "ndk;<version>"`, not installed by
+  default alongside the SDK) and, on Windows, **Developer Mode enabled** (Settings →
+  Privacy & security → For developers) — Tauri's Android build symlinks compiled `.so`
+  files into the generated Gradle project, and Windows blocks symlink creation without
+  it. First-time setup: `npx tauri android init --ci`. Build: `npx tauri android build`
+  (builds all 4 ABIs + a universal APK). The output
+  (`gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk`)
+  is **unsigned** — Android refuses to install an unsigned APK, so it still needs signing
+  before upload.
+  - **Signing key continuity matters more here than it sounds.** Android treats an APK
+    signed with a different key as a different app — anyone who already installed a
+    build signed with key A cannot install an "update" signed with key B; they'd have to
+    uninstall first. **Always reuse the same keystore** across rebuilds.
+  - The debug keystore in use lives at `~/.android/debug.keystore` (standard Android
+    debug convention: alias `androiddebugkey`, store/key password `android` — this
+    password is a public, well-known convention for every Android debug keystore, not a
+    secret; the actual private key material inside the file is what must stay
+    consistent). A backup copy lives at `/opt/shopkeeper/secrets/android-debug.keystore`
+    on the production host (root-only permissions, **outside** `docker/downloads/` so
+    it's never served publicly) — restore it to `~/.android/debug.keystore` on whatever
+    machine builds next if it's missing locally, rather than letting a tool
+    auto-generate a fresh one.
+  - Sign with `apksigner` (ships with SDK build-tools):
+    `apksigner sign --ks ~/.android/debug.keystore --ks-pass pass:android --key-pass pass:android --ks-key-alias androiddebugkey <path-to-apk>`.
+  - Rename the signed output to `ShopKeeper.apk` and `scp` into the same
+    `docker/downloads/` directory.
+- Verify any upload with a direct `curl -o /dev/null -w '%{http_code} size=%{size_download}'`
+  against the live `/downloads/...` URL — matching byte size to the local file is the
+  cheapest proof the upload landed intact.
+
 ## Security notes
 
 - Containers run as a non-root user (both the API and Nginx images create and switch to an unprivileged user).
