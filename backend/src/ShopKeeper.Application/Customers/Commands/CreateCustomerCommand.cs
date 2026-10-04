@@ -46,6 +46,8 @@ public class CreateCustomerCommandHandler(IAppDbContext db, ICurrentUserService 
         db.Customers.Add(customer);
         await db.SaveChangesAsync(cancellationToken);
 
-        return new CustomerDto(customer.Id, customer.Name, customer.Phone, customer.Email, customer.Address, customer.IsActive, customer.CurrentBalance);
+        return new CustomerDto(
+            customer.Id, customer.Name, customer.Phone, customer.Email, customer.Address, customer.IsActive,
+            customer.CurrentBalance, customer.RowVersion);
     }
 }
