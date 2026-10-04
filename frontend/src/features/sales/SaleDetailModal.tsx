@@ -20,7 +20,7 @@ function previewRefundTotal(sale: Sale, refundQuantities: Record<string, number>
   return sale.items.reduce((sum, item) => {
     const qty = refundQuantities[item.id] ?? 0
     if (qty <= 0) return sum
-    return sum + Math.round(((item.netAmountPaid * qty) / item.quantity) * 100) / 100
+    return sum + Math.round(((item.netLineValue * qty) / item.quantity) * 100) / 100
   }, 0)
 }
 

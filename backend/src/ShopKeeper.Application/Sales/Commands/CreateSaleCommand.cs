@@ -256,16 +256,16 @@ public class CreateSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
         {
             if (lineRevenueSum == 0)
             {
-                saleItems[i].NetAmountPaid = 0;
+                saleItems[i].NetLineValue = 0;
             }
             else if (i == saleItems.Count - 1)
             {
-                saleItems[i].NetAmountPaid = total - allocatedSoFar;
+                saleItems[i].NetLineValue = total - allocatedSoFar;
             }
             else
             {
-                saleItems[i].NetAmountPaid = Math.Round(total * (saleItems[i].LineRevenue / lineRevenueSum), 2);
-                allocatedSoFar += saleItems[i].NetAmountPaid;
+                saleItems[i].NetLineValue = Math.Round(total * (saleItems[i].LineRevenue / lineRevenueSum), 2);
+                allocatedSoFar += saleItems[i].NetLineValue;
             }
         }
 
