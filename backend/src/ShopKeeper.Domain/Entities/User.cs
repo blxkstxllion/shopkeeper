@@ -43,6 +43,16 @@ public class User : BaseEntity
     /// each is removed from this list the moment it's redeemed.</summary>
     public string? TwoFactorRecoveryCodesJson { get; set; }
 
+    /// <summary>Consecutive wrong codes/recovery codes since the last success - reset to 0 on any
+    /// successful verification. The per-IP rate limit on the endpoint already slows brute force
+    /// across accounts; this adds an account-level lockout so one attacker can't keep guessing
+    /// against a single known account indefinitely within that rate limit.</summary>
+    public int TwoFactorFailedAttempts { get; set; }
+
+    /// <summary>Set once TwoFactorFailedAttempts crosses the threshold - verification is rejected
+    /// outright (without even checking the code) while this is in the future.</summary>
+    public DateTimeOffset? TwoFactorLockedUntil { get; set; }
+
     public ICollection<BusinessUser> BusinessUsers { get; set; } = new List<BusinessUser>();
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }
