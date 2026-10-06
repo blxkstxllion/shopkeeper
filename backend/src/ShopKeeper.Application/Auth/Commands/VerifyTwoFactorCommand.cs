@@ -27,6 +27,12 @@ public class VerifyTwoFactorCommandHandler(
     IAppDbContext db, IJwtTokenService jwt, ITotpService totp, IPasswordHasher hasher, TokenIssuer tokenIssuer)
     : IRequestHandler<VerifyTwoFactorCommand, AuthResultDto>
 {
+    // The per-IP rate limit on this endpoint (see AuthController) already slows brute force
+    // across accounts; this bounds how many guesses one attacker gets against a single known
+    // account within that rate limit.
+    private const int MaxFailedAttempts = 5;
+    private static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(15);
+
     public async Task<AuthResultDto> Handle(VerifyTwoFactorCommand request, CancellationToken cancellationToken)
     {
         var challenge = jwt.ValidateTwoFactorChallengeToken(request.ChallengeToken)
@@ -40,18 +46,31 @@ public class VerifyTwoFactorCommandHandler(
             throw new AuthenticationException("Two-factor authentication is not enabled for this account.");
         }
 
+        var now = DateTimeOffset.UtcNow;
+        if (user.TwoFactorLockedUntil is { } lockedUntil && lockedUntil > now)
+        {
+            var minutesRemaining = Math.Max(1, (int)Math.Ceiling((lockedUntil - now).TotalMinutes));
+            throw new AuthenticationException($"Too many incorrect codes. Try again in {minutesRemaining} minute(s).");
+        }
+
         var isValidTotp = totp.ValidateCode(user.TwoFactorSecret, request.Code);
         var isValidRecoveryCode = !isValidTotp && TryConsumeRecoveryCode(user, request.Code);
 
         if (!isValidTotp && !isValidRecoveryCode)
         {
+            user.TwoFactorFailedAttempts++;
+            if (user.TwoFactorFailedAttempts >= MaxFailedAttempts)
+            {
+                user.TwoFactorLockedUntil = now.Add(LockoutDuration);
+            }
+
+            await db.SaveChangesAsync(cancellationToken);
             throw new AuthenticationException("Invalid verification code.");
         }
 
-        if (isValidRecoveryCode)
-        {
-            await db.SaveChangesAsync(cancellationToken);
-        }
+        user.TwoFactorFailedAttempts = 0;
+        user.TwoFactorLockedUntil = null;
+        await db.SaveChangesAsync(cancellationToken);
 
         return await tokenIssuer.IssueAsync(user, challenge.BusinessId, challenge.RememberMe, request.IpAddress, request.UserAgent, cancellationToken);
     }

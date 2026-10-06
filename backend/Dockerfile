@@ -45,9 +45,15 @@ RUN dotnet publish -c Release -o /app/publish --no-restore
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 
+# The mcr.microsoft.com/dotnet/aspnet:8.0 tag is a frozen manifest - it doesn't pick up
+# Debian security patches released after that tag was last built (e.g. perl-base,
+# inherited from the base image, not something this Dockerfile installs itself).
+# `apt-get upgrade` pulls current patched packages at build time instead, mirroring the
+# frontend Dockerfile's `apk upgrade` for the same reason.
 RUN addgroup --system --gid 1000 shopkeeper \
     && adduser --system --uid 1000 --ingroup shopkeeper --shell /bin/false shopkeeper \
     && apt-get update \
+    && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends curl libfontconfig1 \
     && rm -rf /var/lib/apt/lists/*
 

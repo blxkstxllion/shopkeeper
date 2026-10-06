@@ -143,3 +143,37 @@ production host and a genuine backup, not a synthetic one:
   Compose interpolation, never even reaching `pg_dump`. Confirms the point of
   this whole exercise: the mechanism looked correct by inspection and would
   not have been caught without an actual end-to-end run.
+
+**Re-verified: 2026-10-06**, triggered by three schema migrations landing
+since the last check (customer credit ledger, a column rename, 2FA lockout -
+exactly the "re-verify after any major schema migration" trigger this section
+asks for):
+
+- Ran the real backup script again with the exact crontab invocation
+  (`AWS_PROFILE=shopkeeper-backup BACKUP_S3_BUCKET=... ./scripts/backup-db.sh`,
+  no `.env` sourcing) - clean upload. Re-confirmed the write-only credential
+  still can't `ListBucket`/read anything back.
+- **Did not re-verify the S3 read-back leg this time** - the previous drill's
+  temporary read-scoped credential was created directly in the IAM console,
+  which wasn't available this session. Pulled a fresh `pg_dump` straight from
+  production instead (also read-only, same data) to test the part that
+  actually changes with a schema migration: whether the dump restores
+  completely and correctly. The S3 transport itself is unchanged since the
+  last full verification - re-test that leg specifically next time IAM
+  console access is available, don't let this become permanent.
+- Restored into a fresh, isolated `postgres:16.15` throwaway container.
+  Row counts matched production exactly across every table, including the
+  new `CustomerLedgerEntries` table (4 businesses, 4 users, 5 sales, 9 sale
+  items, 8 products, 0 customers, 0 ledger entries at time of backup).
+  `SaleItems."NetLineValue"` summed to 649.00 in the restore, matching
+  production - the column-rename migration didn't silently lose or corrupt
+  values.
+  `Customers."CurrentBalance"`/`"RowVersion"` present with correct types.
+- Schema fidelity: 100 indexes and 56 foreign keys, exact match both sides
+  (up from 95/54 in September - consistent with the tables/columns added
+  since).
+- `Users."TwoFactorFailedAttempts"`/`"TwoFactorLockedUntil"` were **not**
+  present in this restore - expected, not a bug: that migration hadn't been
+  deployed to production yet at the time of this drill. Confirms the dump
+  faithfully reflects production's actual state rather than something
+  silently out of sync.
