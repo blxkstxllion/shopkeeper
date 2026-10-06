@@ -181,5 +181,90 @@ public class TwoFactorCommandTests : IDisposable
             new DisableTwoFactorCommand(user.Id, "WrongPassword1!"), CancellationToken.None));
     }
 
+    [Fact]
+    public async Task VerifyTwoFactor_AfterFiveFailedAttempts_LocksOutAndRejectsEvenTheCorrectCode()
+    {
+        var (user, _, context, tokenIssuer) = await RegisterUserAsync("2fa-lockout@shop.test");
+        var setup = await new SetupTwoFactorCommandHandler(context, _totp).Handle(new SetupTwoFactorCommand(user.Id), CancellationToken.None);
+        await new EnableTwoFactorCommandHandler(context, _totp, _hasher).Handle(
+            new EnableTwoFactorCommand(user.Id, ComputeValidCode(setup.Secret)), CancellationToken.None);
+
+        var loginResult = await new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
+            new LoginCommand("2fa-lockout@shop.test", "Passw0rd!", null, false, null), CancellationToken.None);
+
+        var verifyHandler = new VerifyTwoFactorCommandHandler(context, _jwt, _totp, _hasher, tokenIssuer);
+
+        // 5 wrong attempts against the same challenge - the token itself doesn't expire/consume
+        // on a failed attempt, matching how a real attacker would keep retrying it.
+        for (var i = 0; i < 5; i++)
+        {
+            await Assert.ThrowsAsync<AuthenticationException>(() => verifyHandler.Handle(
+                new VerifyTwoFactorCommand(loginResult.ChallengeToken!, "000000", null), CancellationToken.None));
+        }
+
+        var locked = await context.Users.SingleAsync(u => u.Id == user.Id);
+        Assert.Equal(5, locked.TwoFactorFailedAttempts);
+        Assert.NotNull(locked.TwoFactorLockedUntil);
+
+        // Even the genuinely correct code is rejected while locked out.
+        var ex = await Assert.ThrowsAsync<AuthenticationException>(() => verifyHandler.Handle(
+            new VerifyTwoFactorCommand(loginResult.ChallengeToken!, ComputeValidCode(setup.Secret), null), CancellationToken.None));
+        Assert.Contains("Too many incorrect codes", ex.Message);
+    }
+
+    [Fact]
+    public async Task VerifyTwoFactor_WithValidCodeAfterPriorFailures_ResetsFailedAttemptCounter()
+    {
+        var (user, _, context, tokenIssuer) = await RegisterUserAsync("2fa-reset@shop.test");
+        var setup = await new SetupTwoFactorCommandHandler(context, _totp).Handle(new SetupTwoFactorCommand(user.Id), CancellationToken.None);
+        await new EnableTwoFactorCommandHandler(context, _totp, _hasher).Handle(
+            new EnableTwoFactorCommand(user.Id, ComputeValidCode(setup.Secret)), CancellationToken.None);
+
+        var loginResult = await new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
+            new LoginCommand("2fa-reset@shop.test", "Passw0rd!", null, false, null), CancellationToken.None);
+
+        var verifyHandler = new VerifyTwoFactorCommandHandler(context, _jwt, _totp, _hasher, tokenIssuer);
+
+        // Fewer than the lockout threshold, then succeed - should not lock out, and should clear
+        // the counter rather than leaving it primed for next time.
+        for (var i = 0; i < 3; i++)
+        {
+            await Assert.ThrowsAsync<AuthenticationException>(() => verifyHandler.Handle(
+                new VerifyTwoFactorCommand(loginResult.ChallengeToken!, "000000", null), CancellationToken.None));
+        }
+
+        var auth = await verifyHandler.Handle(
+            new VerifyTwoFactorCommand(loginResult.ChallengeToken!, ComputeValidCode(setup.Secret), null), CancellationToken.None);
+        Assert.NotEmpty(auth.AccessToken);
+
+        var stored = await context.Users.SingleAsync(u => u.Id == user.Id);
+        Assert.Equal(0, stored.TwoFactorFailedAttempts);
+        Assert.Null(stored.TwoFactorLockedUntil);
+    }
+
+    [Fact]
+    public async Task VerifyTwoFactor_WhenLockoutWindowHasPassed_AllowsTheCorrectCodeAgain()
+    {
+        var (user, _, context, tokenIssuer) = await RegisterUserAsync("2fa-lockout-expired@shop.test");
+        var setup = await new SetupTwoFactorCommandHandler(context, _totp).Handle(new SetupTwoFactorCommand(user.Id), CancellationToken.None);
+        await new EnableTwoFactorCommandHandler(context, _totp, _hasher).Handle(
+            new EnableTwoFactorCommand(user.Id, ComputeValidCode(setup.Secret)), CancellationToken.None);
+
+        var loginResult = await new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt).Handle(
+            new LoginCommand("2fa-lockout-expired@shop.test", "Passw0rd!", null, false, null), CancellationToken.None);
+
+        // Simulate an already-expired lockout from an earlier attempt window, rather than
+        // waiting out the real 15-minute duration in a test.
+        user.TwoFactorFailedAttempts = 5;
+        user.TwoFactorLockedUntil = DateTimeOffset.UtcNow.AddMinutes(-1);
+        await context.SaveChangesAsync(CancellationToken.None);
+
+        var verifyHandler = new VerifyTwoFactorCommandHandler(context, _jwt, _totp, _hasher, tokenIssuer);
+        var auth = await verifyHandler.Handle(
+            new VerifyTwoFactorCommand(loginResult.ChallengeToken!, ComputeValidCode(setup.Secret), null), CancellationToken.None);
+
+        Assert.NotEmpty(auth.AccessToken);
+    }
+
     public void Dispose() => _db.Dispose();
 }
