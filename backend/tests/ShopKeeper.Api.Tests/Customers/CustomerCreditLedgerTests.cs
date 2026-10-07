@@ -268,5 +268,61 @@ public class CustomerCreditLedgerTests : IDisposable
             CancellationToken.None));
     }
 
+    [Fact]
+    public async Task VoidSale_OnCreditSale_ReversesChargeAndRestoresBalanceToZero()
+    {
+        // Regression test: voiding a credit sale previously left the customer permanently
+        // owing money for a transaction that no longer existed - stock was restored but the
+        // Charge ledger entry and CurrentBalance were untouched.
+        var (seeded, context, owner, productId, customerId) = await SeedWithProductAndCustomerAsync();
+
+        var sale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
+            new CreateSaleCommand(
+                seeded.BranchId, [new SaleLineInput(productId, 5, 0)], 0,
+                [new SalePaymentInput(PaymentMethod.Cash, 20m, null)], // 30 short of the 50 total
+                CustomerId: customerId, AllowCredit: true),
+            CancellationToken.None);
+
+        var customerAfterSale = await context.Customers.AsNoTracking().SingleAsync(c => c.Id == customerId);
+        Assert.Equal(30m, customerAfterSale.CurrentBalance);
+
+        await new VoidSaleCommandHandler(context, owner).Handle(new VoidSaleCommand(sale.Id, "Rang up wrong item"), CancellationToken.None);
+
+        var customerAfterVoid = await context.Customers.AsNoTracking().SingleAsync(c => c.Id == customerId);
+        Assert.Equal(0m, customerAfterVoid.CurrentBalance);
+
+        var entries = (await context.CustomerLedgerEntries.AsNoTracking()
+            .Where(e => e.CustomerId == customerId).ToListAsync())
+            .OrderBy(e => e.CreatedAt).ToList();
+        Assert.Equal(2, entries.Count);
+        Assert.Equal(CustomerLedgerEntryType.Charge, entries[0].Type);
+        Assert.Equal(30m, entries[0].Amount);
+        Assert.Equal(CustomerLedgerEntryType.ChargeReversal, entries[1].Type);
+        Assert.Equal(-30m, entries[1].Amount);
+        Assert.Equal(0m, entries[1].BalanceAfter);
+        Assert.Equal("Sale", entries[1].ReferenceType);
+        Assert.Equal(sale.Id, entries[1].ReferenceId);
+    }
+
+    [Fact]
+    public async Task VoidSale_WithCustomerButNoCreditCharge_DoesNotTouchBalance()
+    {
+        // A customer attached to a fully-paid sale has no Charge entry to reverse - voiding it
+        // must not fabricate one or alter the balance.
+        var (seeded, context, owner, productId, customerId) = await SeedWithProductAndCustomerAsync();
+
+        var sale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
+            new CreateSaleCommand(
+                seeded.BranchId, [new SaleLineInput(productId, 5, 0)], 0,
+                [new SalePaymentInput(PaymentMethod.Cash, 50m, null)], CustomerId: customerId),
+            CancellationToken.None);
+
+        await new VoidSaleCommandHandler(context, owner).Handle(new VoidSaleCommand(sale.Id, "Customer changed mind"), CancellationToken.None);
+
+        var customer = await context.Customers.AsNoTracking().SingleAsync(c => c.Id == customerId);
+        Assert.Equal(0m, customer.CurrentBalance);
+        Assert.Empty(await context.CustomerLedgerEntries.AsNoTracking().Where(e => e.CustomerId == customerId).ToListAsync());
+    }
+
     public void Dispose() => _db.Dispose();
 }

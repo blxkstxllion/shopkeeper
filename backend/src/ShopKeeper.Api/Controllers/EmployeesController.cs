@@ -3,6 +3,7 @@ namespace ShopKeeper.Api.Controllers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using ShopKeeper.Api.Extensions;
 using ShopKeeper.Application.Auth.Dtos;
 using ShopKeeper.Application.Employees.Commands;
@@ -39,10 +40,15 @@ public class EmployeesController(ISender mediator, IWebHostEnvironment env) : Co
         return NoContent();
     }
 
+    // Unauthenticated (anyone with the link) - rate-limited like JoinController's equivalent
+    // public lookups, consistent with [Authorize]'d actions below (AcceptInvitationForExistingUser)
+    // not needing it since an authenticated caller burning their own rate limit achieves little.
+    [EnableRateLimiting("auth")]
     [HttpGet("invitations/{token}")]
     public async Task<ActionResult<InvitationDetailsDto>> GetInvitation(string token, CancellationToken ct) =>
         Ok(await mediator.Send(new GetInvitationByTokenQuery(token), ct));
 
+    [EnableRateLimiting("auth")]
     [HttpPost("invitations/{token}/accept")]
     public async Task<ActionResult<AuthResultDto>> AcceptInvitation(string token, AcceptInvitationRequest request, CancellationToken ct)
     {

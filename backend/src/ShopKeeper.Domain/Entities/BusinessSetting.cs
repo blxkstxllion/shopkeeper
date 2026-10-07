@@ -33,6 +33,10 @@ public class BusinessSetting : BaseEntity, ITenantEntity
     /// COUNT(*)+1, which two concurrent sales could both read as the same value.</summary>
     public int NextSaleNumber { get; set; } = 1;
 
+    /// <summary>Same idea as NextSaleNumber, for refunds - see
+    /// RefundSaleCommand.ClaimNextRefundNumberAsync.</summary>
+    public int NextRefundNumber { get; set; } = 1;
+
     /// <summary>Optimistic concurrency token - same mechanism and reasoning as
     /// ProductStock.RowVersion, reused here to protect NextSaleNumber's claim-and-increment
     /// under concurrent sales rather than introducing a second technique.</summary>
