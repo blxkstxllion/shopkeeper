@@ -12,4 +12,8 @@ public enum CustomerLedgerEntryType
     /// paid out in cash/card - decreases what they owe. Never the full refund amount, only
     /// whatever the cashier explicitly chose to apply - see RefundSaleCommand.</summary>
     RefundCredit,
+
+    /// <summary>Reverses a Charge entry when the sale that created it is voided - decreases
+    /// what they owe by exactly the original charge amount. See VoidSaleCommand.</summary>
+    ChargeReversal,
 }

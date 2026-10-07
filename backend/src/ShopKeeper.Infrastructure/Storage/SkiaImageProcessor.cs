@@ -21,7 +21,7 @@ public class SkiaImageProcessor : IImageProcessor
 
     public async Task<Stream> ProcessAsync(Stream content, CancellationToken ct = default)
     {
-        var buffer = new MemoryStream();
+        using var buffer = new MemoryStream();
         await content.CopyToAsync(buffer, ct);
         buffer.Position = 0;
 

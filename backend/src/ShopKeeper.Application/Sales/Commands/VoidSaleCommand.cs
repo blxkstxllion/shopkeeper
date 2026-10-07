@@ -51,6 +51,10 @@ public class VoidSaleCommandHandler(IAppDbContext db, ICurrentUserService curren
 
             var newQuantity = stock.QuantityOnHand + item.Quantity;
             stock.QuantityOnHand = newQuantity;
+            // Without this, a concurrent write on the same ProductStock row that read its
+            // RowVersion before this void committed wouldn't be detected as a conflict - see
+            // RefundSaleCommand's identical increment and its doc comment on why this matters.
+            stock.RowVersion++;
 
             db.InventoryTransactions.Add(new InventoryTransaction
             {
@@ -67,11 +71,55 @@ public class VoidSaleCommandHandler(IAppDbContext db, ICurrentUserService curren
             });
         }
 
+        // A sale sold on credit (CreateSaleCommand's AllowCredit) created exactly one Charge
+        // ledger entry referencing this sale. Voiding the sale must reverse that charge in full
+        // - otherwise the customer is left permanently owing money for a transaction that no
+        // longer exists. This is a full, deterministic reversal (not a cashier-chosen split like
+        // RefundSaleCommand's ApplyToBalance), so no separate confirmation/staleness UI step is
+        // needed - only the RowVersion/concurrency protection below.
+        if (sale.CustomerId.HasValue)
+        {
+            var charge = await db.CustomerLedgerEntries.FirstOrDefaultAsync(
+                e => e.ReferenceType == "Sale" && e.ReferenceId == sale.Id && e.Type == CustomerLedgerEntryType.Charge,
+                cancellationToken);
+
+            if (charge is not null)
+            {
+                var customer = await db.Customers.FirstOrDefaultAsync(c => c.Id == sale.CustomerId.Value, cancellationToken)
+                    ?? throw new NotFoundException(nameof(Customer), sale.CustomerId.Value);
+
+                customer.CurrentBalance -= charge.Amount;
+                customer.RowVersion++;
+
+                db.CustomerLedgerEntries.Add(new CustomerLedgerEntry
+                {
+                    BusinessId = businessId,
+                    CustomerId = customer.Id,
+                    Type = CustomerLedgerEntryType.ChargeReversal,
+                    Amount = -charge.Amount,
+                    BalanceAfter = customer.CurrentBalance,
+                    ReferenceType = "Sale",
+                    ReferenceId = sale.Id,
+                    CreatedByUserId = userId,
+                });
+            }
+        }
+
         sale.Status = SaleStatus.Voided;
         sale.VoidedAt = DateTimeOffset.UtcNow;
         sale.VoidedByUserId = userId;
         sale.VoidReason = request.Reason;
 
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // A concurrent sale/refund moved one of these ProductStock rows, or a concurrent
+            // charge/payment/refund moved the customer's balance, between our read and this
+            // write - see RefundSaleCommand's identical handling.
+            throw new ConflictException("Stock or account balance changed while this sale was being voided. Please try again.");
+        }
     }
 }

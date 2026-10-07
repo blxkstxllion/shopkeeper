@@ -31,7 +31,7 @@ public class UploadBusinessLogoCommandHandler(
 
         // See UploadProductImageCommandHandler's comment - the Content-Type check above is
         // just a fast-path, IImageProcessor is the real security boundary.
-        var processed = await imageProcessor.ProcessAsync(request.Content, cancellationToken);
+        await using var processed = await imageProcessor.ProcessAsync(request.Content, cancellationToken);
         var fileName = $"{Guid.NewGuid()}.png";
         return await storage.SaveAsync(processed, fileName, "business-logos", cancellationToken);
     }

@@ -134,6 +134,27 @@ public class RateLimitingTests : IClassFixture<RateLimitTestFactory>
     }
 
     [Fact]
+    public async Task GetInvitation_AllowsFiveRequestsThenRejectsTheSixth_WithinTheWindow()
+    {
+        // Regression test for a real gap: GetInvitation/AcceptInvitation were unauthenticated
+        // (anyone with the link) but had no [EnableRateLimiting("auth")], unlike JoinController's
+        // equivalent public lookups - a bogus token still exercises the rate limiter, since that
+        // runs before the handler ever looks the token up.
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Forwarded-For", "203.0.113.50");
+
+        for (var i = 0; i < 5; i++)
+        {
+            var response = await client.GetAsync("/api/employees/invitations/bogus-token");
+            Assert.NotEqual(HttpStatusCode.TooManyRequests, response.StatusCode);
+        }
+
+        var sixth = await client.GetAsync("/api/employees/invitations/bogus-token");
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, sixth.StatusCode);
+    }
+
+    [Fact]
     public async Task Login_IsRateLimited_ButNotEveryAuthenticatedEndpoint()
     {
         // Confirms the policy attribute reached a second controller (not just AuthController)
