@@ -189,6 +189,38 @@ public class SalesCommandTests : IDisposable
     }
 
     [Fact]
+    public async Task VoidSale_ConcurrentStockWrite_ThrowsConflictInsteadOfLosingTheUpdate()
+    {
+        // Regression test: VoidSaleCommand used to update ProductStock.QuantityOnHand without
+        // incrementing RowVersion, so a concurrent write to the same row was never detected -
+        // a silent lost update, not an absence of conflicts.
+        var (seeded, context, owner, productId) = await SeedWithProductAsync(initialQuantity: 20);
+
+        var sale = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
+            new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(productId, 5, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 50m, null)]),
+            CancellationToken.None);
+
+        // Pre-load the stock row into `context`'s change tracker - VoidSaleCommandHandler's own
+        // fetch (same context, same identity map) will return this now-stale tracked instance
+        // instead of re-querying the DB, simulating "this request read the row, then a
+        // different request wrote to it before this request's own save."
+        _ = await context.ProductStocks.SingleAsync(s => s.ProductId == productId);
+
+        var otherContext = _db.CreateContext(owner);
+        var otherStock = await otherContext.ProductStocks.SingleAsync(s => s.ProductId == productId);
+        otherStock.QuantityOnHand += 2;
+        otherStock.RowVersion++;
+        await otherContext.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<ConflictException>(() =>
+            new VoidSaleCommandHandler(context, owner).Handle(new VoidSaleCommand(sale.Id, "Rang up wrong item"), CancellationToken.None));
+
+        // The concurrent write is preserved - the void's own change was rejected, not silently merged.
+        var finalStock = await otherContext.ProductStocks.AsNoTracking().SingleAsync(s => s.ProductId == productId);
+        Assert.Equal(17, finalStock.QuantityOnHand); // 20 - 5 (sale) + 2 (other write), void never applied
+    }
+
+    [Fact]
     public async Task RefundSale_PartialQuantity_RestoresStockAndSetsPartiallyRefunded()
     {
         var (seeded, context, owner, productId) = await SeedWithProductAsync(initialQuantity: 20);
@@ -473,6 +505,56 @@ public class SalesCommandTests : IDisposable
         Assert.Single(await setupContext.Refunds.AsNoTracking().ToListAsync());
         var stock = await setupContext.ProductStocks.AsNoTracking().SingleAsync(s => s.ProductId == product.Id);
         Assert.Equal(18, stock.QuantityOnHand); // 20 - 5 + 3, restocked only once
+    }
+
+    [Fact]
+    public async Task RefundSale_ConcurrentRefundNumberClaim_RetriesAndGetsDistinctNumbers()
+    {
+        // Regression test: RefundNumber used to be generated via COUNT(*)+1, which two
+        // concurrent refunds (no shared ClientRequestId, so the idempotency precheck above
+        // never applies) could both read as the same count and collide on the
+        // (BusinessId, RefundNumber) unique index. A timing-dependent Task.WhenAll can't
+        // reliably reproduce this (nothing forces the two reads to actually overlap), so this
+        // forces a genuine DbUpdateConcurrencyException on the counter claim deterministically -
+        // same technique as VoidSale_ConcurrentStockWrite_ThrowsConflictInsteadOfLosingTheUpdate.
+        // Two different products, not one - otherwise refundA's stock restore (via otherContext)
+        // also stales `context`'s tracked ProductStock row for that same product, which would
+        // trip the handler's stock-conflict catch instead of isolating the counter-claim retry
+        // this test is actually about.
+        var (seeded, context, owner, productAId) = await SeedWithProductAsync(initialQuantity: 40);
+        var productB = await new CreateProductCommandHandler(context, owner, new PlanLimitService(context)).Handle(
+            new CreateProductCommand("Gadget", "SKU-SALE-2", null, null, null, null, 10m, 6m, 10, true, 40, seeded.BranchId),
+            CancellationToken.None);
+
+        var saleA = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
+            new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(productAId, 5, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 50m, null)]),
+            CancellationToken.None);
+        var saleB = await new CreateSaleCommandHandler(context, owner, new NotificationDispatcher(context)).Handle(
+            new CreateSaleCommand(seeded.BranchId, [new SaleLineInput(productB.Id, 5, 0)], 0, [new SalePaymentInput(PaymentMethod.Cash, 50m, null)]),
+            CancellationToken.None);
+
+        // Pre-load BusinessSettings into `context`'s change tracker so RefundSaleCommandHandler's
+        // own fetch (same context, same identity map) returns this now-stale tracked instance
+        // instead of re-querying the DB - simulating "this request read the counter, then a
+        // different request claimed a number first."
+        _ = await context.BusinessSettings.SingleAsync(s => s.BusinessId == seeded.BusinessId);
+
+        var otherContext = _db.CreateContext(owner);
+        var refundA = await new RefundSaleCommandHandler(otherContext, owner).Handle(
+            new RefundSaleCommand(saleA.Id, [new RefundLineInput(saleA.Items.Single().Id, 1)], "First refund"),
+            CancellationToken.None);
+        Assert.Equal("R-000001", refundA.RefundNumber);
+
+        // `context`'s tracked BusinessSettings instance still believes NextRefundNumber is 1 -
+        // the real DB value is now 2. Claiming a number against it must hit a
+        // DbUpdateConcurrencyException internally, reload, and retry rather than colliding with
+        // refundA's number or crashing.
+        var refundB = await new RefundSaleCommandHandler(context, owner).Handle(
+            new RefundSaleCommand(saleB.Id, [new RefundLineInput(saleB.Items.Single().Id, 1)], "Second refund"),
+            CancellationToken.None);
+
+        Assert.Equal("R-000002", refundB.RefundNumber);
+        Assert.NotEqual(refundA.RefundNumber, refundB.RefundNumber);
     }
 
     [Fact]

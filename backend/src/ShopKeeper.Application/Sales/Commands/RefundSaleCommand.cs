@@ -109,7 +109,7 @@ public class RefundSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
             BusinessId = businessId,
             BranchId = sale.BranchId,
             SaleId = sale.Id,
-            RefundNumber = await GenerateRefundNumberAsync(businessId, cancellationToken),
+            RefundNumber = await ClaimNextRefundNumberAsync(businessId, cancellationToken),
             Reason = request.Reason,
             ProcessedByUserId = userId,
             ClientRequestId = request.ClientRequestId,
@@ -277,10 +277,42 @@ public class RefundSaleCommandHandler(IAppDbContext db, ICurrentUserService curr
             refund.TotalAmount, refund.AmountAppliedToBalance, refund.CreatedAt);
     }
 
-    private async Task<string> GenerateRefundNumberAsync(Guid businessId, CancellationToken ct)
+    /// <summary>Claims the next refund number via BusinessSetting.NextRefundNumber (optimistic-
+    /// concurrency protected) instead of COUNT(*)+1, which two concurrent refunds could both
+    /// read as the same value and collide on the (BusinessId, RefundNumber) unique index - the
+    /// exact race CreateSaleCommand.ClaimNextSaleNumberAsync was introduced to avoid for sale
+    /// numbers. Deliberately committed as its own SaveChangesAsync, not folded into the rest of
+    /// the refund's save - called before any other entity in this request is modified, so this
+    /// commits only the counter claim. If the refund fails afterward for an unrelated reason,
+    /// this number is burned (a gap in the sequence) - normal/accepted for invoice-style
+    /// numbering, same as sale numbers.</summary>
+    private async Task<string> ClaimNextRefundNumberAsync(Guid businessId, CancellationToken ct)
     {
-        var count = await db.Refunds.IgnoreQueryFilters().CountAsync(r => r.BusinessId == businessId, ct);
-        return $"R-{count + 1:D6}";
+        var setting = await db.BusinessSettings.FirstOrDefaultAsync(s => s.BusinessId == businessId, ct)
+            ?? throw new ConflictException("This business has no settings configured.");
+
+        const int maxAttempts = 5;
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            var claimed = setting.NextRefundNumber;
+            setting.NextRefundNumber = claimed + 1;
+            setting.RowVersion++;
+
+            try
+            {
+                await db.SaveChangesAsync(ct);
+                return $"R-{claimed:D6}";
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                // Someone else claimed a number first - reload this tracked entity from its
+                // current DB values so the next attempt retries against fresh data instead
+                // of the same stale in-memory instance.
+                await ex.Entries.Single().ReloadAsync(ct);
+            }
+        }
+
+        throw new ConflictException("Unable to generate a refund number right now. Please try again.");
     }
 
     private async Task<RefundDto?> FindByClientRequestIdAsync(Guid businessId, Guid clientRequestId, CancellationToken ct)

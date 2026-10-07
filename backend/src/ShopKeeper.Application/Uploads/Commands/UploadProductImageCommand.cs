@@ -34,7 +34,7 @@ public class UploadProductImageCommandHandler(
         // actually verifies this is a genuine image (decodes it with a real codec) and
         // produces the bytes that get stored, always a freshly re-encoded PNG regardless of
         // what was uploaded - see its doc comment.
-        var processed = await imageProcessor.ProcessAsync(request.Content, cancellationToken);
+        await using var processed = await imageProcessor.ProcessAsync(request.Content, cancellationToken);
         var fileName = $"{Guid.NewGuid()}.png";
         return await storage.SaveAsync(processed, fileName, "products", cancellationToken);
     }
