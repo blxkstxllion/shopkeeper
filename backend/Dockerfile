@@ -4,13 +4,17 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS base
 WORKDIR /src
 
-COPY ShopKeeper.sln ./
 COPY src/ShopKeeper.Domain/ShopKeeper.Domain.csproj src/ShopKeeper.Domain/
 COPY src/ShopKeeper.Application/ShopKeeper.Application.csproj src/ShopKeeper.Application/
 COPY src/ShopKeeper.Infrastructure/ShopKeeper.Infrastructure.csproj src/ShopKeeper.Infrastructure/
 COPY src/ShopKeeper.Api/ShopKeeper.Api.csproj src/ShopKeeper.Api/
-COPY tests/ShopKeeper.Api.Tests/ShopKeeper.Api.Tests.csproj tests/ShopKeeper.Api.Tests/
-RUN dotnet restore ShopKeeper.sln
+# Restores ShopKeeper.Api's own project graph specifically, not the whole .sln - this image
+# only ever publishes ShopKeeper.Api (see the `build` stage below), so restoring the full
+# solution would require this Dockerfile to be taught about every new project added to it
+# forever, including ones (like ShopKeeper.Api.Local, the offline edition's Windows-only
+# sidecar) that are never part of this Docker image at all. Broke exactly this way once
+# already when Api.Local was added to the .sln but not to this file's COPY list.
+RUN dotnet restore src/ShopKeeper.Api/ShopKeeper.Api.csproj
 
 COPY . .
 
