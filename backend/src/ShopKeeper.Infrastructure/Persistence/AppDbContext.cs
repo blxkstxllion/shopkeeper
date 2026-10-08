@@ -48,6 +48,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentUserSe
     public DbSet<PaystackWebhookEvent> PaystackWebhookEvents => Set<PaystackWebhookEvent>();
     public DbSet<ScheduledReport> ScheduledReports => Set<ScheduledReport>();
     public DbSet<IdempotencyKey> IdempotencyKeys => Set<IdempotencyKey>();
+    public DbSet<LocalAppSettings> LocalAppSettings => Set<LocalAppSettings>();
 
     /// <summary>
     /// Referenced as `this.TenantBusinessId` (implicitly, from inside an instance method) in the

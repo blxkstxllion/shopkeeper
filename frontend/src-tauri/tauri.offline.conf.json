@@ -1,0 +1,22 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "My Shopkeeper",
+  "identifier": "com.omnifixlabs.myshopkeeper",
+  "build": {
+    "beforeBuildCommand": "npm run build:offline"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "My Shopkeeper"
+      }
+    ],
+    "security": {
+      "csp": null,
+      "capabilities": ["default", "offline"]
+    }
+  },
+  "bundle": {
+    "externalBin": ["binaries/shopkeeper-server"]
+  }
+}

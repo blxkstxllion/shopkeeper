@@ -62,12 +62,25 @@ public class ScheduledReportRunner(IServiceScopeFactory scopeFactory, ILogger<Sc
         // see ITenantEntity's own doc comment for why IgnoreQueryFilters needs justifying here.
         // No request/BackgroundJobContext is active yet at this point either, so the normal
         // filter would just silently return zero rows rather than actually scoping correctly.
+        //
+        // IsActive filters server-side (translatable on both providers); NextRunAt <= now filters
+        // client-side after materializing - the SQLite provider can't translate a relational
+        // comparison on a DateTimeOffset column at all (throws InvalidOperationException), the
+        // same limitation GetScheduledReportsQuery's OrderBy already works around. Previously
+        // dismissed as a test-only quirk since the SaaS build only ever runs on Postgres, but the
+        // offline edition runs this exact hosted service against real SQLite, where every tick
+        // was actually throwing - caught by hands-on Phase 1 verification, not a unit test, since
+        // nothing exercises ScheduledReportRunner as a real hosted BackgroundService today. Fine
+        // to materialize first: "a handful of schedules per business, checked hourly" per this
+        // class's own doc comment, so IsActive rows are never more than a few hundred.
         var now = DateTimeOffset.UtcNow;
-        var dueIds = await scanDb.ScheduledReports
+        var activeSchedules = await scanDb.ScheduledReports
             .IgnoreQueryFilters()
-            .Where(r => r.IsActive && r.NextRunAt <= now)
-            .Select(r => r.Id)
+            .Where(r => r.IsActive)
+            .Select(r => new { r.Id, r.NextRunAt })
             .ToListAsync(ct);
+
+        var dueIds = activeSchedules.Where(r => r.NextRunAt <= now).Select(r => r.Id).ToList();
 
         foreach (var id in dueIds)
         {

@@ -43,7 +43,12 @@ export interface AuthContextValue {
   refreshUser: () => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null)
+// Exported (not just useAuth/AuthProvider) so the Offline Edition's OfflineAuthBridge can
+// provide its own AuthContextValue through the exact same context - AppLayout's internals
+// (TopNav, BranchContext, TourContext, EmailVerificationBanner) all call useAuth() directly,
+// and are reused there completely unmodified only because they're reading from this same
+// object, not a parallel one none of them know about.
+export const AuthContext = createContext<AuthContextValue | null>(null)
 
 function resolveActiveBusiness(user: User | null): UserBusiness | null {
   if (!user) return null

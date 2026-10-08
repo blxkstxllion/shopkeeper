@@ -11,6 +11,7 @@ import {
   ChevronDown,
   Smartphone,
   Monitor,
+  HardDrive,
   Mail,
   Lock,
   Eye,
@@ -72,6 +73,13 @@ function DownloadMenu({ className, variant = 'light' }: { className: string; var
           >
             <Monitor className="h-4 w-4" />
             Windows (.exe)
+          </a>
+          <a
+            href="/downloads/MyShopkeeper-Setup-x64.exe"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+          >
+            <HardDrive className="h-4 w-4" />
+            Offline edition (.exe)
           </a>
         </div>
       )}

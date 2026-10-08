@@ -17,7 +17,7 @@ interface SectionConfig {
   icon: LucideIcon
 }
 
-const SECTIONS: SectionConfig[] = [
+const ALL_SECTIONS: SectionConfig[] = [
   { id: 'business', label: 'Business', icon: Store },
   { id: 'tax', label: 'Tax & currency', icon: Percent },
   { id: 'roles', label: 'Roles & permissions', icon: Users },
@@ -25,6 +25,15 @@ const SECTIONS: SectionConfig[] = [
   { id: 'security', label: 'Security', icon: ShieldCheck },
   { id: 'subscription', label: 'Subscription', icon: CreditCard },
 ]
+
+// Roles (no multi-user accounts to assign them to), Security (2FA/sessions are login constructs -
+// there's no password or refresh-token session in this edition, just a PIN), and Subscription
+// (no Paystack billing, no plan to change) are all meaningless with no login system at all.
+const OFFLINE_EXCLUDED_SECTIONS = new Set<SectionId>(['roles', 'security', 'subscription'])
+const SECTIONS: SectionConfig[] =
+  import.meta.env.VITE_EDITION === 'offline'
+    ? ALL_SECTIONS.filter((s) => !OFFLINE_EXCLUDED_SECTIONS.has(s.id))
+    : ALL_SECTIONS
 
 export function SettingsPage() {
   const [searchParams] = useSearchParams()
