@@ -3,12 +3,16 @@ node_modules/
 frontend/dist/
 frontend/dist-ssr/
 frontend/.vite/
-*.local
+# Scoped to frontend/ (Vite's own .env.local convention) - a bare "*.local" matches any path
+# *component*, not just a file extension, so it silently ignored the entire backend/src/
+# ShopKeeper.Api.Local/ project (the offline edition's sidecar) until caught here.
+frontend/*.local
 .env
 .env.*
 !.env.example
 !frontend/.env.development
 !frontend/.env.tauri
+!frontend/.env.offline
 
 # --- .NET / Backend ---
 backend/**/bin/

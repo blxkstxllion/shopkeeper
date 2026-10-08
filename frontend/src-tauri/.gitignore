@@ -7,3 +7,8 @@
 # regenerate locally with that command rather than committing it. Contains machine-
 # specific paths (local.properties) and build artifacts that don't belong in git history.
 /gen/android
+
+# The Offline Edition's bundled .NET backend (~125MB self-contained single-file exe) - built via
+# `dotnet publish -r win-x64 --self-contained -p:PublishSingleFile=true` (see Phase 2 of the
+# plan), not something to commit to git. Regenerate locally/in CI before `tauri build`.
+/binaries/

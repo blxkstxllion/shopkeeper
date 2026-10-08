@@ -24,7 +24,7 @@ export interface NavItem {
   tourId?: string
 }
 
-export const navItems: NavItem[] = [
+const allNavItems: NavItem[] = [
   { label: 'Dashboard', to: '/app', icon: LayoutDashboard, mobilePriority: true, tourId: 'nav-dashboard' },
   { label: 'Sell', to: '/app/sell', icon: ShoppingCart, mobilePriority: true, tourId: 'nav-sell' },
   { label: 'Sales', to: '/app/sales', icon: Receipt },
@@ -39,3 +39,17 @@ export const navItems: NavItem[] = [
   { label: 'Audit Logs', to: '/app/audit-logs', icon: History },
   { label: 'Settings', to: '/app/settings', icon: Settings },
 ]
+
+// AI Advisor stays - no Anthropic key is ever configured in this edition, but AdvisorPage
+// already degrades to a deterministic, template-based "quick questions" advisor with no AI
+// dependency at all (see UnavailableAdvisorConversationClient) - that's not "real AI", so it's
+// still useful, reused data-driven calculator-style guidance. Employees is the one dropped: no
+// multi-user accounts means the invite/join-code flow is simply unreachable. Filtered here,
+// once, so Sidebar/MobileBottomNav (which just render whatever this exports) need zero
+// edition-awareness of their own.
+const offlineExcludedPaths = new Set(['/app/employees'])
+
+export const navItems: NavItem[] =
+  import.meta.env.VITE_EDITION === 'offline'
+    ? allNavItems.filter((item) => !offlineExcludedPaths.has(item.to))
+    : allNavItems

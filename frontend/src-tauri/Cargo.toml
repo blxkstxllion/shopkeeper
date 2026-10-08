@@ -24,3 +24,18 @@ log = "0.4"
 tauri = { version = "2.11.3", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-store = "2"
+# Unconditional, not feature-gated, even though only the Offline Edition build actually uses it
+# (see the offline-sidecar feature below) - Tauri validates every file under capabilities/
+# against the permission schema of whatever plugins are *compiled* as dependencies, regardless
+# of which capabilities a given tauri.*.conf.json actually allow-lists at runtime. Making this
+# optional broke the plain `cargo check` (no features) build: capabilities/offline.json's
+# shell:allow-execute permission was unknown since tauri-plugin-shell wasn't compiled in at all.
+# Registering the plugin and actually spawning anything stays feature-gated in lib.rs - this is
+# just an inert, unused dependency in the SaaS desktop build.
+tauri-plugin-shell = "2"
+
+[features]
+# Registers tauri-plugin-shell and spawns the bundled .NET backend as a child process (see
+# lib.rs) - gated so the SaaS desktop build (talks to the hosted API directly, no sidecar) never
+# actually initializes the shell plugin or carries the offline capability at runtime.
+offline-sidecar = []

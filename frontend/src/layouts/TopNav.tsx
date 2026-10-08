@@ -51,7 +51,11 @@ export function TopNav() {
 
   const handleLogout = async () => {
     await logout()
-    navigate('/login', { replace: true })
+    // Not '/login' directly - the Offline Edition's router has no such route at all (signing
+    // out there just re-locks behind the PIN screen, see OfflineAuthBridge). '/' resolves
+    // correctly in both: the SaaS AppRouter redirects it to /login, and in the offline router
+    // it's irrelevant anyway since PinLockScreen is phase-gated, not path-gated.
+    navigate('/', { replace: true })
   }
 
   return (
