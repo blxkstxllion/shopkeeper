@@ -23,7 +23,24 @@ public static class DependencyInjection
         var connectionString = configuration.GetConnectionString("Default")
             ?? throw new InvalidOperationException("Connection string 'Default' is not configured.");
 
-        services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+        // "Sqlite" backs the offline edition's local sidecar (one file on the user's own disk,
+        // no hosted Postgres) - the SaaS app never sets this, so it keeps using Postgres exactly
+        // as before. The explicit MigrationsAssembly redirect is required: without it, EF
+        // assumes migrations live alongside the DbContext (this project), but the SQLite
+        // migrations actually live in ShopKeeper.Api.Local - the startup project that owns the
+        // offline edition - keeping the two providers' migration histories from ever colliding.
+        var databaseProvider = configuration["Database:Provider"] ?? "Postgres";
+        services.AddDbContext<AppDbContext>(options =>
+        {
+            if (databaseProvider == "Sqlite")
+            {
+                options.UseSqlite(connectionString, x => x.MigrationsAssembly("ShopKeeper.Api.Local"));
+            }
+            else
+            {
+                options.UseNpgsql(connectionString);
+            }
+        });
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
         services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
@@ -35,6 +52,11 @@ public static class DependencyInjection
         services.AddSingleton<ITotpService, TotpService>();
         services.AddSingleton<IFileStorageService, LocalFileStorageService>();
         services.AddSingleton<IImageProcessor, SkiaImageProcessor>();
+
+        // Overridden by ShopKeeper.Api.Local's own Program.cs with the real LocalIdentityCache -
+        // see NoOpLocalIdentityCache's doc comment for why this has to be registered here
+        // unconditionally rather than only in the offline edition's own startup.
+        services.AddSingleton<ILocalIdentityCache, NoOpLocalIdentityCache>();
 
         // Real delivery only when configured - same "absence never breaks startup" pattern as
         // Redis below. Local/CI dev has neither configured, so it keeps using

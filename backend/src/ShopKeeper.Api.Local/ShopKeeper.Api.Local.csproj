@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Offline Edition sidecar: published self-contained (see Phase 2 of the plan) and run as a
+         Tauri sidecar process, never deployed via the SaaS Docker image. Kept as its own exe
+         rather than folded into ShopKeeper.Api so the SaaS build never ships this edition's
+         unauthenticated /local/* endpoints. -->
+    <UserSecretsId>shopkeeper-api-local</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.30" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.30">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="8.0.30" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Referencing the SaaS Api project (an exe, not a library) is deliberate - MVC's assembly-part
+         discovery picks up its controllers automatically once AddControllers() runs here too, so
+         every feature controller (Sales, Products, Inventory, Reports, ...) is reused with zero
+         duplication. Confirmed working via a throwaway spike before committing to this structure. -->
+    <ProjectReference Include="..\ShopKeeper.Api\ShopKeeper.Api.csproj" />
+    <ProjectReference Include="..\ShopKeeper.Application\ShopKeeper.Application.csproj" />
+    <ProjectReference Include="..\ShopKeeper.Infrastructure\ShopKeeper.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <!-- Referencing ShopKeeper.Api (both Microsoft.NET.Sdk.Web) pulls its appsettings*.json in as
+       publish content too, colliding with this project's own appsettings.json ("multiple publish
+       output files with the same relative path"). A plain <Content Remove> doesn't work here -
+       the referenced project's content items are added dynamically during the publish target
+       graph, not visible to static item evaluation - so this has to run after the target that
+       actually assembles the final file list. This project has its own complete,
+       self-sufficient config (see appsettings.json's doc comments); the SaaS build's config
+       (CORS origins, production JWT secret, etc.) is never relevant here. -->
+  <Target Name="RemoveShopKeeperApiAppSettingsFromPublish" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+        Condition="$([System.String]::Copy('%(Identity)').Contains('ShopKeeper.Api\appsettings'))" />
+    </ItemGroup>
+  </Target>
+
+</Project>

@@ -43,5 +43,9 @@ public interface IAppDbContext
     DbSet<ScheduledReport> ScheduledReports { get; }
     DbSet<IdempotencyKey> IdempotencyKeys { get; }
 
+    /// <summary>Offline-edition-only - see LocalAppSettings' doc comment. Always empty/unused
+    /// in the SaaS deployment.</summary>
+    DbSet<LocalAppSettings> LocalAppSettings { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

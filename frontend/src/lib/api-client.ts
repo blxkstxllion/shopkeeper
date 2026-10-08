@@ -24,7 +24,11 @@ export function isNetworkError(err: unknown): boolean {
 
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
-  withCredentials: true, // send the httpOnly refresh-token cookie
+  // The Offline Edition's sidecar has no cookie-based refresh token at all (LocalAuthenticationHandler
+  // authenticates every request unconditionally - see its doc comment) and its CORS policy is a
+  // wide-open AllowAnyOrigin(), which the CORS spec forbids combining with a credentialed request.
+  // Sending withCredentials there would make the Tauri webview reject the response outright.
+  withCredentials: import.meta.env.VITE_EDITION !== 'offline', // send the httpOnly refresh-token cookie
 })
 
 apiClient.interceptors.request.use((config) => {

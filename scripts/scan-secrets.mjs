@@ -24,6 +24,7 @@ const allowlistPathFragments = [
   '.env.example',
   'frontend/.env.development', // no secret - just a localhost API URL, mirrors .env.example's role
   'frontend/.env.tauri', // no secret - just the production API's public URL for the desktop build
+  'frontend/.env.offline', // no secret - just the local sidecar's loopback URL and an edition flag
   'scan-secrets.mjs', // this file necessarily contains the pattern text above
 ];
 

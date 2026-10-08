@@ -1,0 +1,17 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "offline",
+  "description": "Offline Edition only - grants permission to spawn the bundled .NET backend as a sidecar process. Not in the main tauri.conf.json's security.capabilities allow-list, so the SaaS desktop build never gets this permission even though the file is present in this shared src-tauri project.",
+  "windows": ["main"],
+  "permissions": [
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "binaries/shopkeeper-server",
+          "sidecar": true
+        }
+      ]
+    }
+  ]
+}

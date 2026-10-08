@@ -14,10 +14,12 @@ using ReportExportFormat = ShopKeeper.Domain.Entities.ReportExportFormat;
 /// (see the Infrastructure csproj's InternalsVisibleTo) - through a real IServiceScopeFactory,
 /// rather than calling the try/catch logic by inspection, since the whole point of this suite is
 /// proving the LastRunSucceeded/LastRunError bookkeeping actually reflects what happened, not
-/// just that the code compiles. Not RunDueReportsAsync's scan query: `NextRunAt <= now` on a
-/// DateTimeOffset column can't be translated by the SQLite test provider (the same limitation
-/// GetScheduledReportsQuery's own ORDER BY already has to work around) - a pre-existing test
-/// infrastructure gap, not something to change in production code for test convenience.</summary>
+/// just that the code compiles. RunDueReportsAsync's own scan query is covered separately below -
+/// it used to be skipped here on the theory that `NextRunAt <= now` on a DateTimeOffset column
+/// not translating on SQLite (the same limitation GetScheduledReportsQuery's own ORDER BY already
+/// works around) was a test-only quirk, since the SaaS build only ever runs on Postgres. That
+/// stopped being true once the offline edition made SQLite a real production provider - see
+/// ScheduledReportRunner.RunDueReportsAsync's doc comment for the production-code fix.</summary>
 public class ScheduledReportRunnerTests : IDisposable
 {
     private readonly SqliteTestDatabase _db = new();
@@ -133,6 +135,52 @@ public class ScheduledReportRunnerTests : IDisposable
         Assert.Contains("Simulated delivery failure", reloaded.LastRunError);
         Assert.NotNull(reloaded.LastRunAt);
         Assert.True(reloaded.NextRunAt > originalNextRunAt); // still advances - a broken schedule must not retry every tick forever
+    }
+
+    [Fact]
+    public async Task RunDueReportsAsync_AgainstRealSqlite_FindsOnlyTheDueScheduleAndRunsIt()
+    {
+        // Regression test: EF Core's SQLite provider can't translate `NextRunAt <= now` (a
+        // relational comparison on a DateTimeOffset column) and throws InvalidOperationException
+        // on every tick - this runs the real scan query (not just RunOneAsync, which every other
+        // test in this file calls directly) against the real SQLite test database to prove it
+        // no longer throws and still picks the right rows.
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var context = _db.CreateContext(owner);
+        var due = await SeedDueScheduleAsync(context, seeded);
+
+        var notDue = new ScheduledReport
+        {
+            BusinessId = seeded.BusinessId,
+            Frequency = ScheduledReportFrequency.Daily,
+            Format = ReportExportFormat.Pdf,
+            RecipientEmails = "owner@shop.test",
+            CreatedByUserId = seeded.OwnerId,
+            IsActive = true,
+            NextRunAt = DateTimeOffset.UtcNow.AddDays(1), // not due yet
+        };
+        var inactiveButOverdue = new ScheduledReport
+        {
+            BusinessId = seeded.BusinessId,
+            Frequency = ScheduledReportFrequency.Daily,
+            Format = ReportExportFormat.Pdf,
+            RecipientEmails = "owner@shop.test",
+            CreatedByUserId = seeded.OwnerId,
+            IsActive = false, // disabled - must never run even though it's overdue
+            NextRunAt = DateTimeOffset.UtcNow.AddMinutes(-1),
+        };
+        context.ScheduledReports.AddRange(notDue, inactiveButOverdue);
+        await context.SaveChangesAsync(CancellationToken.None);
+
+        var emailSender = new SucceedingEmailSender();
+        var runner = BuildRunner(context, owner, emailSender);
+
+        await runner.RunDueReportsAsync(CancellationToken.None);
+
+        Assert.Equal(1, emailSender.ReportEmailsSent); // only the one genuinely-due schedule ran
+        var reloadedDue = await context.ScheduledReports.FindAsync([due.Id], CancellationToken.None);
+        Assert.True(reloadedDue!.LastRunSucceeded);
     }
 
     public void Dispose() => _db.Dispose();

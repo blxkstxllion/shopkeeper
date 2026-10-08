@@ -1,17 +1,26 @@
 use tauri::Manager;
 use tauri_plugin_store::StoreExt;
 
+#[cfg(feature = "offline-sidecar")]
+use std::sync::Mutex;
+#[cfg(feature = "offline-sidecar")]
+use tauri_plugin_shell::{process::CommandChild, process::CommandEvent, ShellExt};
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-  tauri::Builder::default()
+  let builder = tauri::Builder::default()
     // Backs the session cache (see frontend/src/lib/session-cache.ts) with a real file Tauri
     // writes directly, instead of the webview's own localStorage - needed because on this
     // app's actual WebView2 runtime, localStorage writes were observed to not reliably survive
     // an app restart (confirmed correct in a normal browser via the same code, so this is a
     // storage-backend problem, not an application logic one). Registered unconditionally,
     // unlike the debug-only log plugin below - session persistence must work in release builds.
-    .plugin(tauri_plugin_store::Builder::default().build())
-    .setup(|app| {
+    .plugin(tauri_plugin_store::Builder::default().build());
+
+  #[cfg(feature = "offline-sidecar")]
+  let builder = builder.plugin(tauri_plugin_shell::init());
+
+  let builder = builder.setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
           tauri_plugin_log::Builder::default()
@@ -46,8 +55,50 @@ pub fn run() {
         cache_store.save()?;
       }
 
+      // Offline Edition only: spawn the bundled .NET backend (see backend/src/ShopKeeper.Api.Local)
+      // as a sidecar process. The handle is stashed in managed state so RunEvent::ExitRequested
+      // below can explicitly kill it - confirmed by hands-on testing that Tauri does NOT auto-
+      // terminate a spawned sidecar when the window closes on Windows; left running, it would
+      // keep the SQLite file locked for the next launch.
+      #[cfg(feature = "offline-sidecar")]
+      {
+        let (mut rx, child) = app.shell().sidecar("shopkeeper-server")?.spawn()?;
+        app.manage(Mutex::new(Some(child)));
+
+        tauri::async_runtime::spawn(async move {
+          while let Some(event) = rx.recv().await {
+            match event {
+              CommandEvent::Stdout(line) => log::info!("sidecar: {}", String::from_utf8_lossy(&line)),
+              CommandEvent::Stderr(line) => log::error!("sidecar: {}", String::from_utf8_lossy(&line)),
+              _ => {}
+            }
+          }
+        });
+      }
+
       Ok(())
-    })
-    .run(tauri::generate_context!())
-    .expect("error while running tauri application");
+    });
+
+  #[cfg(feature = "offline-sidecar")]
+  {
+    builder
+      .build(tauri::generate_context!())
+      .expect("error while building tauri application")
+      .run(|app_handle, event| {
+        if let tauri::RunEvent::ExitRequested { .. } = event {
+          if let Some(state) = app_handle.try_state::<Mutex<Option<CommandChild>>>() {
+            if let Some(child) = state.lock().unwrap().take() {
+              let _ = child.kill();
+            }
+          }
+        }
+      });
+  }
+
+  #[cfg(not(feature = "offline-sidecar"))]
+  {
+    builder
+      .run(tauri::generate_context!())
+      .expect("error while running tauri application");
+  }
 }
