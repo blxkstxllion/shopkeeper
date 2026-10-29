@@ -35,6 +35,10 @@
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="4.151.1" />
     <PackageReference Include="StackExchange.Redis" Version="2.8.16" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.2" />
+    <!-- Pinned explicitly: System.IdentityModel.Tokens.Jwt 8.0.2 transitively floors on the
+         vulnerable 8.0.1 (GHSA-846f-f764-76mx, high severity; GHSA-2fmv-rv2c-59x7, moderate),
+         found via dotnet's own package vulnerability scan. 8.0.2 is the patched release. -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.2" />
   </ItemGroup>
 
   <PropertyGroup>
