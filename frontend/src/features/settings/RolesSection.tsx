@@ -5,6 +5,7 @@ import { getPlanUsage } from '@/api/plans'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Alert } from '@/components/ui/Alert'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { ListSkeleton } from '@/components/ui/Skeleton'
 import { useAuth } from '@/contexts/AuthContext'
 import { ApiError } from '@/lib/api-client'
@@ -20,6 +21,7 @@ export function RolesSection() {
   const [serverError, setServerError] = useState<string | null>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [editingRole, setEditingRole] = useState<RoleManagement | null>(null)
+  const [deletingRole, setDeletingRole] = useState<RoleManagement | null>(null)
 
   const { data: roles, isLoading } = useOfflineSingletonQuery<RoleManagement[]>(
     ['role-management'],
@@ -116,23 +118,7 @@ export function RolesSection() {
                   <Button variant="ghost" size="sm" onClick={() => openEdit(role)}>
                     Edit
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      deleteMutation.mutate(
-                        { payload: { id: role.id } },
-                        {
-                          onSuccess: () => setServerError(null),
-                          onError: (err) =>
-                            setServerError(
-                              err instanceof ApiError ? err.message : 'Unable to delete this role. Please try again.',
-                            ),
-                        },
-                      )
-                    }
-                    isLoading={deleteMutation.isPending && deleteMutation.variables?.payload.id === role.id}
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => setDeletingRole(role)}>
                     Delete
                   </Button>
                 </div>
@@ -143,6 +129,30 @@ export function RolesSection() {
       </Card>
 
       <RoleFormModal isOpen={formOpen} onClose={() => setFormOpen(false)} role={editingRole} />
+
+      <ConfirmDialog
+        isOpen={deletingRole !== null}
+        onClose={() => setDeletingRole(null)}
+        title="Delete role"
+        description={`Delete "${deletingRole?.name}"? Employees assigned to it will need a new role before they can log in again.`}
+        isConfirming={deleteMutation.isPending}
+        onConfirm={() => {
+          if (!deletingRole) return
+          deleteMutation.mutate(
+            { payload: { id: deletingRole.id } },
+            {
+              onSuccess: () => {
+                setServerError(null)
+                setDeletingRole(null)
+              },
+              onError: (err) => {
+                setServerError(err instanceof ApiError ? err.message : 'Unable to delete this role. Please try again.')
+                setDeletingRole(null)
+              },
+            },
+          )
+        }}
+      />
     </div>
   )
 }
