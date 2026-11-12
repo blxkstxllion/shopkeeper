@@ -32,6 +32,17 @@ public class User : BaseEntity
     public bool IsActive { get; set; } = true;
     public DateTimeOffset? LastLoginAt { get; set; }
 
+    /// <summary>Consecutive wrong passwords since the last successful login - reset to 0 on
+    /// success. The per-IP rate limit on /api/auth/login (see Program.cs) already slows brute
+    /// force from one source; this bounds how many guesses one attacker gets against a single
+    /// known email across many source IPs (distributed credential stuffing), same reasoning as
+    /// TwoFactorFailedAttempts below.</summary>
+    public int FailedLoginAttempts { get; set; }
+
+    /// <summary>Set once FailedLoginAttempts crosses the threshold - login is rejected outright
+    /// (without even checking the password) while this is in the future.</summary>
+    public DateTimeOffset? LoginLockedUntil { get; set; }
+
     public bool TwoFactorEnabled { get; set; }
 
     /// <summary>Base32 TOTP secret. Set as soon as setup starts (even before confirmation) - an

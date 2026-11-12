@@ -24,13 +24,39 @@ public class LoginCommandValidator : AbstractValidator<LoginCommand>
 public class LoginCommandHandler(IAppDbContext db, IPasswordHasher hasher, TokenIssuer tokenIssuer, IJwtTokenService jwt)
     : IRequestHandler<LoginCommand, LoginResultDto>
 {
+    // Same thresholds as VerifyTwoFactorCommand's lockout, for the same reasoning: the per-IP
+    // rate limit bounds one source, this bounds one targeted account across many sources.
+    private const int MaxFailedAttempts = 5;
+    private static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(15);
+
     public async Task<LoginResultDto> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
         var user = await db.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken);
 
+        if (user is not null)
+        {
+            var now = DateTimeOffset.UtcNow;
+            if (user.LoginLockedUntil is { } lockedUntil && lockedUntil > now)
+            {
+                var minutesRemaining = Math.Max(1, (int)Math.Ceiling((lockedUntil - now).TotalMinutes));
+                throw new AuthenticationException($"Too many failed attempts. Try again in {minutesRemaining} minute(s).");
+            }
+        }
+
         if (user is null || !hasher.Verify(request.Password, user.PasswordHash))
         {
+            if (user is not null)
+            {
+                user.FailedLoginAttempts++;
+                if (user.FailedLoginAttempts >= MaxFailedAttempts)
+                {
+                    user.LoginLockedUntil = DateTimeOffset.UtcNow.Add(LockoutDuration);
+                }
+
+                await db.SaveChangesAsync(cancellationToken);
+            }
+
             throw new AuthenticationException("Invalid email or password.");
         }
 
@@ -39,6 +65,8 @@ public class LoginCommandHandler(IAppDbContext db, IPasswordHasher hasher, Token
             throw new AuthenticationException("This account has been deactivated.");
         }
 
+        user.FailedLoginAttempts = 0;
+        user.LoginLockedUntil = null;
         user.LastLoginAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
 

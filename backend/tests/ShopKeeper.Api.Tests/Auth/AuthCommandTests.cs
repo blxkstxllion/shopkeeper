@@ -169,6 +169,83 @@ public class AuthCommandTests : IDisposable
     }
 
     [Fact]
+    public async Task Login_FiveConsecutiveWrongPasswords_LocksAccountEvenWithCorrectPasswordOnSixthAttempt()
+    {
+        var currentUser = new TestCurrentUserService();
+        var context = _db.CreateContext(currentUser);
+        var tokenIssuer = new TokenIssuer(context, _jwt);
+        await new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender()).Handle(
+            new RegisterCommand("lockout@shop.test", "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
+
+        var loginHandler = new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt);
+
+        for (var i = 0; i < 5; i++)
+        {
+            await Assert.ThrowsAsync<AuthenticationException>(() =>
+                loginHandler.Handle(new LoginCommand("lockout@shop.test", "TotallyWrong1!", null, false, null), CancellationToken.None));
+        }
+
+        // The 6th attempt uses the *correct* password but must still be rejected - the account
+        // itself is locked, independent of the per-IP rate limit (which this test bypasses
+        // entirely by calling the handler directly, same as every other test in this file).
+        var ex = await Assert.ThrowsAsync<AuthenticationException>(() =>
+            loginHandler.Handle(new LoginCommand("lockout@shop.test", "Passw0rd!", null, false, null), CancellationToken.None));
+        Assert.Contains("Too many failed attempts", ex.Message);
+    }
+
+    [Fact]
+    public async Task Login_CorrectPasswordAfterSomeFailures_ResetsFailedAttemptCounter()
+    {
+        var currentUser = new TestCurrentUserService();
+        var context = _db.CreateContext(currentUser);
+        var tokenIssuer = new TokenIssuer(context, _jwt);
+        var registerResult = await new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender()).Handle(
+            new RegisterCommand("reset-lockout@shop.test", "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
+
+        var loginHandler = new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt);
+
+        for (var i = 0; i < 3; i++)
+        {
+            await Assert.ThrowsAsync<AuthenticationException>(() =>
+                loginHandler.Handle(new LoginCommand("reset-lockout@shop.test", "TotallyWrong1!", null, false, null), CancellationToken.None));
+        }
+
+        await loginHandler.Handle(new LoginCommand("reset-lockout@shop.test", "Passw0rd!", null, false, null), CancellationToken.None);
+
+        var user = await context.Users.SingleAsync(u => u.Id == registerResult.User.Id);
+        Assert.Equal(0, user.FailedLoginAttempts);
+        Assert.Null(user.LoginLockedUntil);
+    }
+
+    [Fact]
+    public async Task Login_AfterLockoutWindowExpires_SucceedsAgain()
+    {
+        var currentUser = new TestCurrentUserService();
+        var context = _db.CreateContext(currentUser);
+        var tokenIssuer = new TokenIssuer(context, _jwt);
+        var registerResult = await new RegisterCommandHandler(context, _hasher, tokenIssuer, new TestEmailSender()).Handle(
+            new RegisterCommand("expired-lockout@shop.test", "Passw0rd!", "Ama", "Owusu", null), CancellationToken.None);
+
+        var loginHandler = new LoginCommandHandler(context, _hasher, tokenIssuer, _jwt);
+
+        for (var i = 0; i < 5; i++)
+        {
+            await Assert.ThrowsAsync<AuthenticationException>(() =>
+                loginHandler.Handle(new LoginCommand("expired-lockout@shop.test", "TotallyWrong1!", null, false, null), CancellationToken.None));
+        }
+
+        // Simulate the 15-minute lockout having already elapsed, same technique
+        // RefreshToken_ReuseOutsideGracePeriod_RevokesEntireChain uses for its own time window.
+        var user = await context.Users.SingleAsync(u => u.Id == registerResult.User.Id);
+        user.LoginLockedUntil = DateTimeOffset.UtcNow.AddSeconds(-1);
+        await context.SaveChangesAsync(CancellationToken.None);
+
+        var result = await loginHandler.Handle(
+            new LoginCommand("expired-lockout@shop.test", "Passw0rd!", null, false, null), CancellationToken.None);
+        Assert.False(result.RequiresTwoFactor);
+    }
+
+    [Fact]
     public async Task RefreshToken_NormalSingleRefresh_RotatesTokenAndLinksSuccessor()
     {
         var currentUser = new TestCurrentUserService();

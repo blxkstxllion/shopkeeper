@@ -9,6 +9,8 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Serilog;
+using Serilog.Formatting.Compact;
 using ShopKeeper.Api.Middleware;
 using ShopKeeper.Application;
 using ShopKeeper.Infrastructure;
@@ -20,6 +22,29 @@ using ShopKeeper.Infrastructure.Persistence;
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Replaces the default console logger with Serilog everywhere ILogger<T> is already used
+// (ExceptionHandlingMiddleware, MediatR behaviors, etc.) - no call-site changes needed, this
+// only changes how log output is formatted/shipped. Plain text locally because nobody wants
+// to read raw JSON in a dev terminal; one-line JSON per entry otherwise so container stdout
+// can be piped straight into a log aggregator (Loki, CloudWatch, ...) without a custom parser -
+// there's no such aggregator wired up yet (see README's deployment-readiness notes), but this
+// is the prerequisite for one rather than trying to grep unstructured text after the fact.
+builder.Host.UseSerilog((context, services, loggerConfig) =>
+{
+    loggerConfig
+        .ReadFrom.Configuration(context.Configuration)
+        .Enrich.FromLogContext();
+
+    if (context.HostingEnvironment.IsDevelopment())
+    {
+        loggerConfig.WriteTo.Console();
+    }
+    else
+    {
+        loggerConfig.WriteTo.Console(new CompactJsonFormatter());
+    }
+});
 
 const string FrontendCorsPolicy = "FrontendCorsPolicy";
 var frontendOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
@@ -112,6 +137,17 @@ builder.Services.AddAuthorization();
 // (QueueLimit 0 - an attacker's request should fail fast, not eventually succeed once
 // queued capacity frees up).
 const string AuthRateLimitPolicy = "auth";
+
+// For endpoints whose per-call cost is real money or real CPU, not just a cheap DB read:
+// the AI Advisor (a configured Anthropic API key means every call is a billed Claude
+// request) and report export (in-process PDF/Word rendering). Partitioned by the caller's
+// user id rather than IP, since both are always authenticated - a user id is a stable,
+// unspoofable partition key here, unlike IP behind a shared NAT/proxy.
+const string ExpensiveRateLimitPolicy = "expensive";
+
+static string PartitionByUserOrIp(HttpContext httpContext) =>
+    httpContext.User.FindFirst("sub")?.Value ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -137,9 +173,37 @@ builder.Services.AddRateLimiter(options =>
             Window = TimeSpan.FromMinutes(1),
             QueueLimit = 0,
         }));
+
+    options.AddPolicy(ExpensiveRateLimitPolicy, httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: PartitionByUserOrIp(httpContext),
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+        }));
+
+    // Every other authenticated endpoint had no throttle at all before this - a single
+    // compromised or buggy client could otherwise hammer the catalog/sales/reports APIs
+    // without limit. Generous enough that no real user-driven click pattern should ever hit
+    // it; this is a abuse/runaway-client backstop, not a product-level quota.
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: PartitionByUserOrIp(httpContext),
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 300,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
 });
 
 var app = builder.Build();
+
+// One structured log line per request (method, path, status, elapsed, exception if any) -
+// placed before anything else so it wraps the full pipeline, including requests that never
+// reach a controller (e.g. rejected by the rate limiter or CORS).
+app.UseSerilogRequestLogging();
 
 if (app.Environment.IsDevelopment())
 {
