@@ -21,7 +21,7 @@ public class SwitchBusinessCommandHandler(IAppDbContext db, IJwtTokenService jwt
 
         var isMember = await db.BusinessUsers.IgnoreQueryFilters()
             .AnyAsync(bu => bu.UserId == request.UserId && bu.BusinessId == request.BusinessId
-                && bu.Status == Domain.Enums.BusinessUserStatus.Active, cancellationToken);
+                && bu.Status == Domain.Enums.BusinessUserStatus.Active && bu.Business.IsActive, cancellationToken);
 
         if (!isMember)
         {
