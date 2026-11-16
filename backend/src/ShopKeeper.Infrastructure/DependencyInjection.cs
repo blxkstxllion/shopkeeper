@@ -5,7 +5,9 @@ using Amazon.SimpleEmailV2;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using System.Net.Http.Headers;
+using System.Text;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Infrastructure.Ai;
 using ShopKeeper.Infrastructure.BackgroundJobs;
@@ -43,7 +45,19 @@ public static class DependencyInjection
         });
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
-        services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
+        // ValidateOnStart runs this during host startup (both the SaaS Api and the Local
+        // offline-edition sidecar go through the same generic-host startup sequence), not just
+        // whenever JwtTokenService happens to first be resolved - a short-but-nonempty secret
+        // (e.g. a one-character JWT_SECRET) would otherwise boot the app fine and silently sign
+        // every token with a brute-forceable key. An empty secret already fails fast on its own
+        // (SymmetricSecurityKey throws "key length is zero"); this catches the weak-nonempty gap
+        // with an actionable message instead.
+        services.AddOptions<JwtSettings>()
+            .Bind(configuration.GetSection(JwtSettings.SectionName))
+            .Validate(
+                s => Encoding.UTF8.GetByteCount(s.Secret ?? string.Empty) >= 32,
+                "Jwt:Secret must be at least 32 bytes (UTF8-encoded) for HS256 to be secure - generate one with e.g. `openssl rand -base64 32`.")
+            .ValidateOnStart();
 
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
