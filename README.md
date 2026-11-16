@@ -220,10 +220,22 @@ site, served by Caddy straight from `docker/downloads/` — see `docker/Caddyfil
 live web app instantly; it does **not** touch these files. Rebuild and re-upload by hand
 whenever a release-worthy batch of changes lands.
 
-- **Windows**: `npm run tauri build` (from `frontend/`) with the Rust toolchain already
-  installed produces `src-tauri/target/release/bundle/nsis/*.exe` and `bundle/msi/*.msi`.
-  Rename to `ShopKeeper-Setup-x64.exe`/`.msi` and `scp` into
+- **Windows (SaaS desktop)**: `npm run tauri build` (from `frontend/`) with the Rust
+  toolchain already installed produces `src-tauri/target/release/bundle/nsis/*.exe` and
+  `bundle/msi/*.msi`. Rename to `ShopKeeper-Setup-x64.exe`/`.msi` and `scp` into
   `/opt/shopkeeper/docker/downloads/` on the production host.
+- **Windows (Offline Edition)**: `npx tauri build --config src-tauri/tauri.offline.conf.json`
+  (from `frontend/`) produces `src-tauri/target/release/bundle/nsis/My Shopkeeper_*-setup.exe`.
+  Rename to `MyShopkeeper-Setup-x64.exe` and `scp` into the same `docker/downloads/`
+  directory. `tauri.offline.conf.json`'s `build.features: ["offline-sidecar"]` is what
+  makes this command alone produce a working build — without it, `cargo` compiles the
+  plain SaaS shell (no sidecar spawn code at all) under the Offline Edition's branding,
+  and the app opens to a permanently-stuck "local backend didn't respond in time" screen.
+  This exact bug shipped at least twice (every build from 2026-10-04 through 2026-11-16)
+  before anyone noticed, because the window still opens and looks fine for the first 15
+  seconds - **always launch the actual built exe and wait for the splash screen to clear**
+  before trusting a rebuild, the same discipline this file already asks for with Docker
+  builds.
 - **Android**: needs the Android NDK (`sdkmanager "ndk;<version>"`, not installed by
   default alongside the SDK) and, on Windows, **Developer Mode enabled** (Settings →
   Privacy & security → For developers) — Tauri's Android build symlinks compiled `.so`
@@ -251,8 +263,9 @@ whenever a release-worthy batch of changes lands.
   - Rename the signed output to `ShopKeeper.apk` and `scp` into the same
     `docker/downloads/` directory.
 - Verify any upload with a direct `curl -o /dev/null -w '%{http_code} size=%{size_download}'`
-  against the live `/downloads/...` URL — matching byte size to the local file is the
-  cheapest proof the upload landed intact.
+  against the live `/downloads/...` URL — matching byte size to the local file proves the
+  upload landed intact, nothing more. It does **not** prove the app inside it works (see
+  the Offline Edition note above) - that needs an actual run of the built exe.
 
 ## Security notes
 
