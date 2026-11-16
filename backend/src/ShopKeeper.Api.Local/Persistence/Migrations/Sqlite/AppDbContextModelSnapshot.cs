@@ -682,6 +682,9 @@ namespace ShopKeeper.Api.Local.Persistence.Migrations.Sqlite
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("FailedUnlockAttempts")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("PinHash")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -692,6 +695,9 @@ namespace ShopKeeper.Api.Local.Persistence.Migrations.Sqlite
                     b.Property<string>("StoreName")
                         .IsRequired()
                         .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("UnlockLockedUntil")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTimeOffset>("UpdatedAt")

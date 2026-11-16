@@ -39,6 +39,23 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
+// The sidecar's CORS policy is wide-open (AllowAnyOrigin - see Program.cs's own comment on
+// why), so without this, any web page the shop owner happens to have open could fetch() the
+// local API and the browser would let that page's JS read the response. LocalApiTokenMiddleware
+// is the real authorization boundary; this attaches the per-launch token it requires. A dynamic
+// import, not a static one, so @tauri-apps/api and this module are never bundled into the SaaS
+// web/desktop builds, which don't run inside Tauri's offline-sidecar feature at all.
+if (import.meta.env.VITE_EDITION === 'offline') {
+  apiClient.interceptors.request.use(async (config) => {
+    const { getLocalApiToken } = await import('@/offline-edition/localApiToken')
+    const token = await getLocalApiToken()
+    if (token) {
+      config.headers['X-Local-Api-Token'] = token
+    }
+    return config
+  })
+}
+
 export type SessionCheckOutcome =
   | { kind: 'authenticated'; result: AuthResult }
   | { kind: 'unauthenticated' } // the server actually said no - refresh token missing/expired/revoked
