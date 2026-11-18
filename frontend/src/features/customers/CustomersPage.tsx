@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { QueryErrorBanner } from '@/components/ui/QueryErrorBanner'
 import { TableSkeleton } from '@/components/ui/Skeleton'
 import { formatMoney } from '@/lib/format'
 import { useOfflineSingletonQuery } from '@/offline/useOfflineQuery'
@@ -26,7 +27,7 @@ export function CustomersPage() {
     setPage(1)
   }, [search])
 
-  const { data, isLoading } = useOfflineSingletonQuery<PagedResult<Customer>>(
+  const { data, isLoading, isError, refetch, isRefetching } = useOfflineSingletonQuery<PagedResult<Customer>>(
     ['customers', { search, page }],
     'customers',
     () => getCustomers({ search: search || undefined, activeOnly: true, page, pageSize: PAGE_SIZE }),
@@ -65,6 +66,8 @@ export function CustomersPage() {
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
+
+      {isError && <QueryErrorBanner onRetry={() => refetch()} isRetrying={isRefetching} />}
 
       <Card className="overflow-hidden">
         {isLoading ? (

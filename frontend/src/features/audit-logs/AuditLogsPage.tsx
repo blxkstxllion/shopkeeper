@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { QueryErrorBanner } from '@/components/ui/QueryErrorBanner'
 import { TableSkeleton } from '@/components/ui/Skeleton'
 import { formatDateTime } from '@/lib/format'
 
@@ -23,7 +24,7 @@ export function AuditLogsPage() {
     setPage(1)
   }, [entityType, action, from, to])
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ['audit-logs', { entityType, action, from, to, page }],
     queryFn: () =>
       getAuditLogs({
@@ -79,6 +80,8 @@ export function AuditLogsPage() {
           <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-40" />
         </div>
       </div>
+
+      {isError && <QueryErrorBanner onRetry={() => refetch()} isRetrying={isRefetching} />}
 
       <Card className="overflow-hidden">
         {isLoading ? (

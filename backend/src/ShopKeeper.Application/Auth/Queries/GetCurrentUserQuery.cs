@@ -17,7 +17,7 @@ public class GetCurrentUserQueryHandler(IAppDbContext db) : IRequestHandler<GetC
 
         var memberships = await db.BusinessUsers
             .IgnoreQueryFilters()
-            .Where(bu => bu.UserId == user.Id && bu.Status != Domain.Enums.BusinessUserStatus.Removed)
+            .Where(bu => bu.UserId == user.Id && bu.Status != Domain.Enums.BusinessUserStatus.Removed && bu.Business.IsActive)
             .Include(bu => bu.Business)
             .Include(bu => bu.Role)
             .ToListAsync(cancellationToken);

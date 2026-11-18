@@ -687,6 +687,9 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("FailedUnlockAttempts")
+                        .HasColumnType("integer");
+
                     b.Property<string>("PinHash")
                         .IsRequired()
                         .HasColumnType("text");
@@ -698,6 +701,9 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset?>("UnlockLockedUntil")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1766,6 +1772,9 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                     b.Property<string>("EmailVerificationToken")
                         .HasColumnType("text");
 
+                    b.Property<int>("FailedLoginAttempts")
+                        .HasColumnType("integer");
+
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -1784,6 +1793,9 @@ namespace ShopKeeper.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset?>("LoginLockedUntil")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()

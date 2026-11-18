@@ -3,6 +3,7 @@ import { Receipt } from 'lucide-react'
 import { getSales } from '@/api/sales'
 import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { QueryErrorBanner } from '@/components/ui/QueryErrorBanner'
 import { TableSkeleton } from '@/components/ui/Skeleton'
 import { formatMoney, formatDateTime } from '@/lib/format'
 import { useOfflineListQuery } from '@/offline/useOfflineQuery'
@@ -25,11 +26,13 @@ export function SalesHistoryPage() {
   // Always fetches/caches the unfiltered snapshot (matches PosPage's catalogCache convention:
   // cache the full list once, filter client-side) - offline, switching to a status tab that was
   // never independently fetched would otherwise show nothing instead of just filtering what's cached.
-  const { data: sales, isLoading } = useOfflineListQuery<SaleListItem>(
-    ['sales'],
-    'sales',
-    async () => (await getSales({ pageSize: 100 })).items,
-  )
+  const {
+    data: sales,
+    isLoading,
+    isError,
+    refetch,
+    isRefetching,
+  } = useOfflineListQuery<SaleListItem>(['sales'], 'sales', async () => (await getSales({ pageSize: 100 })).items)
 
   const filteredSales = status === 'All' ? (sales ?? []) : (sales ?? []).filter((s) => s.status === status)
 
@@ -58,6 +61,8 @@ export function SalesHistoryPage() {
           </button>
         ))}
       </div>
+
+      {isError && <QueryErrorBanner onRetry={() => refetch()} isRetrying={isRefetching} />}
 
       <Card className="overflow-hidden">
         {isLoading ? (

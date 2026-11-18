@@ -4,10 +4,11 @@ import { Calendar, Trash2, Loader2, Plus, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Alert } from '@/components/ui/Alert'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { getScheduledReports, createScheduledReport, deleteScheduledReport } from '@/api/reports'
 import { useBranchContext } from '@/contexts/BranchContext'
 import { ApiError } from '@/lib/api-client'
-import type { ScheduledReportFrequency } from '@/types/reports'
+import type { ScheduledReport, ScheduledReportFrequency } from '@/types/reports'
 import type { ReportExportFormat } from '@/api/reports'
 
 const FREQUENCIES: { value: ScheduledReportFrequency; label: string }[] = [
@@ -43,6 +44,7 @@ function ScheduledReportsPanel() {
   const [format, setFormat] = useState<ReportExportFormat>('Pdf')
   const [branchId, setBranchId] = useState('')
   const [emails, setEmails] = useState('')
+  const [deletingReport, setDeletingReport] = useState<ScheduledReport | null>(null)
 
   const { data: reports, isLoading } = useQuery({
     queryKey: ['scheduled-reports'],
@@ -98,8 +100,7 @@ function ScheduledReportsPanel() {
               </div>
               <button
                 type="button"
-                onClick={() => deleteMutation.mutate(r.id)}
-                disabled={deleteMutation.isPending}
+                onClick={() => setDeletingReport(r)}
                 aria-label="Delete schedule"
                 className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-danger/10 hover:text-danger disabled:opacity-50 dark:hover:text-danger-dark"
               >
@@ -183,6 +184,20 @@ function ScheduledReportsPanel() {
           New schedule
         </Button>
       )}
+
+      <ConfirmDialog
+        isOpen={deletingReport !== null}
+        onClose={() => setDeletingReport(null)}
+        title="Delete scheduled report"
+        description={`Stop sending the ${deletingReport?.frequency.toLowerCase()} ${deletingReport?.format} report${
+          deletingReport?.branchName ? ` for ${deletingReport.branchName}` : ''
+        }?`}
+        isConfirming={deleteMutation.isPending}
+        onConfirm={() => {
+          if (!deletingReport) return
+          deleteMutation.mutate(deletingReport.id, { onSettled: () => setDeletingReport(null) })
+        }}
+      />
     </div>
   )
 }

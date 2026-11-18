@@ -9,8 +9,6 @@ import {
   Award,
   Receipt,
   LayoutGrid,
-  AlertCircle,
-  RefreshCw,
   ShoppingCart,
   PackagePlus,
 } from 'lucide-react'
@@ -33,6 +31,7 @@ import { getDashboardSummary } from '@/api/dashboard'
 import { DashboardHeader } from './DashboardHeader'
 import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { QueryErrorBanner } from '@/components/ui/QueryErrorBanner'
 import { StatTile } from '@/components/ui/StatTile'
 import { Skeleton, StatTileSkeleton, ChartSkeleton, ListSkeleton } from '@/components/ui/Skeleton'
 import { CategoryBreakdown } from '@/components/ui/CategoryBreakdown'
@@ -71,21 +70,7 @@ export function DashboardPage() {
     <div className="mx-auto max-w-6xl [--cat-0:#2a78d6] [--cat-1:#1baf7a] [--cat-2:#eda100] [--cat-3:#008300] [--cat-4:#4a3aa7] [--cat-5:#e34948] [--cat-6:#e87ba4] [--cat-7:#eb6834] dark:[--cat-0:#3987e5] dark:[--cat-1:#199e70] dark:[--cat-2:#c98500] dark:[--cat-4:#9085e9] dark:[--cat-5:#e66767] dark:[--cat-6:#d55181] dark:[--cat-7:#d95926] [--chart-revenue:#2a78d6] dark:[--chart-revenue:#3987e5] [--chart-profit:#1baf7a] dark:[--chart-profit:#199e70] [--chart-grid:#e1e0d9] dark:[--chart-grid:#2c2c2a] [--chart-axis:#898781]">
       <DashboardHeader />
 
-      {isError && (
-        <div className="mb-4 flex animate-[fade-up_0.4s_ease-out_both] flex-wrap items-center gap-3 rounded-xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger dark:border-danger-dark/30 dark:bg-danger-dark/10 dark:text-danger-dark">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <span className="flex-1">Unable to reach the server. Please check your connection and try again.</span>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            disabled={isRefetching}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-danger px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-danger/90 disabled:opacity-60 dark:bg-danger-dark dark:text-slate-900"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${isRefetching ? 'animate-spin' : ''}`} />
-            Retry
-          </button>
-        </div>
-      )}
+      {isError && <QueryErrorBanner onRetry={() => refetch()} isRetrying={isRefetching} />}
 
       {isLoading || !data ? (
         <>

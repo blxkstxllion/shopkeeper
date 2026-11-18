@@ -3,6 +3,7 @@ namespace ShopKeeper.Api.Controllers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Application.Reports.Commands;
 using ShopKeeper.Application.Reports.Dtos;
@@ -28,6 +29,9 @@ public class ReportsController(ISender mediator) : ControllerBase
         [FromQuery] DateOnly from, [FromQuery] DateOnly to, [FromQuery] Guid? branchId, CancellationToken ct) =>
         Ok(await mediator.Send(new GetInventoryReportQuery(from, to, branchId), ct));
 
+    // In-process PDF/Word rendering (QuestPDF/OpenXML) - real CPU cost per call, unlike the
+    // plain-query report endpoints above.
+    [EnableRateLimiting("expensive")]
     [HttpGet("export")]
     public async Task<IActionResult> Export(
         [FromQuery] DateOnly from, [FromQuery] DateOnly to, [FromQuery] Guid? branchId,

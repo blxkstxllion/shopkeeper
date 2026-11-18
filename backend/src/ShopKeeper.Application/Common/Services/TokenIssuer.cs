@@ -73,10 +73,12 @@ public class TokenIssuer(IAppDbContext db, IJwtTokenService jwt)
         // for the remainder of its ~15-minute lifetime (AccessTokenLifetimeMinutes below).
         // Accepted, documented tradeoff rather than building real-time token revocation: the
         // removed user cannot obtain a *new* token for that business, which is the property that
-        // actually matters.
+        // actually matters. Business.IsActive filters the same way for a deactivated business
+        // (see DeactivateBusinessCommand) - that command also revokes already-issued refresh
+        // tokens directly, so a deactivated business doesn't rely solely on this 15-minute tail.
         var memberships = await db.BusinessUsers
             .IgnoreQueryFilters()
-            .Where(bu => bu.UserId == user.Id && bu.Status != Domain.Enums.BusinessUserStatus.Removed)
+            .Where(bu => bu.UserId == user.Id && bu.Status != Domain.Enums.BusinessUserStatus.Removed && bu.Business.IsActive)
             .Include(bu => bu.Business)
             .Include(bu => bu.Role).ThenInclude(r => r.RolePermissions).ThenInclude(rp => rp.Permission)
             .ToListAsync(ct);

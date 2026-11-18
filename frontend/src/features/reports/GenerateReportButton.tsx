@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, FileText, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Alert } from '@/components/ui/Alert'
 import { exportBusinessReport, type ReportExportFormat } from '@/api/reports'
 import { triggerDownload } from '@/lib/download'
+import { ApiError } from '@/lib/api-client'
 import type { DateRange } from '@/components/ui/DateRangePicker'
 
 /** Bundles Profitability + Expenses + Inventory for the currently selected range/branch into
@@ -11,6 +13,7 @@ import type { DateRange } from '@/components/ui/DateRangePicker'
 export function GenerateReportButton({ range, branchId }: { range: DateRange; branchId?: string }) {
   const [isOpen, setIsOpen] = useState(false)
   const [pending, setPending] = useState<ReportExportFormat | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -24,9 +27,12 @@ export function GenerateReportButton({ range, branchId }: { range: DateRange; br
   async function handleGenerate(format: ReportExportFormat) {
     setIsOpen(false)
     setPending(format)
+    setError(null)
     try {
       const { blob, filename } = await exportBusinessReport({ from: range.from, to: range.to, branchId, format })
       triggerDownload(filename, blob)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not generate the report. Please try again.')
     } finally {
       setPending(null)
     }
@@ -64,6 +70,12 @@ export function GenerateReportButton({ range, branchId }: { range: DateRange; br
           >
             Word
           </button>
+        </div>
+      )}
+
+      {error && (
+        <div className="absolute right-0 top-full z-10 mt-1 w-64">
+          <Alert tone="error">{error}</Alert>
         </div>
       )}
     </div>

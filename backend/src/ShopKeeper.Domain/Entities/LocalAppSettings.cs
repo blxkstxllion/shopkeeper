@@ -13,4 +13,13 @@ public class LocalAppSettings : BaseEntity
     public string StoreName { get; set; } = default!;
     public string PinHash { get; set; } = default!;
     public DateTimeOffset SetupCompletedAt { get; set; }
+
+    /// <summary>Consecutive wrong PINs since the last success - reset to 0 on success. Only a
+    /// 4-digit PIN (10,000 combinations), so without this an unattended app left open could be
+    /// unlocked by brute force in well under a minute. Same pattern as User.FailedLoginAttempts.</summary>
+    public int FailedUnlockAttempts { get; set; }
+
+    /// <summary>Set once FailedUnlockAttempts crosses the threshold - unlock is rejected outright
+    /// (without even checking the PIN) while this is in the future.</summary>
+    public DateTimeOffset? UnlockLockedUntil { get; set; }
 }

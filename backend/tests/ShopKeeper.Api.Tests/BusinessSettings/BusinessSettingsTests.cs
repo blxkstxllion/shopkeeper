@@ -3,9 +3,12 @@ namespace ShopKeeper.Api.Tests.BusinessSettings;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using ShopKeeper.Api.Tests.TestHelpers;
+using ShopKeeper.Application.Auth.Commands;
+using ShopKeeper.Application.Auth.Queries;
 using ShopKeeper.Application.BusinessSettings.Commands;
 using ShopKeeper.Application.BusinessSettings.Queries;
 using ShopKeeper.Application.Common.Exceptions;
+using ShopKeeper.Application.Common.Services;
 using ShopKeeper.Domain.Constants;
 using ShopKeeper.Infrastructure.Identity;
 using ShopKeeper.Infrastructure.Persistence;
@@ -93,6 +96,91 @@ public class BusinessSettingsTests : IDisposable
 
         await Assert.ThrowsAsync<ForbiddenAccessException>(() => new UpdateBusinessProfileCommandHandler(context, cashier).Handle(
             new UpdateBusinessProfileCommand("Hacked Name", null, "Africa/Accra", "green"), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task DeactivateBusiness_Owner_WithCorrectPassword_MarksBusinessInactiveAndRevokesTokens()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var context = _db.CreateContext(owner);
+
+        await new DeactivateBusinessCommandHandler(context, owner, _hasher).Handle(
+            new DeactivateBusinessCommand("Passw0rd!"), CancellationToken.None);
+
+        var business = await context.Businesses.SingleAsync(b => b.Id == seeded.BusinessId);
+        Assert.False(business.IsActive);
+
+        var stillActiveTokens = await context.RefreshTokens
+            .CountAsync(rt => rt.ActiveBusinessId == seeded.BusinessId && rt.RevokedAt == null);
+        Assert.Equal(0, stillActiveTokens);
+    }
+
+    [Fact]
+    public async Task DeactivateBusiness_NonOwner_ThrowsForbidden()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var context = _db.CreateContext(seeded.AsOwner());
+
+        var nonOwner = new TestCurrentUserService
+        {
+            UserId = Guid.NewGuid(),
+            BusinessId = seeded.BusinessId,
+            BranchId = seeded.BranchId,
+            IsOwner = false,
+            PermissionsList = DefaultRoles.RolePermissionKeys[DefaultRoles.Cashier].ToList(),
+        };
+
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() => new DeactivateBusinessCommandHandler(context, nonOwner, _hasher).Handle(
+            new DeactivateBusinessCommand("Passw0rd!"), CancellationToken.None));
+
+        var business = await context.Businesses.SingleAsync(b => b.Id == seeded.BusinessId);
+        Assert.True(business.IsActive); // unchanged
+    }
+
+    [Fact]
+    public async Task DeactivateBusiness_WrongPassword_ThrowsAuthenticationAndLeavesBusinessActive()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var context = _db.CreateContext(owner);
+
+        await Assert.ThrowsAsync<AuthenticationException>(() => new DeactivateBusinessCommandHandler(context, owner, _hasher).Handle(
+            new DeactivateBusinessCommand("TotallyWrong1!"), CancellationToken.None));
+
+        var business = await context.Businesses.SingleAsync(b => b.Id == seeded.BusinessId);
+        Assert.True(business.IsActive);
+    }
+
+    [Fact]
+    public async Task DeactivateBusiness_ThenSwitchBusiness_ThrowsForbidden()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var context = _db.CreateContext(owner);
+
+        await new DeactivateBusinessCommandHandler(context, owner, _hasher).Handle(
+            new DeactivateBusinessCommand("Passw0rd!"), CancellationToken.None);
+
+        var switchHandler = new SwitchBusinessCommandHandler(context, _jwt, new TokenIssuer(context, _jwt));
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() => switchHandler.Handle(
+            new SwitchBusinessCommand(seeded.OwnerId, seeded.BusinessId, null, null), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task DeactivateBusiness_ThenGetCurrentUser_ExcludesDeactivatedBusinessFromMemberships()
+    {
+        var seeded = await PosTestFixture.SeedAsync(_db, _hasher, _jwt);
+        var owner = seeded.AsOwner();
+        var context = _db.CreateContext(owner);
+
+        await new DeactivateBusinessCommandHandler(context, owner, _hasher).Handle(
+            new DeactivateBusinessCommand("Passw0rd!"), CancellationToken.None);
+
+        var userDto = await new GetCurrentUserQueryHandler(context).Handle(
+            new GetCurrentUserQuery(seeded.OwnerId), CancellationToken.None);
+
+        Assert.Empty(userDto.Businesses);
     }
 
     public void Dispose() => _db.Dispose();

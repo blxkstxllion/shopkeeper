@@ -5,6 +5,7 @@ import { useActiveBranch } from '@/hooks/useActiveBranch'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { TableSkeleton } from '@/components/ui/Skeleton'
 import { formatMoney } from '@/lib/format'
@@ -23,6 +24,7 @@ export function ExpensesPage() {
   const [categoryId, setCategoryId] = useState('')
   const [page, setPage] = useState(1)
   const [formModal, setFormModal] = useState<{ open: boolean; expense?: Expense | null }>({ open: false })
+  const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null)
 
   useEffect(() => {
     setPage(1)
@@ -139,12 +141,7 @@ export function ExpensesPage() {
                         <Button variant="ghost" size="sm" onClick={() => setFormModal({ open: true, expense: e })}>
                           Edit
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteMutation.mutate({ payload: { id: e.id } })}
-                          isLoading={deleteMutation.isPending && deleteMutation.variables?.payload.id === e.id}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => setDeletingExpense(e)}>
                           Delete
                         </Button>
                       </div>
@@ -183,6 +180,20 @@ export function ExpensesPage() {
         onClose={() => setFormModal({ open: false })}
         branchId={branch?.id ?? null}
         expense={formModal.expense}
+      />
+
+      <ConfirmDialog
+        isOpen={deletingExpense !== null}
+        onClose={() => setDeletingExpense(null)}
+        title="Delete expense"
+        description={`Delete the ${deletingExpense?.categoryName ?? ''} expense of ${
+          deletingExpense ? formatMoney(deletingExpense.amount) : ''
+        }? This can't be undone.`}
+        isConfirming={deleteMutation.isPending}
+        onConfirm={() => {
+          if (!deletingExpense) return
+          deleteMutation.mutate({ payload: { id: deletingExpense.id } }, { onSettled: () => setDeletingExpense(null) })
+        }}
       />
     </div>
   )
