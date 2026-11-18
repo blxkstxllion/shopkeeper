@@ -6,6 +6,20 @@ use std::sync::Mutex;
 #[cfg(feature = "offline-sidecar")]
 use tauri_plugin_shell::{process::CommandChild, process::CommandEvent, ShellExt};
 
+// Holds the per-launch random token the sidecar prints to its own stdout on startup (see
+// backend/src/ShopKeeper.Api.Local/Program.cs and LocalApiTokenMiddleware) - populated by the
+// stdout-reading loop in run() below, read by get_local_api_token so the frontend can attach it
+// to every request. A web page has no way to observe this: it only ever travels over this
+// process-local pipe and the Tauri IPC channel, never anywhere a browser could intercept it.
+#[cfg(feature = "offline-sidecar")]
+struct LocalApiToken(Mutex<Option<String>>);
+
+#[cfg(feature = "offline-sidecar")]
+#[tauri::command]
+fn get_local_api_token(state: tauri::State<LocalApiToken>) -> Option<String> {
+  state.0.lock().unwrap().clone()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   let builder = tauri::Builder::default()
@@ -62,13 +76,30 @@ pub fn run() {
       // keep the SQLite file locked for the next launch.
       #[cfg(feature = "offline-sidecar")]
       {
+        app.manage(LocalApiToken(Mutex::new(None)));
+
         let (mut rx, child) = app.shell().sidecar("shopkeeper-server")?.spawn()?;
         app.manage(Mutex::new(Some(child)));
+
+        // Needed because `app` (a &mut App borrowed by this setup closure) doesn't outlive the
+        // spawned async task below - this is an owned, cloneable reference to the same app.
+        let app_handle = app.handle().clone();
 
         tauri::async_runtime::spawn(async move {
           while let Some(event) = rx.recv().await {
             match event {
-              CommandEvent::Stdout(line) => log::info!("sidecar: {}", String::from_utf8_lossy(&line)),
+              CommandEvent::Stdout(line) => {
+                let text = String::from_utf8_lossy(&line).into_owned();
+                log::info!("sidecar: {}", text);
+
+                // See backend/src/ShopKeeper.Api.Local/Program.cs - this is the one line the
+                // sidecar prints specifically for this capture, before anything else runs.
+                if let Some(token) = text.trim().strip_prefix("LOCAL_API_TOKEN=") {
+                  if let Some(state) = app_handle.try_state::<LocalApiToken>() {
+                    *state.0.lock().unwrap() = Some(token.to_string());
+                  }
+                }
+              }
               CommandEvent::Stderr(line) => log::error!("sidecar: {}", String::from_utf8_lossy(&line)),
               _ => {}
             }
@@ -82,6 +113,7 @@ pub fn run() {
   #[cfg(feature = "offline-sidecar")]
   {
     builder
+      .invoke_handler(tauri::generate_handler![get_local_api_token])
       .build(tauri::generate_context!())
       .expect("error while building tauri application")
       .run(|app_handle, event| {

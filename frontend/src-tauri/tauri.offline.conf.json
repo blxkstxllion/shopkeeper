@@ -3,7 +3,8 @@
   "productName": "My Shopkeeper",
   "identifier": "com.omnifixlabs.myshopkeeper",
   "build": {
-    "beforeBuildCommand": "npm run build:offline"
+    "beforeBuildCommand": "npm run build:offline",
+    "features": ["offline-sidecar"]
   },
   "app": {
     "windows": [

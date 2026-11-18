@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using ShopKeeper.Api.Tests.TestHelpers;
 using ShopKeeper.Application.Auth.Commands;
 using ShopKeeper.Application.Common.Exceptions;
+using ShopKeeper.Application.Common.Interfaces;
 using ShopKeeper.Application.Common.Services;
 using ShopKeeper.Infrastructure.Identity;
 
@@ -166,6 +167,38 @@ public class AuthCommandTests : IDisposable
 
         await Assert.ThrowsAsync<AuthenticationException>(() =>
             loginHandler.Handle(new LoginCommand("nobody@shop.test", "Passw0rd!", null, false, null), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Login_WithUnknownEmail_StillRunsPasswordVerification()
+    {
+        // Regression test: hasher.Verify must run even when no user exists, so an attempt
+        // against an unknown email costs the same bcrypt work as a wrong-password attempt
+        // against a real account. Without this, `user is null` short-circuiting past the
+        // Verify call makes the two cases timing-distinguishable - a classic oracle for
+        // enumerating valid emails by measuring response time.
+        var currentUser = new TestCurrentUserService();
+        var context = _db.CreateContext(currentUser);
+        var spyHasher = new VerifyCountingPasswordHasher(_hasher);
+        var loginHandler = new LoginCommandHandler(context, spyHasher, new TokenIssuer(context, _jwt), _jwt);
+
+        await Assert.ThrowsAsync<AuthenticationException>(() =>
+            loginHandler.Handle(new LoginCommand("nobody-at-all@shop.test", "Passw0rd!", null, false, null), CancellationToken.None));
+
+        Assert.Equal(1, spyHasher.VerifyCallCount);
+    }
+
+    private class VerifyCountingPasswordHasher(IPasswordHasher inner) : IPasswordHasher
+    {
+        public int VerifyCallCount { get; private set; }
+
+        public string Hash(string password) => inner.Hash(password);
+
+        public bool Verify(string password, string hash)
+        {
+            VerifyCallCount++;
+            return inner.Verify(password, hash);
+        }
     }
 
     [Fact]

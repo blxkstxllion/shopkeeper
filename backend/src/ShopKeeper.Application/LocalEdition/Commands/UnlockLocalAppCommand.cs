@@ -23,11 +23,40 @@ public class UnlockLocalAppCommandValidator : AbstractValidator<UnlockLocalAppCo
 public class UnlockLocalAppCommandHandler(IAppDbContext db, IPasswordHasher hasher)
     : IRequestHandler<UnlockLocalAppCommand, bool>
 {
+    // A 4-digit PIN is only 10,000 combinations - without a lockout, an unattended app left
+    // open could be brute-forced in well under a minute. Same thresholds as User's login
+    // lockout, for the same reasoning.
+    private const int MaxFailedAttempts = 5;
+    private static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(15);
+
     public async Task<bool> Handle(UnlockLocalAppCommand request, CancellationToken cancellationToken)
     {
         var settings = await db.LocalAppSettings.FirstOrDefaultAsync(cancellationToken)
             ?? throw new AuthenticationException("Setup has not been completed yet.");
 
-        return hasher.Verify(request.Pin, settings.PinHash);
+        var now = DateTimeOffset.UtcNow;
+        if (settings.UnlockLockedUntil is { } lockedUntil && lockedUntil > now)
+        {
+            return false;
+        }
+
+        var isCorrect = hasher.Verify(request.Pin, settings.PinHash);
+
+        if (!isCorrect)
+        {
+            settings.FailedUnlockAttempts++;
+            if (settings.FailedUnlockAttempts >= MaxFailedAttempts)
+            {
+                settings.UnlockLockedUntil = now.Add(LockoutDuration);
+            }
+        }
+        else
+        {
+            settings.FailedUnlockAttempts = 0;
+            settings.UnlockLockedUntil = null;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        return isCorrect;
     }
 }

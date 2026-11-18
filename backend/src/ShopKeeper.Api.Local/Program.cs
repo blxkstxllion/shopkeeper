@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -13,6 +14,15 @@ using ShopKeeper.Infrastructure.Persistence;
 // Required one-time global setting for QuestPDF (report export PDF rendering), same as
 // ShopKeeper.Api/Program.cs - Community license is free under $1M USD annual gross revenue.
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
+// Generated fresh every process launch and printed to stdout immediately, before anything else
+// runs - Tauri's Rust shell (frontend/src-tauri/src/lib.rs) is already piping this process's
+// stdout and watches for this line, caching the token in app-managed state so the frontend can
+// retrieve it via a Tauri command and attach it as a header on every request. See
+// LocalApiTokenMiddleware's doc comment for why this is the real authorization boundary, not
+// LocalAuthenticationHandler or the 127.0.0.1 binding.
+var localApiToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+Console.WriteLine($"LOCAL_API_TOKEN={localApiToken}");
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -103,6 +113,11 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 app.UseCors(LocalCorsPolicy);
+
+// After UseCors (so CORS preflight OPTIONS requests are still answered - they carry no token
+// and must not be rejected, the browser needs the preflight response to proceed at all) but
+// before anything that would act on the request. See LocalApiTokenMiddleware's doc comment.
+app.UseMiddleware<LocalApiTokenMiddleware>(localApiToken);
 
 app.UseAuthentication();
 app.UseAuthorization();
